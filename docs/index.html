@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceDataEmphasise - ITSO-Dokumentation</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        .header { background: #1a365d; color: white; padding: 30px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0 0 10px 0; font-size: 2em; }
+        .header p { margin: 5px 0; opacity: 0.9; }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin: 1.5em 0; }
+        .card { border: 1px solid #cbd5e0; border-radius: 8px; padding: 20px; transition: box-shadow 0.2s, border-color 0.2s; }
+        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #2b6cb0; }
+        .card a { text-decoration: none; color: #2b6cb0; font-weight: bold; font-size: 1.05em; }
+        .card a:hover { text-decoration: underline; }
+        .card p { color: #555; margin: 8px 0 0 0; font-size: 0.9em; }
+        .card .num { display: inline-block; background: #2b6cb0; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-size: 0.85em; margin-right: 8px; }
+        .section-label { display: inline-block; background: #edf2f7; color: #4a5568; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 6px; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; border-radius: 0 4px 4px 0; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>IceDataEmphasise</h1>
+    <p>Cribl Stream &amp; Edge PoC - ITSO-Dokumentation</p>
+    <p>Log-Pipeline-Infrastruktur fuer regulierte Umgebungen (MaRisk / BAIT / DORA)</p>
+    <p style="margin-top: 15px; font-size: 0.85em;">Version 1.0 | Stand: 2026-02-10 | Klassifikation: INTERN</p>
+</div>
+
+<div class="info">
+    <strong>Hinweis:</strong> Diese Dokumentation ist die oeffentliche, bereinigte Version.
+    Sensible Daten (IP-Adressen, Tokens, Passwoerter) befinden sich ausschliesslich in der internen Confluence-Dokumentation.
+</div>
+
+<h2>Grundlagen</h2>
+<div class="card-grid">
+    <div class="card">
+        <span class="section-label">Grundlagen</span><br>
+        <span class="num">01</span><a href="01-architektur.html">Architekturuebersicht</a>
+        <p>Systemueberblick, Komponentendiagramm, Netzwerktopologie, Datenfluss, Sizing, Lizenzmodell, RACI-Matrix</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Grundlagen</span><br>
+        <span class="num">02</span><a href="02-installation.html">Installationshandbuch</a>
+        <p>Voraussetzungen, Schritt-fuer-Schritt-Anleitung, Tailscale, Cribl Stream &amp; Edge, Post-Install-Pruefungen, Rollback</p>
+    </div>
+</div>
+
+<h2>Konfiguration</h2>
+<div class="card-grid">
+    <div class="card">
+        <span class="section-label">Konfiguration</span><br>
+        <span class="num">03</span><a href="03-stream-konfiguration.html">Cribl Stream Konfiguration</a>
+        <p>Worker Processes, Authentication, RBAC, API-Zugang, TLS, Fleet Management</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Konfiguration</span><br>
+        <span class="num">04</span><a href="04-edge-konfiguration.html">Cribl Edge Konfiguration</a>
+        <p>Managed Edge, Fleet-Zuweisung, Edge-Quellen, Windows Deployment, Health Monitoring</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Konfiguration</span><br>
+        <span class="num">05</span><a href="05-quellen.html">Quellen-Konfiguration</a>
+        <p>12 Log-Quellen im Detail, Berechtigungskonzept, REST API, Input-Metriken, Troubleshooting</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Konfiguration</span><br>
+        <span class="num">06</span><a href="06-ziele.html">Ziel-Konfiguration (Destinations)</a>
+        <p>HEC vs. S2S, Persistent Queue, Backpressure, Failover-Strategie, Protokollvergleich</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Konfiguration</span><br>
+        <span class="num">07</span><a href="07-pipelines-routen.html">Pipelines und Routen</a>
+        <p>5 Pipelines (Syslog, Apache CLF, Docker JSON, Security Auth, Passthrough), Route-Tabelle, MITRE ATT&amp;CK</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Konfiguration</span><br>
+        <span class="num">08</span><a href="08-splunk-integration.html">Splunk-Integration</a>
+        <p>Index-Mapping, Sourcetype-Zuordnung, SPL-Beispiele, UF-Vergleich, Migrationsstrategie</p>
+    </div>
+</div>
+
+<h2>Betrieb &amp; Sicherheit</h2>
+<div class="card-grid">
+    <div class="card">
+        <span class="section-label">Betrieb</span><br>
+        <span class="num">09</span><a href="09-betriebshandbuch.html">Betriebshandbuch</a>
+        <p>Taeglich Checkliste, Start/Stop, Log-Rotation, Performance-Monitoring, Backup/Restore, Wartungsfenster</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Sicherheit</span><br>
+        <span class="num">10</span><a href="10-sicherheitshandbuch.html">Sicherheitshandbuch</a>
+        <p>RBAC, TLS/SSL, Firewall, Haertung (CIS), Geheimnis-Management, Audit-Logging, Patch-Management</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Notfall</span><br>
+        <span class="num">11</span><a href="11-notfallhandbuch.html">Notfallhandbuch</a>
+        <p>Severity-Level, DR-Szenarien, Backup/Restore, Wiederanlauf, Kommunikationsplan, Post-Incident Review</p>
+    </div>
+</div>
+
+<h2>Governance</h2>
+<div class="card-grid">
+    <div class="card">
+        <span class="section-label">Monitoring</span><br>
+        <span class="num">12</span><a href="12-monitoring.html">Monitoring und Alerting</a>
+        <p>KPIs, Prometheus/Grafana, Alerting-Regeln, Dashboard-Empfehlungen, Cron-Monitoring</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Compliance</span><br>
+        <span class="num">13</span><a href="13-compliance.html">Compliance und Regulatorik</a>
+        <p>MaRisk, BAIT, DORA, DSGVO, Aufbewahrungsfristen, Change-Management, Audit-Nachweise</p>
+    </div>
+    <div class="card">
+        <span class="section-label">Support</span><br>
+        <span class="num">14</span><a href="14-troubleshooting.html">Troubleshooting</a>
+        <p>Diagnose-Werkzeuge, haeufige Probleme, Log-Analyse, Diagnostic Bundle, FAQ</p>
+    </div>
+</div>
+
+<div class="footer">
+    IceDataEmphasise - ITSO-Dokumentation | Version 1.0 | 2026-02-10<br>
+    <a href="https://github.com/icepaule/IceDataEmphasise" style="color: #2b6cb0;">GitHub Repository</a>
+</div>
+
+</body>
+</html>
