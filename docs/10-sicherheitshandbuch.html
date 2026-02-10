@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10 - Sicherheitshandbuch | IceDataEmphasise</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>10 - Sicherheitshandbuch</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2 id="revisionshistorie">Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion: RBAC, TLS, Netzwerksicherheit, Haertung, Compliance</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2 id="inhaltsverzeichnis">Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#zugriffsschutz">Zugriffsschutz (RBAC)</a></li>
+    <li><a href="#tls-ssl">TLS/SSL-Konfiguration</a></li>
+    <li><a href="#netzwerksicherheit">Netzwerksicherheit</a></li>
+    <li><a href="#haertung">Haertung des Cribl-Servers</a></li>
+    <li><a href="#geheimnis-management">Geheimnis-Management</a></li>
+    <li><a href="#audit-logging">Audit-Logging</a></li>
+    <li><a href="#schwachstellen">Schwachstellen-Management und Update-Prozess</a></li>
+    <li><a href="#compliance">Compliance-relevante Einstellungen</a></li>
+</ol>
+
+<!-- 1. Zugriffsschutz -->
+<h2 id="zugriffsschutz">1. Zugriffsschutz (RBAC)</h2>
+
+<h3>1.1 Rollenkonzept</h3>
+<p>
+    Cribl Stream verfuegt ueber ein rollenbasiertes Zugriffsmodell (Role-Based Access Control, RBAC).
+    Im IceDataEmphasise-PoC werden folgende Rollen definiert:
+</p>
+
+<table>
+    <tr><th>Rolle</th><th>Beschreibung</th><th>Berechtigungen</th><th>Zugewiesene Personen</th></tr>
+    <tr>
+        <td><strong>admin</strong></td>
+        <td>Vollzugriff auf alle Cribl-Funktionen</td>
+        <td>Konfiguration, Benutzer-Verwaltung, System-Einstellungen, API-Zugriff</td>
+        <td>Cribl-Administrator (max. 2 Personen)</td>
+    </tr>
+    <tr>
+        <td><strong>editor</strong></td>
+        <td>Konfigurationsaenderungen an Pipelines, Routes, Sources</td>
+        <td>Pipelines erstellen/aendern, Routes konfigurieren, Preview nutzen</td>
+        <td>Senior-Operatoren</td>
+    </tr>
+    <tr>
+        <td><strong>reader</strong></td>
+        <td>Nur-Lese-Zugriff auf Konfiguration und Monitoring</td>
+        <td>Dashboard einsehen, Metriken lesen, Log-Viewer nutzen</td>
+        <td>IT-Betrieb, Security-Analysten</td>
+    </tr>
+    <tr>
+        <td><strong>api_only</strong></td>
+        <td>Programmatischer Zugriff via API</td>
+        <td>Nur API-Endpunkte (kein UI-Zugang)</td>
+        <td>Automatisierungsskripte, Monitoring-Tools</td>
+    </tr>
+</table>
+
+<h3>1.2 Lokale Benutzer konfigurieren</h3>
+<p>Im PoC werden lokale Benutzer verwendet (keine LDAP/SAML-Integration):</p>
+<pre><code># Cribl Stream UI: Settings &rarr; Access Management &rarr; Users
+# Neuen Benutzer anlegen:
+# - Username: operator1
+# - Role: reader
+# - Passwort: Mindestens 12 Zeichen, Gross-/Kleinbuchstaben, Zahl, Sonderzeichen</code></pre>
+
+<div class="warning">
+    <strong>Passwort-Richtlinie (BAIT II.4):</strong>
+    <ul>
+        <li>Mindestlaenge: 12 Zeichen</li>
+        <li>Komplexitaet: Gross-/Kleinbuchstaben, Ziffern, Sonderzeichen</li>
+        <li>Maximale Gueltigkeit: 90 Tage</li>
+        <li>Passworthistorie: Letzte 10 Passwoerter gesperrt</li>
+        <li>Kontosperre: Nach 5 fehlgeschlagenen Versuchen fuer 30 Minuten</li>
+    </ul>
+</div>
+
+<h3>1.3 Mindestprivilegien-Prinzip (Least Privilege)</h3>
+<ul>
+    <li>Jeder Benutzer erhaelt die <strong>minimale Rolle</strong>, die fuer seine Aufgabe erforderlich ist</li>
+    <li>Die <code>admin</code>-Rolle ist auf maximal 2 namentlich benannte Personen beschraenkt</li>
+    <li>Fuer den taeglichen Betrieb wird die Rolle <code>reader</code> verwendet</li>
+    <li>Konfigurationsaenderungen erfordern die Rolle <code>editor</code> und werden im Audit-Log protokolliert</li>
+    <li>Service-Accounts (<code>api_only</code>) sind an spezifische Automatisierungszwecke gebunden</li>
+</ul>
+
+<h3>1.4 Berechtigungspruefung</h3>
+<ul class="checklist">
+    <li>Quartalsweise Review aller Cribl-Benutzer und deren Rollen</li>
+    <li>Deaktivierung nicht mehr benoetigter Konten innerhalb von 24 Stunden</li>
+    <li>Dokumentation der Berechtigungsvergabe im IT-Service-Management-System</li>
+    <li>Vier-Augen-Prinzip bei Vergabe der <code>admin</code>-Rolle</li>
+</ul>
+
+<!-- 2. TLS/SSL -->
+<h2 id="tls-ssl">2. TLS/SSL-Konfiguration</h2>
+
+<h3>2.1 Uebersicht der TLS-Endpunkte</h3>
+<table>
+    <tr><th>Endpunkt</th><th>Port</th><th>TLS-Status (PoC)</th><th>TLS-Status (Produktion)</th><th>Beschreibung</th></tr>
+    <tr><td>Cribl Stream UI</td><td>9000</td><td>Aktiviert (selbstsigniert)</td><td>Aktiviert (CA-signiert)</td><td>Web-Verwaltungsoberflaeche</td></tr>
+    <tr><td>Cribl API</td><td>9000</td><td>Aktiviert (selbstsigniert)</td><td>Aktiviert (CA-signiert)</td><td>REST-API fuer Automatisierung</td></tr>
+    <tr><td>HEC Destination</td><td>8088</td><td>Aktiviert</td><td>Aktiviert (CA-signiert)</td><td>Ausgehende Verbindung zu Splunk HEC</td></tr>
+    <tr><td>S2S Destination</td><td>9997</td><td>Deaktiviert (VPN)</td><td>Aktiviert</td><td>Ausgehende Verbindung zu Splunk S2S</td></tr>
+    <tr><td>Edge &rarr; Stream</td><td>9420</td><td>Aktiviert</td><td>Aktiviert (mTLS)</td><td>Kommunikation Edge-Nodes zu Stream</td></tr>
+</table>
+
+<h3>2.2 TLS-Konfiguration fuer Cribl Stream UI</h3>
+<pre><code># Zertifikate hinterlegen unter /opt/cribl/certs/
+/opt/cribl/certs/
+  server.crt    # Server-Zertifikat (PEM)
+  server.key    # Privater Schluessel (PEM, unverschluesselt)
+  ca-bundle.crt # CA-Zertifikatskette (PEM)
+
+# In Cribl UI: Settings &rarr; Global Settings &rarr; API Server
+# TLS Settings:
+#   Certificate: /opt/cribl/certs/server.crt
+#   Private Key: /opt/cribl/certs/server.key
+#   CA Certificate: /opt/cribl/certs/ca-bundle.crt
+#   Minimum TLS Version: TLSv1.2</code></pre>
+
+<h3>2.3 TLS-Anforderungen</h3>
+<table>
+    <tr><th>Parameter</th><th>Anforderung</th><th>Begruendung</th></tr>
+    <tr><td>Minimum TLS-Version</td><td>TLS 1.2</td><td>TLS 1.0 und 1.1 gelten als unsicher (BSI TR-02102-2)</td></tr>
+    <tr><td>Empfohlene TLS-Version</td><td>TLS 1.3</td><td>Aktuelle Best Practice, bessere Performance</td></tr>
+    <tr><td>Cipher Suites</td><td>ECDHE + AES-GCM</td><td>Forward Secrecy, authentifizierte Verschluesselung</td></tr>
+    <tr><td>Schluessellaenge (RSA)</td><td>Mindestens 2048 Bit</td><td>BSI-Empfehlung</td></tr>
+    <tr><td>Schluessellaenge (ECDSA)</td><td>Mindestens 256 Bit (P-256)</td><td>BSI-Empfehlung</td></tr>
+    <tr><td>Zertifikatslaufzeit</td><td>Maximal 1 Jahr</td><td>Branchenstandard, CA/Browser Forum</td></tr>
+</table>
+
+<h3>2.4 Zertifikats-Erneuerung</h3>
+<pre><code># Zertifikatslaufzeit pruefen
+openssl x509 -enddate -noout -in /opt/cribl/certs/server.crt
+
+# Warnung: 30 Tage vor Ablauf muss ein neues Zertifikat beantragt werden
+# Automatisierung via Cron:
+0 8 * * 1 openssl x509 -checkend 2592000 -noout -in /opt/cribl/certs/server.crt || \
+  echo "WARNUNG: Cribl-Zertifikat laeuft in weniger als 30 Tagen ab" | \
+  mail -s "Cribl TLS Certificate Expiry Warning" admin@example.de</code></pre>
+
+<!-- 3. Netzwerksicherheit -->
+<h2 id="netzwerksicherheit">3. Netzwerksicherheit</h2>
+
+<h3>3.1 Firewall-Regeln</h3>
+<p>
+    Die folgenden Ports muessen auf dem Cribl-Server geoeffnet sein. Alle anderen Ports
+    werden durch die Host-Firewall (iptables/nftables) blockiert.
+</p>
+
+<table>
+    <tr><th>Port</th><th>Protokoll</th><th>Richtung</th><th>Quelle/Ziel</th><th>Beschreibung</th></tr>
+    <tr><td>9000</td><td>TCP</td><td>Eingehend</td><td>Admin-Netzwerk</td><td>Cribl Stream UI + API</td></tr>
+    <tr><td>9420</td><td>TCP</td><td>Eingehend</td><td>Cribl Edge Nodes</td><td>Edge-to-Stream Kommunikation</td></tr>
+    <tr><td>514</td><td>TCP/UDP</td><td>Eingehend</td><td>Quell-Server</td><td>Syslog-Empfang (optional)</td></tr>
+    <tr><td>4200</td><td>TCP</td><td>Eingehend</td><td>Cribl Edge Nodes</td><td>Cribl Edge Management</td></tr>
+    <tr><td>8088</td><td>TCP</td><td>Ausgehend</td><td>Splunk-Indexer</td><td>HEC-Zustellung</td></tr>
+    <tr><td>9997</td><td>TCP</td><td>Ausgehend</td><td>Splunk-Indexer</td><td>S2S-Zustellung</td></tr>
+    <tr><td>443</td><td>TCP</td><td>Ausgehend</td><td>cdn.cribl.io</td><td>Cribl-Updates und Lizenzpruefung</td></tr>
+    <tr><td>41641</td><td>UDP</td><td>Ein-/Ausgehend</td><td>Tailscale DERP</td><td>Tailscale VPN WireGuard</td></tr>
+</table>
+
+<h3>3.2 iptables-Beispielkonfiguration</h3>
+<pre><code># Grundlegende Firewall-Regeln fuer den Cribl-Server
+# Loopback erlauben
+iptables -A INPUT -i lo -j ACCEPT
+
+# Bestehende Verbindungen erlauben
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# SSH (nur aus Admin-Netzwerk)
+iptables -A INPUT -p tcp --dport 22 -s 10.0.0.0/24 -j ACCEPT
+
+# Cribl Stream UI (nur aus Admin-Netzwerk)
+iptables -A INPUT -p tcp --dport 9000 -s 10.0.0.0/24 -j ACCEPT
+
+# Cribl Edge Kommunikation (Tailscale-Netzwerk)
+iptables -A INPUT -p tcp --dport 9420 -s 100.64.0.0/10 -j ACCEPT
+iptables -A INPUT -p tcp --dport 4200 -s 100.64.0.0/10 -j ACCEPT
+
+# Tailscale WireGuard
+iptables -A INPUT -p udp --dport 41641 -j ACCEPT
+
+# Alles andere verwerfen
+iptables -A INPUT -j DROP</code></pre>
+
+<h3>3.3 Tailscale-VPN</h3>
+<p>
+    Die Kommunikation zwischen Cribl Stream, den Edge Nodes und dem Splunk-Indexer erfolgt ueber
+    ein Tailscale-VPN (WireGuard-basiert). Dies bietet:
+</p>
+<ul>
+    <li><strong>Ende-zu-Ende-Verschluesselung:</strong> WireGuard mit Curve25519, ChaCha20-Poly1305</li>
+    <li><strong>Zero-Trust-Netzwerk:</strong> Jeder Node authentifiziert sich individuell</li>
+    <li><strong>ACLs:</strong> Tailscale Access Control Lists beschraenken den Zugriff zwischen Nodes</li>
+    <li><strong>NAT-Traversal:</strong> Kein Portforwarding oder oeffentliche IP erforderlich</li>
+</ul>
+
+<pre><code># Tailscale-Status pruefen
+tailscale status
+
+# ACL-Konfiguration (Beispiel in tailscale admin console):
+{
+  "acls": [
+    {"action": "accept", "src": ["tag:cribl-edge"], "dst": ["tag:cribl-stream:9420"]},
+    {"action": "accept", "src": ["tag:cribl-stream"], "dst": ["tag:splunk:8088,9997"]},
+    {"action": "accept", "src": ["tag:admin"], "dst": ["tag:cribl-stream:9000,22"]}
+  ]
+}</code></pre>
+
+<div class="info">
+    <strong>Hinweis:</strong> Im PoC wird Tailscale als alleinige Netzwerkabsicherung fuer die S2S-Verbindung
+    verwendet (TLS auf S2S deaktiviert). Fuer die Produktivstellung muss TLS zusaetzlich auf S2S-Ebene
+    aktiviert werden (Defense in Depth).
+</div>
+
+<!-- 4. Haertung -->
+<h2 id="haertung">4. Haertung des Cribl-Servers</h2>
+
+<h3>4.1 CIS-Benchmark-Referenz</h3>
+<p>
+    Die Haertung des Cribl-Servers orientiert sich am CIS Benchmark for Debian/Ubuntu Linux.
+    Die folgenden Massnahmen sind fuer den Cribl-Server relevant:
+</p>
+
+<table>
+    <tr><th>CIS-Referenz</th><th>Massnahme</th><th>Status</th><th>Beschreibung</th></tr>
+    <tr><td>1.1.1</td><td>Separate Partitionen</td><td>Umgesetzt</td><td><code>/opt</code> auf separater Partition (Cribl-Daten)</td></tr>
+    <tr><td>1.3.1</td><td>AIDE installiert</td><td>Geplant</td><td>Integritaetspruefung fuer Konfigurationsdateien</td></tr>
+    <tr><td>1.4.1</td><td>Bootloader-Passwort</td><td>Umgesetzt</td><td>GRUB-Passwort gesetzt</td></tr>
+    <tr><td>3.4.1</td><td>Host-Firewall aktiv</td><td>Umgesetzt</td><td>iptables-Regeln (siehe oben)</td></tr>
+    <tr><td>4.1.1</td><td>Audit-Daemon (auditd)</td><td>Umgesetzt</td><td>System-Audit-Logs aktiviert</td></tr>
+    <tr><td>4.2.1</td><td>Syslog konfiguriert</td><td>Umgesetzt</td><td>rsyslog leitet an Cribl Edge weiter (Selbstmonitoring)</td></tr>
+    <tr><td>5.2.1</td><td>SSH-Haertung</td><td>Umgesetzt</td><td>Key-Only-Auth, Root-Login deaktiviert, Protocol 2</td></tr>
+    <tr><td>5.3.1</td><td>Passwort-Richtlinien</td><td>Umgesetzt</td><td>pam_pwquality konfiguriert</td></tr>
+    <tr><td>5.4.1</td><td>Inaktive Konten sperren</td><td>Umgesetzt</td><td>Automatische Sperre nach 90 Tagen Inaktivitaet</td></tr>
+    <tr><td>6.1.1</td><td>Dateiberechtigungen</td><td>Umgesetzt</td><td>Cribl-Dateien: <code>cribl:cribl</code>, 0750/0640</td></tr>
+</table>
+
+<h3>4.2 Betriebssystem-Haertung</h3>
+<pre><code># SSH-Haertung (/etc/ssh/sshd_config)
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+ClientAliveInterval 300
+ClientAliveCountMax 2
+AllowUsers mpauli cribl-admin
+
+# Unnoetige Dienste deaktivieren
+sudo systemctl disable --now avahi-daemon
+sudo systemctl disable --now cups
+sudo systemctl disable --now bluetooth
+
+# Dateiberechtigungen fuer Cribl
+sudo chmod 0750 /opt/cribl/
+sudo chmod 0640 /opt/cribl/local/cribl/auth/*.json
+sudo chown -R cribl:cribl /opt/cribl/</code></pre>
+
+<h3>4.3 Cribl-spezifische Haertung</h3>
+<ul>
+    <li><strong>Dedizierter Service-Account:</strong> Cribl laeuft unter dem Benutzer <code>cribl</code> (nicht root)</li>
+    <li><strong>Kein Shell-Login:</strong> Der <code>cribl</code>-Benutzer hat <code>/usr/sbin/nologin</code> als Shell</li>
+    <li><strong>API-Rate-Limiting:</strong> Maximal 100 Anfragen pro Minute pro IP</li>
+    <li><strong>Session-Timeout:</strong> UI-Sitzungen laufen nach 30 Minuten Inaktivitaet ab</li>
+    <li><strong>Git-Integration deaktiviert:</strong> Im PoC wird die Konfiguration nicht ueber das Cribl-interne Git verwaltet (externes Repository wird verwendet)</li>
+</ul>
+
+<!-- 5. Geheimnis-Management -->
+<h2 id="geheimnis-management">5. Geheimnis-Management</h2>
+
+<h3>5.1 Grundprinzip: Keine Secrets in Git</h3>
+<div class="warning">
+    <strong>Strikte Regel:</strong> Sensible Daten (Tokens, Passwoerter, Zertifikats-Schluessel) duerfen
+    <strong>niemals</strong> in das Git-Repository eingecheckt werden. Verstoesse muessen als
+    Sicherheitsvorfall behandelt werden.
+</div>
+
+<h3>5.2 .env-Konzept</h3>
+<p>
+    Alle sensiblen Konfigurationswerte werden ueber Umgebungsvariablen aus der <code>.env</code>-Datei
+    bezogen. Diese Datei ist in <code>.gitignore</code> eingetragen.
+</p>
+
+<pre><code># .env (Beispielstruktur - nicht die echten Werte!)
+SPLUNK_HOST=splunk.example.internal
+SPLUNK_HEC_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+SPLUNK_HEC_PORT=8088
+SPLUNK_S2S_PORT=9997
+CRIBL_ADMIN_PASSWORD=CHANGE_ME_ON_FIRST_LOGIN
+TAILSCALE_AUTH_KEY=tskey-auth-xxxxx</code></pre>
+
+<h3>5.3 Secrets-Schutz auf Dateisystemebene</h3>
+<pre><code># Dateiberechtigungen fuer .env
+chmod 0600 /home/mpauli/IceDataEmphasise/.env
+chown root:root /home/mpauli/IceDataEmphasise/.env
+
+# Dateiberechtigungen fuer TLS-Schluessel
+chmod 0600 /opt/cribl/certs/server.key
+chown cribl:cribl /opt/cribl/certs/server.key</code></pre>
+
+<h3>5.4 .gitignore-Eintraege</h3>
+<pre><code># Sensible Dateien (in .gitignore)
+.env
+.env.*
+*.key
+*.pem
+*.p12
+credentials/
+secrets/</code></pre>
+
+<h3>5.5 Rotation von Geheimnissen</h3>
+<table>
+    <tr><th>Geheimnis</th><th>Rotationsintervall</th><th>Verantwortlich</th><th>Prozedur</th></tr>
+    <tr><td>HEC-Token</td><td>Quartalsweise</td><td>Splunk-Admin</td><td>In Splunk neues Token erstellen, in .env aktualisieren, Cribl neu starten</td></tr>
+    <tr><td>Cribl-Admin-Passwort</td><td>90 Tage</td><td>Cribl-Admin</td><td>In Cribl UI aendern</td></tr>
+    <tr><td>TLS-Zertifikate</td><td>Jaehrlich</td><td>PKI-Team</td><td>Neues Zertifikat ausstellen, auf Server kopieren, Cribl neu starten</td></tr>
+    <tr><td>Tailscale Auth Key</td><td>Bei Erneuerung</td><td>Netzwerk-Team</td><td>Neuen Key in Tailscale Admin erstellen, auf Nodes verteilen</td></tr>
+</table>
+
+<h3>5.6 Notfall: Secret in Git eingecheckt</h3>
+<ol>
+    <li><strong>Sofort:</strong> Secret rotieren (neues Token/Passwort generieren)</li>
+    <li><strong>Git-Historie bereinigen:</strong>
+        <pre><code># Mit git-filter-repo (empfohlen)
+git filter-repo --path .env --invert-paths
+git push --force-with-lease origin main</code></pre>
+    </li>
+    <li><strong>Vorfall dokumentieren</strong> im Incident-Management-System</li>
+    <li><strong>Review:</strong> .gitignore pruefen und Pre-Commit-Hooks einrichten</li>
+</ol>
+
+<!-- 6. Audit-Logging -->
+<h2 id="audit-logging">6. Audit-Logging</h2>
+
+<h3>6.1 Cribl-internes Audit-Log</h3>
+<p>
+    Cribl Stream protokolliert alle administrativen Aktionen im Audit-Log unter
+    <code>/opt/cribl/log/audit.log</code>. Folgende Ereignisse werden erfasst:
+</p>
+
+<table>
+    <tr><th>Ereignis</th><th>Beschreibung</th><th>Erfasste Details</th></tr>
+    <tr><td>Login</td><td>Erfolgreicher/fehlgeschlagener UI-Login</td><td>Benutzername, Quell-IP, Zeitstempel</td></tr>
+    <tr><td>Config Change</td><td>Aenderung an Pipelines, Routes, Sources, Destinations</td><td>Benutzername, geaenderte Ressource, Vorher/Nachher-Diff</td></tr>
+    <tr><td>User Management</td><td>Benutzer erstellt, geaendert, geloescht</td><td>Admin-Benutzername, betroffener Benutzer, Aenderung</td></tr>
+    <tr><td>System Actions</td><td>Restart, Commit, Deploy</td><td>Benutzername, Aktion, Zeitstempel</td></tr>
+    <tr><td>API Access</td><td>API-Aufrufe (authentifiziert)</td><td>API-Endpunkt, Methode, Quell-IP</td></tr>
+</table>
+
+<h3>6.2 Audit-Log an Splunk weiterleiten</h3>
+<p>
+    Zur zentralen Auswertung und Langzeitaufbewahrung wird das Audit-Log an Splunk weitergeleitet.
+    Dies erfolgt ueber eine dedizierte File-Monitor-Quelle in Cribl Edge:
+</p>
+<pre><code># Source-Konfiguration fuer Audit-Log
+{
+  "id": "cribl_audit",
+  "type": "file_monitor",
+  "filename": "/opt/cribl/log/audit.log",
+  "sourcetype": "cribl:audit",
+  "index": "idx_security"
+}</code></pre>
+
+<h3>6.3 Aufbewahrung</h3>
+<ul>
+    <li><strong>Lokal:</strong> 90 Tage auf dem Cribl-Server (Rotation durch Cribl)</li>
+    <li><strong>Splunk:</strong> 365 Tage im <code>idx_security</code>-Index</li>
+    <li><strong>Archiv:</strong> Nach Ablauf der Splunk-Aufbewahrung in Langzeitarchiv (gemaess Aufbewahrungspflichten)</li>
+</ul>
+
+<div class="success">
+    <strong>Compliance:</strong> Die zentrale Erfassung aller administrativen Aktionen in einem
+    manipulationssicheren System (Splunk-Index mit beschraenktem Loeschzugriff) erfuellt die
+    Anforderungen der MaRisk AT 7.2 Nr. 4 und BAIT II.7 an die Protokollierung
+    sicherheitsrelevanter Ereignisse.
+</div>
+
+<!-- 7. Schwachstellen-Management -->
+<h2 id="schwachstellen">7. Schwachstellen-Management und Update-Prozess</h2>
+
+<h3>7.1 Informationsquellen</h3>
+<table>
+    <tr><th>Quelle</th><th>URL</th><th>Pruefungsintervall</th></tr>
+    <tr><td>Cribl Release Notes</td><td>docs.cribl.io/stream/release-notes</td><td>Woechentlich</td></tr>
+    <tr><td>Cribl Security Advisories</td><td>cribl.io/security</td><td>Woechentlich</td></tr>
+    <tr><td>Debian Security Tracker</td><td>security-tracker.debian.org</td><td>Taeglich (automatisch)</td></tr>
+    <tr><td>CVE-Datenbank</td><td>cve.mitre.org</td><td>Bei Bedarf</td></tr>
+    <tr><td>BSI-Warnungen</td><td>bsi.bund.de/cert</td><td>Taeglich</td></tr>
+</table>
+
+<h3>7.2 Patch-Klassifizierung</h3>
+<table>
+    <tr><th>Klassifikation</th><th>Beschreibung</th><th>Zeitrahmen fuer Installation</th></tr>
+    <tr><td><strong>Kritisch</strong></td><td>Remote Code Execution, aktiv ausgenutzte Schwachstelle</td><td>Innerhalb von 72 Stunden</td></tr>
+    <tr><td><strong>Hoch</strong></td><td>Privilege Escalation, Umgehung von Authentifizierung</td><td>Innerhalb von 7 Tagen</td></tr>
+    <tr><td><strong>Mittel</strong></td><td>Information Disclosure, Denial of Service</td><td>Innerhalb von 30 Tagen</td></tr>
+    <tr><td><strong>Niedrig</strong></td><td>Kosmetisch, geringes Risiko</td><td>Naechstes Wartungsfenster</td></tr>
+</table>
+
+<h3>7.3 Cribl-Update-Prozedur</h3>
+<ol>
+    <li>Release Notes und Changelog pruefen</li>
+    <li>Change-Antrag stellen (Standard-Change fuer Minor Updates)</li>
+    <li>Backup erstellen (siehe <a href="09-betriebshandbuch.html#backup-restore">Betriebshandbuch, Abschnitt 6</a>)</li>
+    <li>Update im Wartungsfenster durchfuehren:
+        <pre><code># Cribl Stream Update
+sudo systemctl stop cribl
+cd /opt/cribl
+sudo curl -Lo cribl-update.tar.gz "https://cdn.cribl.io/dl/latest-x64"
+sudo tar xzf cribl-update.tar.gz --strip-components=1
+sudo chown -R cribl:cribl /opt/cribl/
+sudo systemctl start cribl
+
+# Verifikation
+curl -s http://localhost:9000/api/v1/system/info | jq '.version'</code></pre>
+    </li>
+    <li>Funktionspruefung (Checkliste aus Betriebshandbuch)</li>
+    <li>Change-Ticket schliessen</li>
+</ol>
+
+<h3>7.4 Betriebssystem-Updates</h3>
+<pre><code># Woechentliche Sicherheitsupdates (automatisiert via unattended-upgrades)
+sudo apt update &amp;&amp; sudo apt upgrade -y --only-upgrade
+
+# Kernel-Updates erfordern Neustart und Wartungsfenster
+sudo apt install linux-image-amd64
+# Neustart im naechsten Wartungsfenster planen</code></pre>
+
+<!-- 8. Compliance -->
+<h2 id="compliance">8. Compliance-relevante Einstellungen</h2>
+
+<h3>8.1 Regulatorischer Rahmen</h3>
+<p>
+    Als Proof of Concept fuer eine regulierte deutsche Bank unterliegt das System den folgenden
+    regulatorischen Anforderungen:
+</p>
+
+<table>
+    <tr><th>Regelwerk</th><th>Herausgeber</th><th>Relevante Abschnitte</th><th>Bezug zu IceDataEmphasise</th></tr>
+    <tr>
+        <td><strong>MaRisk</strong></td>
+        <td>BaFin</td>
+        <td>AT 7.2 (IT-Betrieb), AT 4.3.1 (Aufgabentrennung)</td>
+        <td>Betriebsprozesse, RBAC, Dokumentation</td>
+    </tr>
+    <tr>
+        <td><strong>BAIT</strong></td>
+        <td>BaFin</td>
+        <td>II.4 (Berechtigungsmanagement), II.7 (Protokollierung), II.9 (Outsourcing)</td>
+        <td>Zugriffsschutz, Audit-Logging, Vertragsmanagement Cribl</td>
+    </tr>
+    <tr>
+        <td><strong>DORA</strong></td>
+        <td>EU</td>
+        <td>Art. 6 (IKT-Risikomanagement), Art. 9 (Schutz und Praevention), Art. 12 (Backup)</td>
+        <td>Risikobewertung, TLS/Verschluesselung, Backup-Konzept</td>
+    </tr>
+    <tr>
+        <td><strong>BSI IT-Grundschutz</strong></td>
+        <td>BSI</td>
+        <td>OPS.1.1.3 (Patch-Management), NET.1.1 (Netzarchitektur)</td>
+        <td>Update-Prozess, Netzwerksegmentierung</td>
+    </tr>
+</table>
+
+<h3>8.2 Compliance-Mapping</h3>
+<table>
+    <tr><th>Anforderung</th><th>Regelwerk</th><th>Umsetzung im PoC</th><th>Nachweis</th></tr>
+    <tr>
+        <td>Zugriffsschutz nach Mindestprivilegien</td>
+        <td>MaRisk AT 4.3.1, BAIT II.4</td>
+        <td>RBAC mit 4 Rollen, Vier-Augen-Prinzip fuer Admin</td>
+        <td>Benutzer-Konfiguration, Audit-Log</td>
+    </tr>
+    <tr>
+        <td>Verschluesselung in Transit</td>
+        <td>DORA Art. 9, BSI TR-02102-2</td>
+        <td>TLS 1.2+ fuer UI/API/HEC, WireGuard fuer VPN</td>
+        <td>TLS-Konfiguration, Tailscale-ACLs</td>
+    </tr>
+    <tr>
+        <td>Protokollierung admin. Aktionen</td>
+        <td>BAIT II.7, MaRisk AT 7.2</td>
+        <td>Cribl Audit-Log, Weiterleitung an Splunk (365 Tage)</td>
+        <td>Audit-Log in idx_security</td>
+    </tr>
+    <tr>
+        <td>Datenverlustfreiheit</td>
+        <td>MaRisk AT 7.2</td>
+        <td>Persistent Queues auf beiden Destinations</td>
+        <td>PQ-Konfiguration, Monitoring-Metriken</td>
+    </tr>
+    <tr>
+        <td>Backup-Konzept</td>
+        <td>DORA Art. 12</td>
+        <td>Taegliches Backup der Konfiguration, dokumentierte Restore-Prozedur</td>
+        <td>Backup-Skript, Restore-Dokumentation</td>
+    </tr>
+    <tr>
+        <td>Patch-Management</td>
+        <td>BSI OPS.1.1.3</td>
+        <td>Woechentliche Pruefung, Patch-Klassifizierung, definierte Zeitrahmen</td>
+        <td>Update-Protokoll, Change-Tickets</td>
+    </tr>
+    <tr>
+        <td>Aufgabentrennung</td>
+        <td>MaRisk AT 4.3.1</td>
+        <td>Security-Daten via S2S, Anwendungsdaten via HEC (getrennte Kanaele)</td>
+        <td>Route-Konfiguration, Index-Mapping</td>
+    </tr>
+    <tr>
+        <td>Geheimnis-Management</td>
+        <td>BAIT II.4</td>
+        <td>.env-Konzept, keine Secrets in Git, Rotationsplaene</td>
+        <td>.gitignore, Dateiberechtigungen</td>
+    </tr>
+</table>
+
+<h3>8.3 Audit-Vorbereitung</h3>
+<p>
+    Fuer eine Audit-Pruefung (intern oder extern) sollten folgende Nachweise bereitgestellt werden koennen:
+</p>
+
+<ul class="checklist">
+    <li>Aktuelle Benutzerliste mit Rollenzuordnung (Cribl + Splunk)</li>
+    <li>Nachweis der letzten Berechtigungspruefung (quartalsweise)</li>
+    <li>TLS-Zertifikate mit Gueltigkeitsdaten</li>
+    <li>Firewall-Regelwerk (aktuell und dokumentiert)</li>
+    <li>Audit-Log-Auszuege der letzten 90 Tage</li>
+    <li>Backup-Protokolle (Nachweis der Durchfuehrung)</li>
+    <li>Patch-Status: Installierte Versionen von Cribl, Betriebssystem, Abhaengigkeiten</li>
+    <li>Change-Management-Tickets fuer alle Konfigurationsaenderungen</li>
+    <li>Dokumentation der Datenfluesse (Quelle &rarr; Pipeline &rarr; Destination &rarr; Index)</li>
+    <li>Ergebnis des letzten Restore-Tests</li>
+    <li>Eskalationsmatrix und Kontaktliste (aktuell)</li>
+</ul>
+
+<h3>8.4 DORA-spezifische Anforderungen</h3>
+<div class="info">
+    <strong>DORA (Digital Operational Resilience Act):</strong> Seit Januar 2025 verbindlich fuer alle
+    EU-Finanzinstitute. Die folgenden DORA-Anforderungen sind fuer IceDataEmphasise relevant:
+</div>
+
+<table>
+    <tr><th>DORA-Artikel</th><th>Anforderung</th><th>Umsetzung</th></tr>
+    <tr>
+        <td>Art. 6 Abs. 1</td>
+        <td>Umfassendes IKT-Risikomanagement-Framework</td>
+        <td>Risikobewertung des Cribl-Deployments, Dokumentation der Abhaengigkeiten</td>
+    </tr>
+    <tr>
+        <td>Art. 9 Abs. 2</td>
+        <td>Verschluesselung ruhender und uebertragener Daten</td>
+        <td>TLS fuer Transport, PQ-Daten auf verschluesseltem Dateisystem (LUKS empfohlen)</td>
+    </tr>
+    <tr>
+        <td>Art. 10</td>
+        <td>Erkennung anomaler Aktivitaeten</td>
+        <td>MITRE ATT&amp;CK-Tagging in pipeline_security_auth, Splunk-Alerts</td>
+    </tr>
+    <tr>
+        <td>Art. 12</td>
+        <td>Backup-Richtlinien und Wiederherstellungsverfahren</td>
+        <td>Taegliches Backup, dokumentierte Restore-Prozedur, Restore-Tests</td>
+    </tr>
+    <tr>
+        <td>Art. 28</td>
+        <td>Management von IKT-Drittanbieter-Risiken</td>
+        <td>Bewertung von Cribl als IKT-Dienstleister, Vertragsgestaltung</td>
+    </tr>
+</table>
+
+<div class="nav">
+    <a href="09-betriebshandbuch.html">&larr; 09 - Betriebshandbuch</a>
+    <a href="11-troubleshooting.html">11 - Troubleshooting &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    Regulierte Umgebung: Deutsche Bankenaufsicht (BaFin) &ndash; MaRisk / BAIT / DORA
+</div>
+
+</body>
+</html>

@@ -1,0 +1,109 @@
+# =============================================================================
+# indexes.conf - Splunk Index Definitions for IceDataEmphasise
+# =============================================================================
+# Copy this file to $SPLUNK_HOME/etc/system/local/indexes.conf or to an
+# appropriate app directory under $SPLUNK_HOME/etc/apps/.
+#
+# Restart Splunk after applying:  splunk restart
+#
+# Retention:
+#   - Security indexes (sec_*):  90 days
+#   - All other indexes:         30 days
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Operating System Logs
+# -----------------------------------------------------------------------------
+
+[os_journal]
+homePath   = $SPLUNK_DB/os_journal/db
+coldPath   = $SPLUNK_DB/os_journal/colddb
+thawedPath = $SPLUNK_DB/os_journal/thaweddb
+maxDataSize = auto_high_volume
+frozenTimePeriodInSecs = 2592000
+
+[os_boot]
+homePath   = $SPLUNK_DB/os_boot/db
+coldPath   = $SPLUNK_DB/os_boot/colddb
+thawedPath = $SPLUNK_DB/os_boot/thaweddb
+maxDataSize = auto
+frozenTimePeriodInSecs = 2592000
+
+[os_packages]
+homePath   = $SPLUNK_DB/os_packages/db
+coldPath   = $SPLUNK_DB/os_packages/colddb
+thawedPath = $SPLUNK_DB/os_packages/thaweddb
+maxDataSize = auto
+frozenTimePeriodInSecs = 2592000
+
+# -----------------------------------------------------------------------------
+# Web Server Logs
+# -----------------------------------------------------------------------------
+
+[web_apache]
+homePath   = $SPLUNK_DB/web_apache/db
+coldPath   = $SPLUNK_DB/web_apache/colddb
+thawedPath = $SPLUNK_DB/web_apache/thaweddb
+maxDataSize = auto_high_volume
+frozenTimePeriodInSecs = 2592000
+
+# -----------------------------------------------------------------------------
+# Infrastructure Logs
+# -----------------------------------------------------------------------------
+
+[infra_samba]
+homePath   = $SPLUNK_DB/infra_samba/db
+coldPath   = $SPLUNK_DB/infra_samba/colddb
+thawedPath = $SPLUNK_DB/infra_samba/thaweddb
+maxDataSize = auto
+frozenTimePeriodInSecs = 2592000
+
+[infra_dns]
+homePath   = $SPLUNK_DB/infra_dns/db
+coldPath   = $SPLUNK_DB/infra_dns/colddb
+thawedPath = $SPLUNK_DB/infra_dns/thaweddb
+maxDataSize = auto_high_volume
+frozenTimePeriodInSecs = 2592000
+
+[infra_cups]
+homePath   = $SPLUNK_DB/infra_cups/db
+coldPath   = $SPLUNK_DB/infra_cups/colddb
+thawedPath = $SPLUNK_DB/infra_cups/thaweddb
+maxDataSize = auto
+frozenTimePeriodInSecs = 2592000
+
+# -----------------------------------------------------------------------------
+# IoT / Home Automation Logs
+# -----------------------------------------------------------------------------
+
+[iot_homeassistant]
+homePath   = $SPLUNK_DB/iot_homeassistant/db
+coldPath   = $SPLUNK_DB/iot_homeassistant/colddb
+thawedPath = $SPLUNK_DB/iot_homeassistant/thaweddb
+maxDataSize = auto
+frozenTimePeriodInSecs = 2592000
+
+[iot_mqtt]
+homePath   = $SPLUNK_DB/iot_mqtt/db
+coldPath   = $SPLUNK_DB/iot_mqtt/colddb
+thawedPath = $SPLUNK_DB/iot_mqtt/thaweddb
+maxDataSize = auto
+frozenTimePeriodInSecs = 2592000
+
+# -----------------------------------------------------------------------------
+# Security Logs (90-day retention)
+# -----------------------------------------------------------------------------
+
+[sec_auth]
+homePath   = $SPLUNK_DB/sec_auth/db
+coldPath   = $SPLUNK_DB/sec_auth/colddb
+thawedPath = $SPLUNK_DB/sec_auth/thaweddb
+maxDataSize = auto_high_volume
+frozenTimePeriodInSecs = 7776000
+
+[sec_tor]
+homePath   = $SPLUNK_DB/sec_tor/db
+coldPath   = $SPLUNK_DB/sec_tor/colddb
+thawedPath = $SPLUNK_DB/sec_tor/thaweddb
+maxDataSize = auto
+frozenTimePeriodInSecs = 7776000

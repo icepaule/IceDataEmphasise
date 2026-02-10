@@ -1,0 +1,12 @@
+{
+  "id": "splunk_s2s",
+  "type": "splunk_s2s",
+  "host": "${SPLUNK_HOST}",
+  "port": 9997,
+  "tls": { "disabled": true },
+  "pqEnabled": true,
+  "pqMaxSize": "1GB",
+  "pqMaxFiles": 100,
+  "nestedFields": "none",
+  "description": "Splunk S2S - Native Splunk Protocol"
+}

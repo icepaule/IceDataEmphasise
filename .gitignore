@@ -1,0 +1,45 @@
+# Environment & Secrets
+.env
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Cribl binaries & runtime
+cribl-*.tgz
+cribl-*.msi
+/opt/cribl/
+/opt/cribl-edge/
+
+# Logs
+*.log
+logs/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.orig
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+
+# Test artifacts
+tests/results/
+tests/*.tmp

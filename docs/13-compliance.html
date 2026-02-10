@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceDataEmphasise - Compliance und Regulatorik</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>13 &ndash; Compliance und Regulatorik</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion des Compliance- und Regulatorik-Dokuments</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#rahmen">Regulatorischer Rahmen</a></li>
+    <li><a href="#log-management">Anforderungen an Log-Management in Banken</a></li>
+    <li><a href="#audit-trail">Nachvollziehbarkeit und Audit Trail</a></li>
+    <li><a href="#datenschutz">Datenklassifizierung und Datenschutz (DSGVO)</a></li>
+    <li><a href="#aufbewahrung">Aufbewahrungsfristen</a></li>
+    <li><a href="#change-management">Change-Management-Prozess</a></li>
+    <li><a href="#dokumentation">Dokumentationspflichten</a></li>
+    <li><a href="#nachweise">Pruefungsrelevante Nachweise</a></li>
+    <li><a href="#mapping">Mapping: Regulatorische Anforderung &rarr; Cribl-Umsetzung</a></li>
+</ol>
+
+<!-- 1. Regulatorischer Rahmen -->
+<h2 id="rahmen">1. Regulatorischer Rahmen</h2>
+
+<p>Die Log-Management-Infrastruktur einer deutschen Bank unterliegt einer Vielzahl regulatorischer Vorgaben. Die folgenden Regelwerke sind fuer das IceDataEmphasise-Projekt unmittelbar relevant:</p>
+
+<h3>1.1 MaRisk AT 7.2 &ndash; Technisch-organisatorische Ausstattung</h3>
+
+<p>Die Mindestanforderungen an das Risikomanagement (MaRisk) der BaFin fordern in AT 7.2:</p>
+<ul>
+    <li>Die IT-Systeme muessen den Anforderungen an Integritaet, Verfuegbarkeit, Authentizitaet und Vertraulichkeit gerecht werden</li>
+    <li>IT-Risiken sind angemessen zu steuern und zu ueberwachen</li>
+    <li>Notfallvorsorge ist sicherzustellen (siehe <a href="11-notfallhandbuch.html">Notfallhandbuch</a>)</li>
+    <li>Aenderungen an IT-Systemen unterliegen einem geordneten Change-Management-Prozess</li>
+</ul>
+
+<h3>1.2 BAIT &ndash; Bankaufsichtliche Anforderungen an die IT</h3>
+
+<p>Die BAIT konkretisieren die MaRisk und stellen spezifische Anforderungen:</p>
+
+<table>
+    <tr><th>BAIT-Abschnitt</th><th>Anforderung</th><th>Relevanz fuer IceDataEmphasise</th></tr>
+    <tr>
+        <td>II. IT-Governance</td>
+        <td>Nachvollziehbare IT-Strategie und -Organisation</td>
+        <td>Dokumentation des PoC als Teil der IT-Strategie</td>
+    </tr>
+    <tr>
+        <td>III. Informationsrisikomanagement</td>
+        <td>Identifikation, Bewertung und Steuerung von IT-Risiken</td>
+        <td>Risikobewertung der Log-Pipeline</td>
+    </tr>
+    <tr>
+        <td>IV. Informationssicherheitsmanagement</td>
+        <td>Schutz der Vertraulichkeit, Integritaet, Verfuegbarkeit</td>
+        <td>TLS-Verschluesselung, Zugriffskontrolle, Integritaetspruefung</td>
+    </tr>
+    <tr>
+        <td>V. Benutzerberechtigungsmanagement</td>
+        <td>Minimale Berechtigungen, Nachvollziehbarkeit</td>
+        <td>Cribl RBAC, dedizierter Service-User (<code>cribl</code>)</td>
+    </tr>
+    <tr>
+        <td>VI. IT-Projekte und Anwendungsentwicklung</td>
+        <td>Geordnete Projektdurchfuehrung</td>
+        <td>ITSO-konforme Dokumentation, Test-Verfahren</td>
+    </tr>
+    <tr>
+        <td>VII. IT-Betrieb</td>
+        <td>Sicherer und stabiler IT-Betrieb</td>
+        <td>Monitoring, Alerting, Backup-Verfahren</td>
+    </tr>
+    <tr>
+        <td>VIII. Auslagerung</td>
+        <td>Steuerung von Auslagerungen an Dritte</td>
+        <td>Cribl als Software-Hersteller (kein Cloud-Service im PoC)</td>
+    </tr>
+    <tr>
+        <td>X. IT-Notfallmanagement</td>
+        <td>Notfallplaene und -tests</td>
+        <td>Notfallhandbuch, Wiederanlaufprozeduren</td>
+    </tr>
+</table>
+
+<h3>1.3 DORA &ndash; Digital Operational Resilience Act</h3>
+
+<p>Die EU-Verordnung DORA (ab Januar 2025 in Kraft) stellt erweiterte Anforderungen an die digitale operationale Resilienz:</p>
+
+<ul>
+    <li><strong>IKT-Risikomanagement (Art. 5-16):</strong> Umfassende Identifikation und Management von IKT-Risiken, einschliesslich der Log-Infrastruktur</li>
+    <li><strong>IKT-Vorfallmanagement (Art. 17-23):</strong> Erkennung, Klassifizierung und Meldung von IKT-Vorfaellen; Log-Daten sind essentiell fuer die Vorfallanalyse</li>
+    <li><strong>Testen der digitalen Resilienz (Art. 24-27):</strong> Regelmaessige Tests der IKT-Systeme, einschliesslich der Log-Pipeline</li>
+    <li><strong>IKT-Drittparteienrisiko (Art. 28-44):</strong> Management der Risiken durch IKT-Dienstleister (Cribl als Softwareanbieter)</li>
+</ul>
+
+<div class="warning">
+    <strong>Regulatorischer Hinweis:</strong> Die Log-Management-Infrastruktur ist kein Selbstzweck, sondern ein wesentlicher Baustein zur Erfuellung regulatorischer Anforderungen. Ausfaelle oder Manipulationen der Log-Pipeline koennen direkte aufsichtsrechtliche Konsequenzen haben.
+</div>
+
+<!-- 2. Anforderungen an Log-Management -->
+<h2 id="log-management">2. Anforderungen an Log-Management in Banken</h2>
+
+<h3>2.1 Grundlegende Anforderungen</h3>
+
+<table>
+    <tr><th>Anforderung</th><th>Beschreibung</th><th>Umsetzung im PoC</th></tr>
+    <tr>
+        <td>Vollstaendigkeit</td>
+        <td>Alle sicherheitsrelevanten Ereignisse muessen erfasst werden</td>
+        <td>12 Log-Quellen konfiguriert (Systemd, SSH, Apache, Samba, Docker, etc.)</td>
+    </tr>
+    <tr>
+        <td>Integritaet</td>
+        <td>Logs duerfen nicht unbemerkt veraendert werden</td>
+        <td>TLS-Transport, Persistent Queue, Splunk-Indizierung mit Pruefhashes</td>
+    </tr>
+    <tr>
+        <td>Vertraulichkeit</td>
+        <td>Zugriff auf Logs nur fuer berechtigte Personen</td>
+        <td>RBAC in Cribl, Splunk-Berechtigungen, dedizierter Service-User</td>
+    </tr>
+    <tr>
+        <td>Verfuegbarkeit</td>
+        <td>Logs muessen zeitnah abrufbar sein</td>
+        <td>Persistent Queue als Puffer, Monitoring und Alerting</td>
+    </tr>
+    <tr>
+        <td>Nachvollziehbarkeit</td>
+        <td>Wer hat wann was getan?</td>
+        <td>Audit-Trail in Cribl, Aenderungshistorie ueber Git</td>
+    </tr>
+    <tr>
+        <td>Aufbewahrung</td>
+        <td>Einhaltung regulatorischer Aufbewahrungsfristen</td>
+        <td>Splunk Retention Policies, siehe <a href="#aufbewahrung">Abschnitt 5</a></td>
+    </tr>
+</table>
+
+<h3>2.2 Sicherheitsrelevante Log-Quellen</h3>
+
+<table>
+    <tr><th>Quelle</th><th>Beispiel-Events</th><th>Regulatorische Relevanz</th></tr>
+    <tr><td>SSH / Authentifizierung</td><td>Login-Versuche, fehlgeschlagene Anmeldungen</td><td>MaRisk AT 7.2, BAIT V (Berechtigungsmanagement)</td></tr>
+    <tr><td>Systemd Journal</td><td>Service-Starts/Stops, Kernel-Meldungen</td><td>BAIT VII (IT-Betrieb)</td></tr>
+    <tr><td>Apache / Webserver</td><td>HTTP-Zugriffe, Fehler</td><td>BAIT IV (Informationssicherheit)</td></tr>
+    <tr><td>Samba / Dateifreigaben</td><td>Dateizugriffe, Berechtigungsaenderungen</td><td>BAIT V (Berechtigungsmanagement)</td></tr>
+    <tr><td>Docker</td><td>Container-Lifecycle, Sicherheitsereignisse</td><td>BAIT VII (IT-Betrieb)</td></tr>
+    <tr><td>Firewall / Netzwerk</td><td>Verbindungsversuche, Blockierungen</td><td>BAIT IV (Netzwerksicherheit)</td></tr>
+</table>
+
+<!-- 3. Nachvollziehbarkeit und Audit Trail -->
+<h2 id="audit-trail">3. Nachvollziehbarkeit und Audit Trail</h2>
+
+<h3>3.1 Audit Trail in Cribl</h3>
+
+<p>Cribl Stream protokolliert Aenderungen an der Konfiguration in einem internen Audit-Log:</p>
+
+<table>
+    <tr><th>Ereignis</th><th>Protokollierte Information</th><th>Speicherort</th></tr>
+    <tr><td>Konfigurationsaenderung</td><td>Benutzer, Zeitstempel, geaendertes Objekt, alter/neuer Wert</td><td>Cribl Audit Log</td></tr>
+    <tr><td>Login/Logout</td><td>Benutzer, Zeitstempel, Quell-IP, Erfolg/Misserfolg</td><td>Cribl Audit Log</td></tr>
+    <tr><td>Pipeline-Aenderung</td><td>Benutzer, Zeitstempel, Pipeline-ID, Aenderungsdetails</td><td>Cribl Audit Log + Git</td></tr>
+    <tr><td>Deployment/Commit</td><td>Benutzer, Zeitstempel, betroffene Gruppen</td><td>Cribl Audit Log + Git</td></tr>
+</table>
+
+<pre><code># Cribl Audit Logs einsehen
+cat /opt/cribl/log/audit.log | jq .
+
+# Letzte 20 Audit-Eintraege
+tail -20 /opt/cribl/log/audit.log | jq '.'</code></pre>
+
+<h3>3.2 Git-basierte Nachvollziehbarkeit</h3>
+
+<p>Alle Projekt-Konfigurationen werden im Git-Repository versioniert:</p>
+
+<ul>
+    <li>Jede Aenderung ist ueber Git-History nachvollziehbar (<code>git log</code>, <code>git diff</code>)</li>
+    <li>Commit-Messages dokumentieren den Grund der Aenderung</li>
+    <li>Branch-basiertes Arbeiten ermoeglicht Review vor Deployment</li>
+    <li>Cribl-eigene Git-Integration fuer Konfigurationsversioning</li>
+</ul>
+
+<h3>3.3 Splunk Audit Trail</h3>
+
+<p>In Splunk werden Log-Daten unveraenderlich indiziert. Fuer die Nachvollziehbarkeit stellt Splunk bereit:</p>
+<ul>
+    <li>Index-Signierung und Hash-Validierung</li>
+    <li>Search Audit Logs (wer hat welche Suche ausgefuehrt)</li>
+    <li>Zugriffsprotokollierung auf Dashboards und Reports</li>
+</ul>
+
+<!-- 4. Datenklassifizierung und Datenschutz -->
+<h2 id="datenschutz">4. Datenklassifizierung und Datenschutz (DSGVO)</h2>
+
+<h3>4.1 Datenklassifizierung</h3>
+
+<table>
+    <tr><th>Klasse</th><th>Beschreibung</th><th>Beispiele in Logs</th><th>Schutzmassnahmen</th></tr>
+    <tr>
+        <td><strong>Oeffentlich</strong></td>
+        <td>Keine Einschraenkungen</td>
+        <td>Allgemeine Systemstatus-Informationen</td>
+        <td>Keine besonderen</td>
+    </tr>
+    <tr>
+        <td><strong>Intern</strong></td>
+        <td>Nur fuer internen Gebrauch</td>
+        <td>Service-Logs, Performance-Metriken, Anwendungslogs</td>
+        <td>Zugriffskontrolle, keine externe Weitergabe</td>
+    </tr>
+    <tr>
+        <td><strong>Vertraulich</strong></td>
+        <td>Eingeschraenkter Personenkreis</td>
+        <td>Authentifizierungs-Logs, IP-Adressen, Benutzernamen</td>
+        <td>Verschluesselung, RBAC, Audit-Trail</td>
+    </tr>
+    <tr>
+        <td><strong>Streng vertraulich</strong></td>
+        <td>Nur explizit autorisierte Personen</td>
+        <td>Sicherheitsvorfaelle, forensische Daten, personenbezogene Daten</td>
+        <td>Verschluesselung, starke Zugriffskontrolle, Vier-Augen-Prinzip</td>
+    </tr>
+</table>
+
+<h3>4.2 DSGVO-Relevanz im Log-Management</h3>
+
+<div class="warning">
+    <strong>Datenschutz-Hinweis:</strong> Log-Daten koennen personenbezogene Daten enthalten (IP-Adressen, Benutzernamen, E-Mail-Adressen). Die Verarbeitung unterliegt der DSGVO.
+</div>
+
+<table>
+    <tr><th>DSGVO-Grundsatz</th><th>Anforderung</th><th>Umsetzung in Cribl</th></tr>
+    <tr>
+        <td>Datenminimierung (Art. 5 Abs. 1c)</td>
+        <td>Nur erforderliche Daten erheben und speichern</td>
+        <td>Cribl Pipelines filtern und reduzieren Daten vor der Weiterleitung. Unnoetige Felder werden entfernt.</td>
+    </tr>
+    <tr>
+        <td>Speicherbegrenzung (Art. 5 Abs. 1e)</td>
+        <td>Daten nicht laenger als noetig speichern</td>
+        <td>Splunk Retention Policies, automatische Loeschung nach Ablauf</td>
+    </tr>
+    <tr>
+        <td>Integritaet (Art. 5 Abs. 1f)</td>
+        <td>Schutz vor unbefugter Veraenderung</td>
+        <td>TLS-Transport, Zugriffskontrolle, Audit-Trail</td>
+    </tr>
+    <tr>
+        <td>Vertraulichkeit (Art. 5 Abs. 1f)</td>
+        <td>Schutz vor unbefugtem Zugriff</td>
+        <td>RBAC, Verschluesselung, Netzwerksegmentierung (Tailscale)</td>
+    </tr>
+    <tr>
+        <td>Rechenschaftspflicht (Art. 5 Abs. 2)</td>
+        <td>Nachweis der Einhaltung</td>
+        <td>Dokumentation, Audit-Logs, diese Compliance-Dokumentation</td>
+    </tr>
+</table>
+
+<h3>4.3 Datenschutzmassnahmen in Cribl Pipelines</h3>
+
+<p>Cribl bietet folgende Funktionen zur DSGVO-konformen Datenverarbeitung:</p>
+
+<table>
+    <tr><th>Funktion</th><th>Pipeline-Aktion</th><th>Anwendungsfall</th></tr>
+    <tr><td>Feld-Maskierung</td><td><code>Mask</code></td><td>IP-Adressen, E-Mail-Adressen in Logs maskieren</td></tr>
+    <tr><td>Feld-Entfernung</td><td><code>Remove Fields</code></td><td>Personenbezogene Felder vor der Indexierung entfernen</td></tr>
+    <tr><td>Feld-Hashing</td><td><code>Eval</code> mit Hash-Funktion</td><td>Pseudonymisierung von Benutzernamen</td></tr>
+    <tr><td>Regex-Ersetzung</td><td><code>Regex Extract/Replace</code></td><td>Gezielte Redaktion sensibler Muster</td></tr>
+    <tr><td>Event-Filterung</td><td><code>Drop</code> / <code>Filter</code></td><td>Events mit sensiblen Daten nicht weiterleiten</td></tr>
+    <tr><td>Routing nach Klassifikation</td><td>Routes</td><td>Verschiedene Retention/Zugriffslevel je nach Datenklasse</td></tr>
+</table>
+
+<!-- 5. Aufbewahrungsfristen -->
+<h2 id="aufbewahrung">5. Aufbewahrungsfristen</h2>
+
+<table>
+    <tr>
+        <th>Log-Typ</th>
+        <th>Regulatorische Grundlage</th>
+        <th>Mindestaufbewahrung</th>
+        <th>Empfohlene Aufbewahrung</th>
+        <th>Umsetzung</th>
+    </tr>
+    <tr>
+        <td>Sicherheitsrelevante Logs (SSH, Auth)</td>
+        <td>MaRisk, BAIT IV</td>
+        <td>12 Monate</td>
+        <td>24 Monate</td>
+        <td>Splunk Index Retention</td>
+    </tr>
+    <tr>
+        <td>System-/Betriebslogs</td>
+        <td>BAIT VII</td>
+        <td>6 Monate</td>
+        <td>12 Monate</td>
+        <td>Splunk Index Retention</td>
+    </tr>
+    <tr>
+        <td>Anwendungslogs</td>
+        <td>BAIT VII</td>
+        <td>6 Monate</td>
+        <td>12 Monate</td>
+        <td>Splunk Index Retention</td>
+    </tr>
+    <tr>
+        <td>Audit-Logs (Konfigurationsaenderungen)</td>
+        <td>MaRisk, BAIT V, DORA</td>
+        <td>36 Monate</td>
+        <td>60 Monate</td>
+        <td>Splunk Index Retention + Archivierung</td>
+    </tr>
+    <tr>
+        <td>Netzwerk-/Firewall-Logs</td>
+        <td>BAIT IV</td>
+        <td>6 Monate</td>
+        <td>12 Monate</td>
+        <td>Splunk Index Retention</td>
+    </tr>
+    <tr>
+        <td>Transaktionslogs</td>
+        <td>HGB &sect;257, AO &sect;147</td>
+        <td>10 Jahre</td>
+        <td>10 Jahre</td>
+        <td>Splunk Archivierung + Langzeitspeicher</td>
+    </tr>
+    <tr>
+        <td>Vorfallbezogene Logs</td>
+        <td>DORA Art. 17-23</td>
+        <td>36 Monate (nach Vorfallabschluss)</td>
+        <td>60 Monate</td>
+        <td>Separate Sicherung bei Vorfaellen</td>
+    </tr>
+</table>
+
+<div class="info">
+    <strong>Hinweis:</strong> Im PoC-Betrieb werden die Aufbewahrungsfristen ueber Splunk Index Retention Policies gesteuert. Fuer den Produktivbetrieb ist eine Archivierungsstrategie fuer Langzeitdaten zu implementieren (z.B. Splunk SmartStore oder externes Archiv).
+</div>
+
+<!-- 6. Change-Management-Prozess -->
+<h2 id="change-management">6. Change-Management-Prozess</h2>
+
+<h3>6.1 Prozessuebersicht</h3>
+
+<p>Jede Aenderung an der Cribl-Infrastruktur durchlaeuft den folgenden Prozess:</p>
+
+<table>
+    <tr><th>Phase</th><th>Aktivitaet</th><th>Verantwortlich</th><th>Artefakt</th></tr>
+    <tr>
+        <td>1. Antrag</td>
+        <td>Change Request erstellen mit Beschreibung, Risikobewertung, Rollback-Plan</td>
+        <td>Antragsteller</td>
+        <td>Change Request (Ticketsystem)</td>
+    </tr>
+    <tr>
+        <td>2. Bewertung</td>
+        <td>Risikobewertung, Kategorisierung (Standard/Normal/Emergency)</td>
+        <td>Change Manager</td>
+        <td>Risikobewertung</td>
+    </tr>
+    <tr>
+        <td>3. Genehmigung</td>
+        <td>Freigabe durch Change Advisory Board (CAB) oder Change Manager</td>
+        <td>CAB / Change Manager</td>
+        <td>Genehmigungsnachweis</td>
+    </tr>
+    <tr>
+        <td>4. Umsetzung</td>
+        <td>Aenderung durchfuehren, Backup vorher erstellen</td>
+        <td>Administrator</td>
+        <td>Backup, Git-Commit</td>
+    </tr>
+    <tr>
+        <td>5. Test</td>
+        <td>Verifikation mit <code>07-verify-deployment.sh</code></td>
+        <td>Administrator</td>
+        <td>Testprotokoll</td>
+    </tr>
+    <tr>
+        <td>6. Review</td>
+        <td>Post-Implementation Review</td>
+        <td>Change Manager</td>
+        <td>Review-Protokoll</td>
+    </tr>
+</table>
+
+<h3>6.2 Change-Kategorien</h3>
+
+<table>
+    <tr><th>Kategorie</th><th>Beschreibung</th><th>Genehmigung</th><th>Vorlaufzeit</th></tr>
+    <tr>
+        <td><strong>Standard</strong></td>
+        <td>Vorab genehmigte, risikoarme Aenderungen (z.B. neue Log-Quelle hinzufuegen)</td>
+        <td>Keine Einzelgenehmigung noetig</td>
+        <td>Keine</td>
+    </tr>
+    <tr>
+        <td><strong>Normal</strong></td>
+        <td>Aenderungen mit moderatem Risiko (z.B. Pipeline-Aenderung, Destination-Konfiguration)</td>
+        <td>Change Manager</td>
+        <td>&ge; 3 Arbeitstage</td>
+    </tr>
+    <tr>
+        <td><strong>Major</strong></td>
+        <td>Aenderungen mit hohem Risiko (z.B. Cribl-Version-Upgrade, Architektur-Aenderung)</td>
+        <td>CAB</td>
+        <td>&ge; 10 Arbeitstage</td>
+    </tr>
+    <tr>
+        <td><strong>Emergency</strong></td>
+        <td>Dringende Aenderungen zur Behebung von Sev1/Sev2 Vorfaellen</td>
+        <td>Nachtraegliche Genehmigung</td>
+        <td>Sofort</td>
+    </tr>
+</table>
+
+<h3>6.3 Vier-Augen-Prinzip</h3>
+
+<div class="warning">
+    <strong>Regulatorische Anforderung:</strong> Aenderungen an der produktiven Log-Infrastruktur erfordern das Vier-Augen-Prinzip. Der Umsetzer darf nicht gleichzeitig der Genehmigende sein.
+</div>
+
+<p>Im IceDataEmphasise-Projekt wird das Vier-Augen-Prinzip wie folgt umgesetzt:</p>
+<ul>
+    <li>Git-basierter Workflow: Pull Requests mit verpflichtendem Review</li>
+    <li>Deployment erst nach Merge-Genehmigung</li>
+    <li>Im PoC: Dokumentation der Genehmigung im Change Request</li>
+</ul>
+
+<!-- 7. Dokumentationspflichten -->
+<h2 id="dokumentation">7. Dokumentationspflichten</h2>
+
+<h3>7.1 Erforderliche Dokumentation</h3>
+
+<table>
+    <tr><th>Dokument</th><th>Inhalt</th><th>Aktualisierung</th><th>Verantwortlich</th></tr>
+    <tr>
+        <td>Betriebshandbuch</td>
+        <td>Installation, Konfiguration, Betriebsverfahren</td>
+        <td>Bei jeder Aenderung</td>
+        <td>IT-Betrieb</td>
+    </tr>
+    <tr>
+        <td>Notfallhandbuch</td>
+        <td>DR-Szenarien, Wiederanlauf, Eskalation</td>
+        <td>Jaehrlich + nach jedem Vorfall</td>
+        <td>IT-Betrieb + ISB</td>
+    </tr>
+    <tr>
+        <td>Sicherheitskonzept</td>
+        <td>Schutzbedarf, Massnahmen, Restrisiken</td>
+        <td>Jaehrlich + bei Architektur-Aenderungen</td>
+        <td>ISB</td>
+    </tr>
+    <tr>
+        <td>Datenschutz-Folgenabschaetzung</td>
+        <td>DSGVO-Bewertung der Log-Verarbeitung</td>
+        <td>Bei Aenderung der Verarbeitung</td>
+        <td>DSB</td>
+    </tr>
+    <tr>
+        <td>Berechtigungskonzept</td>
+        <td>Rollen, Zugriffsrechte, Vergabe-/Entzugsprozess</td>
+        <td>Bei Aenderung der Berechtigungen</td>
+        <td>IT-Betrieb + ISB</td>
+    </tr>
+    <tr>
+        <td>Monitoring-Konzept</td>
+        <td>KPIs, Schwellwerte, Alerting</td>
+        <td>Bei Aenderung der Monitoring-Strategie</td>
+        <td>IT-Betrieb</td>
+    </tr>
+    <tr>
+        <td>Change-Log</td>
+        <td>Alle Aenderungen mit Zeitstempel, Beschreibung, Genehmigung</td>
+        <td>Fortlaufend</td>
+        <td>IT-Betrieb</td>
+    </tr>
+    <tr>
+        <td>Compliance-Mapping</td>
+        <td>Zuordnung regulatorischer Anforderungen zu technischen Massnahmen</td>
+        <td>Jaehrlich + bei regulatorischen Aenderungen</td>
+        <td>ISB + Compliance</td>
+    </tr>
+</table>
+
+<h3>7.2 IceDataEmphasise Dokumentationsstruktur</h3>
+
+<p>Das Projekt liefert die folgende ITSO-konforme Dokumentation (14 HTML-Seiten):</p>
+
+<table>
+    <tr><th>Seite</th><th>Titel</th><th>Regulatorische Abdeckung</th></tr>
+    <tr><td>01-10</td><td>Architektur, Installation, Konfiguration, Betrieb, Schulung</td><td>BAIT VI, VII</td></tr>
+    <tr><td>11</td><td>Notfallhandbuch</td><td>MaRisk AT 7.2, BAIT X, DORA Art. 11</td></tr>
+    <tr><td>12</td><td>Monitoring und Alerting</td><td>BAIT VII, DORA Art. 10</td></tr>
+    <tr><td>13</td><td>Compliance und Regulatorik (dieses Dokument)</td><td>MaRisk, BAIT, DORA, DSGVO</td></tr>
+    <tr><td>14</td><td>Troubleshooting</td><td>BAIT VII</td></tr>
+</table>
+
+<!-- 8. Pruefungsrelevante Nachweise -->
+<h2 id="nachweise">8. Pruefungsrelevante Nachweise</h2>
+
+<p>Bei einer Pruefung durch interne Revision, Wirtschaftspruefer oder BaFin muessen folgende Nachweise vorgelegt werden koennen:</p>
+
+<table>
+    <tr><th>Nachweis</th><th>Quelle</th><th>Format</th><th>Aufbewahrung</th></tr>
+    <tr>
+        <td>Systemarchitektur und Datenfluss</td>
+        <td>Architekturdokumentation</td>
+        <td>HTML/PDF</td>
+        <td>Projektdokumentation</td>
+    </tr>
+    <tr>
+        <td>Installationsnachweis</td>
+        <td>Installationsskripte + Logs</td>
+        <td>Shell-Skripte, Log-Dateien</td>
+        <td>Git-Repository + Logs</td>
+    </tr>
+    <tr>
+        <td>Konfigurationshistorie</td>
+        <td>Git-Log, Cribl Audit Log</td>
+        <td>Git-History, JSON-Logs</td>
+        <td>Git-Repository</td>
+    </tr>
+    <tr>
+        <td>Berechtigungsnachweise</td>
+        <td>Cribl RBAC-Konfiguration, OS-Benutzer</td>
+        <td>Konfigurationsdateien</td>
+        <td>Git-Repository</td>
+    </tr>
+    <tr>
+        <td>Change-Nachweise</td>
+        <td>Ticketsystem, Git-Commits</td>
+        <td>Tickets, Commit-Messages</td>
+        <td>Ticketsystem + Git</td>
+    </tr>
+    <tr>
+        <td>Test-/Verifikationsberichte</td>
+        <td><code>07-verify-deployment.sh</code> Ausgaben</td>
+        <td>Log-Dateien</td>
+        <td>Dateisystem + Archiv</td>
+    </tr>
+    <tr>
+        <td>Monitoring-Nachweise</td>
+        <td>Health-Check-Logs, Cribl-Metriken</td>
+        <td>Log-Dateien, Dashboards</td>
+        <td>Dateisystem + Splunk</td>
+    </tr>
+    <tr>
+        <td>Incident-Berichte</td>
+        <td>Post-Incident Reviews</td>
+        <td>HTML/PDF</td>
+        <td>Ticketsystem + Dokumentation</td>
+    </tr>
+    <tr>
+        <td>Backup-Nachweise</td>
+        <td>Backup-Logs, Pruefsummen</td>
+        <td>Log-Dateien, SHA256-Hashes</td>
+        <td>Backup-Server</td>
+    </tr>
+    <tr>
+        <td>Schulungsnachweise</td>
+        <td>Schulungsdokumentation</td>
+        <td>HTML/PDF, Teilnehmerlisten</td>
+        <td>Projektdokumentation</td>
+    </tr>
+</table>
+
+<div class="success">
+    <strong>Pruefungsvorbereitung:</strong> Alle genannten Nachweise sollten viertjaehrlich auf Vollstaendigkeit und Aktualitaet geprueft werden. Eine Checkliste fuer die Pruefungsvorbereitung ist empfehlenswert.
+</div>
+
+<!-- 9. Mapping -->
+<h2 id="mapping">9. Mapping: Regulatorische Anforderung &rarr; Cribl-Umsetzung</h2>
+
+<table>
+    <tr>
+        <th>Regulatorische Anforderung</th>
+        <th>Quelle</th>
+        <th>Cribl-Umsetzung</th>
+        <th>Nachweis</th>
+    </tr>
+    <tr>
+        <td>Protokollierung sicherheitsrelevanter Ereignisse</td>
+        <td>MaRisk AT 7.2, BAIT IV</td>
+        <td>12 Log-Quellen konfiguriert (Systemd, SSH, Apache, Samba, Docker, etc.); Cribl Edge sammelt dezentral</td>
+        <td>Source-Konfiguration, <code>04-configure-sources.sh</code></td>
+    </tr>
+    <tr>
+        <td>Integritaet der Log-Daten</td>
+        <td>MaRisk AT 7.2, BAIT IV, DORA Art. 9</td>
+        <td>TLS-verschluesselter Transport (Source &rarr; Cribl &rarr; Splunk); Persistent Queue verhindert Datenverlust</td>
+        <td>TLS-Konfiguration, Destination-Config</td>
+    </tr>
+    <tr>
+        <td>Verfuegbarkeit der IT-Systeme</td>
+        <td>MaRisk AT 7.2, BAIT VII, DORA Art. 11</td>
+        <td>Monitoring (Health Checks, KPIs); Alerting bei Ausfaellen; Notfallhandbuch mit DR-Szenarien</td>
+        <td><code>07-verify-deployment.sh</code>, Monitoring-Logs, Notfallhandbuch</td>
+    </tr>
+    <tr>
+        <td>Benutzerberechtigungsmanagement</td>
+        <td>BAIT V</td>
+        <td>Cribl RBAC mit rollenbasiertem Zugriff; dedizierter Service-User (<code>cribl</code>); Splunk-Berechtigungen</td>
+        <td>RBAC-Konfiguration, OS-User-Setup</td>
+    </tr>
+    <tr>
+        <td>Change Management</td>
+        <td>MaRisk AT 7.2, BAIT VI</td>
+        <td>Git-basierter Workflow; Vier-Augen-Prinzip; Change-Kategorien; Rollback-Faehigkeit</td>
+        <td>Git-History, Change Requests</td>
+    </tr>
+    <tr>
+        <td>Notfallmanagement</td>
+        <td>MaRisk AT 7.2, BAIT X, DORA Art. 11</td>
+        <td>Notfallhandbuch mit Severity-Levels, Eskalationsmatrix, DR-Szenarien, Wiederanlauf-Prozeduren</td>
+        <td>Notfallhandbuch (Seite 11)</td>
+    </tr>
+    <tr>
+        <td>IKT-Vorfallmanagement</td>
+        <td>DORA Art. 17-23</td>
+        <td>Eskalationsmatrix; Kommunikationsplan; Post-Incident Review; Log-Daten fuer Forensik</td>
+        <td>Notfallhandbuch, Incident-Berichte</td>
+    </tr>
+    <tr>
+        <td>Datenminimierung</td>
+        <td>DSGVO Art. 5 Abs. 1c</td>
+        <td>Cribl Pipelines: Feld-Entfernung, Maskierung, Filterung; 5 Processing Pipelines konfiguriert</td>
+        <td>Pipeline-Konfiguration</td>
+    </tr>
+    <tr>
+        <td>Aufbewahrungsfristen</td>
+        <td>MaRisk, HGB &sect;257, AO &sect;147</td>
+        <td>Splunk Retention Policies je Index; Archivierung fuer Langzeitdaten</td>
+        <td>Splunk Index-Konfiguration</td>
+    </tr>
+    <tr>
+        <td>Nachvollziehbarkeit / Audit Trail</td>
+        <td>MaRisk, BAIT V, DORA</td>
+        <td>Cribl Audit Log; Git-Versionierung; Splunk Search Audit; ITSO-Dokumentation</td>
+        <td>Audit-Logs, Git-History, Dokumentation</td>
+    </tr>
+    <tr>
+        <td>Testen der Resilienz</td>
+        <td>DORA Art. 24-27</td>
+        <td>End-to-End Verifikationssuite (20 Tests); Service-Restart-Test; Regelmaessige Ausfuehrung via Cron</td>
+        <td><code>07-verify-deployment.sh</code>, Testprotokolle</td>
+    </tr>
+    <tr>
+        <td>Dokumentationspflichten</td>
+        <td>MaRisk, BAIT VI, DORA</td>
+        <td>14-seitige ITSO-konforme HTML-Dokumentation; Revisionshistorie; Klassifikation</td>
+        <td>Dokumentation im Repository</td>
+    </tr>
+    <tr>
+        <td>IKT-Drittparteienrisiko</td>
+        <td>DORA Art. 28-44</td>
+        <td>Cribl als On-Premises-Software (kein Cloud-SaaS im PoC); Risikobewertung des Anbieters erforderlich</td>
+        <td>Lieferantenbewertung</td>
+    </tr>
+</table>
+
+<div class="info">
+    <strong>Hinweis:</strong> Dieses Mapping dient als Orientierung fuer den PoC. Fuer den Produktivbetrieb muss eine vollstaendige Compliance-Bewertung durch die Compliance-Abteilung und den ISB erfolgen. Dieses Dokument ersetzt keine formale regulatorische Bewertung.
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="12-monitoring.html">&larr; 12 &ndash; Monitoring und Alerting</a>
+    <a href="14-troubleshooting.html">14 &ndash; Troubleshooting &rarr;</a>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    ITSO-konforme Dokumentation &ndash; Version 1.0 &ndash; 2026-02-10
+</div>
+
+</body>
+</html>

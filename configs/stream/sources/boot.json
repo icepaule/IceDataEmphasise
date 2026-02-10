@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:boot_logs",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "System boot logs",
+  "fileFilter": "boot.log*",
+  "path": "/var/log/boot.log*",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

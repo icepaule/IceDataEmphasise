@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>06 - Ziel-Konfiguration (Destinations) | IceDataEmphasise</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>06 - Ziel-Konfiguration (Destinations)</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2 id="revisionshistorie">Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion: HEC, S2S, Persistent Queue, Failover</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2 id="inhaltsverzeichnis">Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#ueberblick">Ueberblick</a></li>
+    <li><a href="#hec-destination">HEC Destination</a>
+        <ol>
+            <li><a href="#hec-konfiguration">Konfiguration</a></li>
+            <li><a href="#hec-token-management">Token-Management</a></li>
+            <li><a href="#hec-tls">TLS-Absicherung</a></li>
+            <li><a href="#hec-kompression">Kompression</a></li>
+        </ol>
+    </li>
+    <li><a href="#s2s-destination">S2S Destination</a>
+        <ol>
+            <li><a href="#s2s-konfiguration">Konfiguration</a></li>
+            <li><a href="#s2s-protokoll">Natives Splunk-Protokoll</a></li>
+        </ol>
+    </li>
+    <li><a href="#persistent-queue">Persistent Queue</a>
+        <ol>
+            <li><a href="#pq-konzept">Konzept</a></li>
+            <li><a href="#pq-sizing">Sizing</a></li>
+            <li><a href="#pq-backpressure">Backpressure-Handling</a></li>
+        </ol>
+    </li>
+    <li><a href="#protokollvergleich">Protokollvergleich: HEC vs. S2S</a></li>
+    <li><a href="#failover-strategie">Failover-Strategie</a></li>
+    <li><a href="#verifikation">Verifikation der Ziele</a></li>
+</ol>
+
+<!-- 1. Ueberblick -->
+<h2 id="ueberblick">1. Ueberblick</h2>
+<p>
+    Im IceDataEmphasise-PoC werden zwei Ziel-Typen (Destinations) konfiguriert, um Daten von Cribl Stream an die
+    Splunk-Infrastruktur der Bank zu liefern:
+</p>
+<ul>
+    <li><strong>Splunk HEC (HTTP Event Collector)</strong> &ndash; HTTPS-basiert, Token-authentifiziert, ideal fuer Web- und IoT-Daten</li>
+    <li><strong>Splunk S2S (Splunk-to-Splunk)</strong> &ndash; Natives Splunk-Protokoll (TCP 9997), ideal fuer sicherheitsrelevante Daten</li>
+</ul>
+<p>
+    Beide Ziele verfuegen ueber Persistent Queues (PQ) als Puffer bei voruebergehender Nichterreichbarkeit des
+    Splunk-Indexers, was den regulatorischen Anforderungen an Datenverlustfreiheit (MaRisk AT 7.2) entspricht.
+</p>
+
+<div class="info">
+    <strong>Hinweis:</strong> Die Konfigurationsdateien befinden sich unter
+    <code>configs/stream/destinations/</code> im Projekt-Repository. Sensible Werte (Tokens, Hostnamen)
+    werden ueber Umgebungsvariablen aus der <code>.env</code>-Datei injiziert.
+</div>
+
+<!-- 2. HEC Destination -->
+<h2 id="hec-destination">2. HEC Destination</h2>
+
+<h3 id="hec-konfiguration">2.1 Konfiguration</h3>
+<p>Die HEC-Destination ist in <code>configs/stream/destinations/splunk-hec.json</code> definiert:</p>
+<pre><code>{
+  "id": "splunk_hec",
+  "type": "splunk_hec",
+  "host": "${SPLUNK_HOST}",
+  "port": 8088,
+  "token": "${SPLUNK_HEC_TOKEN}",
+  "tls": { "disabled": false },
+  "compress": true,
+  "pqEnabled": true,
+  "pqMaxSize": "1GB",
+  "pqMaxFiles": 100,
+  "description": "Splunk HEC - HTTP Event Collector"
+}</code></pre>
+
+<table>
+    <tr><th>Parameter</th><th>Wert</th><th>Beschreibung</th></tr>
+    <tr><td><code>id</code></td><td><code>splunk_hec</code></td><td>Eindeutiger Bezeichner der Destination</td></tr>
+    <tr><td><code>type</code></td><td><code>splunk_hec</code></td><td>Destination-Typ: HTTP Event Collector</td></tr>
+    <tr><td><code>host</code></td><td><code>${SPLUNK_HOST}</code></td><td>Hostname/IP des Splunk-Indexers (aus <code>.env</code>)</td></tr>
+    <tr><td><code>port</code></td><td><code>8088</code></td><td>Standard-HEC-Port</td></tr>
+    <tr><td><code>token</code></td><td><code>${SPLUNK_HEC_TOKEN}</code></td><td>HEC-Authentifizierungstoken (aus <code>.env</code>)</td></tr>
+    <tr><td><code>tls.disabled</code></td><td><code>false</code></td><td>TLS ist aktiviert (Pflicht im Bankumfeld)</td></tr>
+    <tr><td><code>compress</code></td><td><code>true</code></td><td>gzip-Kompression fuer geringere Bandbreite</td></tr>
+    <tr><td><code>pqEnabled</code></td><td><code>true</code></td><td>Persistent Queue aktiviert</td></tr>
+    <tr><td><code>pqMaxSize</code></td><td><code>1GB</code></td><td>Maximale Groesse der Warteschlange</td></tr>
+    <tr><td><code>pqMaxFiles</code></td><td><code>100</code></td><td>Maximale Anzahl PQ-Dateien</td></tr>
+</table>
+
+<h3 id="hec-token-management">2.2 Token-Management</h3>
+<p>
+    Das HEC-Token wird <strong>niemals</strong> im Klartext in der Konfiguration oder im Git-Repository gespeichert.
+    Die Verwaltung erfolgt ueber folgendes Konzept:
+</p>
+<ol>
+    <li>Das Token wird in Splunk unter <em>Settings &rarr; Data Inputs &rarr; HTTP Event Collector</em> erzeugt.</li>
+    <li>Das Token wird in der <code>.env</code>-Datei auf dem Cribl-Server hinterlegt:
+        <pre><code>SPLUNK_HEC_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></pre>
+    </li>
+    <li>Die <code>.env</code>-Datei ist in <code>.gitignore</code> eingetragen und wird nicht versioniert.</li>
+    <li>Cribl Stream liest die Variable beim Start und substituiert <code>${SPLUNK_HEC_TOKEN}</code>.</li>
+</ol>
+
+<div class="warning">
+    <strong>Sicherheitshinweis:</strong> Das HEC-Token hat Schreibrechte auf die konfigurierten Splunk-Indexes.
+    Bei Kompromittierung muss es unverzueglich in Splunk rotiert und in der <code>.env</code>-Datei aktualisiert werden.
+    Eine Rotation sollte mindestens quartalsweise erfolgen (vgl. BAIT II.4).
+</div>
+
+<h3 id="hec-tls">2.3 TLS-Absicherung</h3>
+<p>
+    TLS ist fuer die HEC-Verbindung aktiviert (<code>"tls": { "disabled": false }</code>). Die Konfiguration
+    nutzt die Standard-TLS-Einstellungen von Cribl Stream:
+</p>
+<ul>
+    <li>Minimum TLS-Version: 1.2</li>
+    <li>Zertifikatsvalidierung: Aktiviert (Systemzertifikatspeicher)</li>
+    <li>Bei selbstsignierten Zertifikaten: CA-Bundle unter <code>$CRIBL_HOME/certs/</code> hinterlegen</li>
+</ul>
+<p>Fuer die erweiterte TLS-Konfiguration (Client-Zertifikate, Cipher Suites) siehe <a href="10-sicherheitshandbuch.html">Kapitel 10 - Sicherheitshandbuch</a>.</p>
+
+<h3 id="hec-kompression">2.4 Kompression</h3>
+<p>
+    Die gzip-Kompression (<code>"compress": true</code>) reduziert das uebertragene Datenvolumen typischerweise
+    um 70-85%. Dies ist besonders relevant, wenn die Daten ueber ein WAN oder VPN-Tunnel (Tailscale) uebertragen werden.
+</p>
+<table>
+    <tr><th>Aspekt</th><th>Ohne Kompression</th><th>Mit gzip-Kompression</th></tr>
+    <tr><td>Typische Reduktion</td><td>0%</td><td>70-85%</td></tr>
+    <tr><td>CPU-Overhead (Sender)</td><td>Keiner</td><td>Gering (ca. 2-5% CPU)</td></tr>
+    <tr><td>Empfehlung</td><td>Nur lokales Netzwerk</td><td>Standard fuer alle Umgebungen</td></tr>
+</table>
+
+<!-- 3. S2S Destination -->
+<h2 id="s2s-destination">3. S2S Destination</h2>
+
+<h3 id="s2s-konfiguration">3.1 Konfiguration</h3>
+<p>Die S2S-Destination ist in <code>configs/stream/destinations/splunk-s2s.json</code> definiert:</p>
+<pre><code>{
+  "id": "splunk_s2s",
+  "type": "splunk_s2s",
+  "host": "${SPLUNK_HOST}",
+  "port": 9997,
+  "tls": { "disabled": true },
+  "pqEnabled": true,
+  "pqMaxSize": "1GB",
+  "pqMaxFiles": 100,
+  "nestedFields": "none",
+  "description": "Splunk S2S - Native Splunk Protocol"
+}</code></pre>
+
+<table>
+    <tr><th>Parameter</th><th>Wert</th><th>Beschreibung</th></tr>
+    <tr><td><code>id</code></td><td><code>splunk_s2s</code></td><td>Eindeutiger Bezeichner der Destination</td></tr>
+    <tr><td><code>type</code></td><td><code>splunk_s2s</code></td><td>Destination-Typ: Splunk-to-Splunk (natives Protokoll)</td></tr>
+    <tr><td><code>host</code></td><td><code>${SPLUNK_HOST}</code></td><td>Hostname/IP des Splunk-Indexers (aus <code>.env</code>)</td></tr>
+    <tr><td><code>port</code></td><td><code>9997</code></td><td>Standard-S2S-Receiving-Port</td></tr>
+    <tr><td><code>tls.disabled</code></td><td><code>true</code></td><td>TLS deaktiviert (PoC-Phase, Netzwerk via Tailscale abgesichert)</td></tr>
+    <tr><td><code>nestedFields</code></td><td><code>none</code></td><td>Keine verschachtelten Felder (Splunk-Kompatibilitaet)</td></tr>
+    <tr><td><code>pqEnabled</code></td><td><code>true</code></td><td>Persistent Queue aktiviert</td></tr>
+    <tr><td><code>pqMaxSize</code></td><td><code>1GB</code></td><td>Maximale Groesse der Warteschlange</td></tr>
+    <tr><td><code>pqMaxFiles</code></td><td><code>100</code></td><td>Maximale Anzahl PQ-Dateien</td></tr>
+</table>
+
+<div class="info">
+    <strong>Hinweis:</strong> Im PoC ist TLS fuer S2S deaktiviert, da die Verbindung ueber ein
+    Tailscale-VPN-Netz laeuft, das bereits verschluesselt ist. Fuer den Produktivbetrieb <strong>muss</strong>
+    TLS auch auf S2S-Ebene aktiviert werden.
+</div>
+
+<h3 id="s2s-protokoll">3.2 Natives Splunk-Protokoll</h3>
+<p>
+    Das S2S-Protokoll (auch als "Splunk Forwarder Protocol" bekannt) ist das native,
+    binaere Uebertragungsprotokoll zwischen Splunk-Komponenten. Vorteile:
+</p>
+<ul>
+    <li>Optimierte binaere Serialisierung &ndash; effizienter als HTTP/JSON</li>
+    <li>Automatische Erkennung durch den Splunk-Indexer</li>
+    <li>Index- und Sourcetype-Metadaten werden nativ im Protokoll transportiert</li>
+    <li>Keine zusaetzliche Token-Authentifizierung erforderlich (Zertifikat oder IP-basiert)</li>
+    <li>Unterstuetzung fuer Load Balancing auf Indexer-Cluster</li>
+</ul>
+<p>
+    Der Parameter <code>"nestedFields": "none"</code> stellt sicher, dass Cribl keine verschachtelten
+    JSON-Felder in das S2S-Paket einbettet, was zu Parsing-Problemen in Splunk fuehren koennte.
+</p>
+
+<!-- 4. Persistent Queue -->
+<h2 id="persistent-queue">4. Persistent Queue</h2>
+
+<h3 id="pq-konzept">4.1 Konzept</h3>
+<p>
+    Die Persistent Queue (PQ) ist ein festplattenbasierter Puffer, der zwischen der Cribl-Verarbeitungs-Engine
+    und der Destination liegt. Wenn die Destination nicht erreichbar ist (Netzwerkausfall, Splunk-Wartung,
+    Ueberlast), werden Events in der PQ zwischengespeichert und bei Wiederherstellung der Verbindung
+    automatisch nachgeliefert.
+</p>
+
+<div class="success">
+    <strong>Regulatorische Relevanz:</strong> Die PQ erfuellt die Anforderung der MaRisk AT 7.2 nach
+    Datenverlustfreiheit bei voruebergehenden Systemausfaellen. Im Audit kann nachgewiesen werden, dass
+    keine Log-Daten verloren gehen, solange die PQ-Kapazitaet nicht erschoepft ist.
+</div>
+
+<p>Funktionsweise:</p>
+<ol>
+    <li>Events durchlaufen die Pipeline-Verarbeitung.</li>
+    <li>Bei erfolgreicher Zustellung an die Destination: Event wird direkt geliefert (PQ wird nicht genutzt).</li>
+    <li>Bei Nichterreichbarkeit: Events werden in die PQ auf der lokalen Festplatte geschrieben.</li>
+    <li>Ein Hintergrundprozess versucht periodisch, die Destination erneut zu erreichen.</li>
+    <li>Bei Wiederherstellung: PQ wird in FIFO-Reihenfolge abgearbeitet (aelteste Events zuerst).</li>
+</ol>
+
+<h3 id="pq-sizing">4.2 Sizing</h3>
+<p>
+    Beide Destinations sind mit einer PQ von maximal 1 GB konfiguriert. Die folgende Tabelle zeigt die
+    Berechnung der Pufferkapazitaet:
+</p>
+
+<table>
+    <tr><th>Parameter</th><th>HEC-Destination</th><th>S2S-Destination</th></tr>
+    <tr><td>PQ-Groesse</td><td>1 GB</td><td>1 GB</td></tr>
+    <tr><td>Max. PQ-Dateien</td><td>100</td><td>100</td></tr>
+    <tr><td>Durchschnittliche Event-Groesse</td><td>~500 Bytes</td><td>~500 Bytes</td></tr>
+    <tr><td>Geschaetzte Kapazitaet</td><td>~2 Mio. Events</td><td>~2 Mio. Events</td></tr>
+    <tr><td>Gesamt-Ingest (PoC)</td><td>~50 GB/Tag</td><td>~30 GB/Tag</td></tr>
+    <tr><td>Pufferzeit bei Totalausfall</td><td>~30 Minuten</td><td>~48 Minuten</td></tr>
+</table>
+
+<div class="warning">
+    <strong>Achtung:</strong> Bei einem laenger andauernden Ausfall (> 30 Minuten bei voller Last) muss die
+    PQ-Groesse erhoehrt oder die Ursache behoben werden, bevor Events verworfen werden. Die PQ-Fuellstands-Metrik
+    sollte im Monitoring ueberwacht werden (siehe <a href="09-betriebshandbuch.html">Kapitel 09 - Betriebshandbuch</a>).
+</div>
+
+<h3 id="pq-backpressure">4.3 Backpressure-Handling</h3>
+<p>
+    Wenn die PQ voll ist, tritt der Backpressure-Mechanismus in Kraft. Cribl Stream reagiert wie folgt:
+</p>
+<table>
+    <tr><th>Zustand</th><th>Verhalten</th><th>Auswirkung</th></tr>
+    <tr><td>PQ < 80%</td><td>Normalbetrieb</td><td>Events werden gepuffert und zugestellt</td></tr>
+    <tr><td>PQ 80-95%</td><td>Warnung im Cribl-UI und in Metriken</td><td>Alarm sollte ausgeloest werden</td></tr>
+    <tr><td>PQ 95-100%</td><td>Backpressure an Quellen propagiert</td><td>Quellen verlangsamen den Empfang</td></tr>
+    <tr><td>PQ = 100%</td><td>Events werden verworfen (Drop)</td><td>Datenverlust &ndash; Eskalation erforderlich</td></tr>
+</table>
+<p>
+    Im Falle eines Backpressure-Events wird empfohlen:
+</p>
+<ol>
+    <li>Sofortige Pruefung der Destination-Erreichbarkeit</li>
+    <li>Falls Splunk nicht erreichbar: Netzwerk und Splunk-Dienst pruefen</li>
+    <li>Falls PQ fast voll: Temporaer die <code>pqMaxSize</code> erhoehen (erfordert Neustart)</li>
+    <li>Vorfall im Incident-Management-System dokumentieren</li>
+</ol>
+
+<!-- 5. Protokollvergleich -->
+<h2 id="protokollvergleich">5. Protokollvergleich: HEC vs. S2S</h2>
+<table>
+    <tr><th>Kriterium</th><th>HEC (HTTP Event Collector)</th><th>S2S (Splunk-to-Splunk)</th></tr>
+    <tr><td>Protokoll</td><td>HTTPS (REST API)</td><td>Proprietaeres TCP-Binaerprotokoll</td></tr>
+    <tr><td>Standard-Port</td><td>8088</td><td>9997</td></tr>
+    <tr><td>Authentifizierung</td><td>Token-basiert</td><td>Zertifikat- oder IP-basiert</td></tr>
+    <tr><td>Verschluesselung</td><td>TLS (nativ)</td><td>TLS (optional, empfohlen)</td></tr>
+    <tr><td>Kompression</td><td>gzip (in Cribl konfigurierbar)</td><td>Protokoll-interne Kompression</td></tr>
+    <tr><td>Firewall-Freundlichkeit</td><td>Hoch (HTTPS-Standard)</td><td>Mittel (proprietaerer Port)</td></tr>
+    <tr><td>Load Balancing</td><td>Via HTTP-Loadbalancer moeglich</td><td>Nativ via Indexer Discovery</td></tr>
+    <tr><td>Overhead</td><td>Hoeher (HTTP-Header, JSON-Encoding)</td><td>Geringer (binaer, optimiert)</td></tr>
+    <tr><td>Eignung</td><td>Web-Daten, IoT, externe Quellen</td><td>Interne Infrastruktur, Security-Daten</td></tr>
+    <tr><td>Index-Steuerung</td><td>Via Token oder Event-Metadaten</td><td>Via Metadaten im Paket</td></tr>
+    <tr><td>Einsatz im PoC</td><td>Apache, Docker, Default-Route</td><td>SSH/Auth, Systemd Journal, Samba</td></tr>
+</table>
+
+<div class="info">
+    <strong>Design-Entscheidung:</strong> Sicherheitsrelevante Daten (SSH-Authentifizierung, Systemd Journal)
+    werden ueber S2S zugestellt, da dieses Protokoll weniger Angriffsvektoren bietet (kein HTTP-Endpoint)
+    und die Daten als hoeher priorisiert gelten. Web- und Anwendungsdaten (Apache, Docker) nutzen HEC, da
+    dieses Protokoll flexibler und firewall-freundlicher ist.
+</div>
+
+<!-- 6. Failover-Strategie -->
+<h2 id="failover-strategie">6. Failover-Strategie</h2>
+<p>
+    Die Failover-Strategie im IceDataEmphasise-PoC basiert auf mehreren Schichten:
+</p>
+
+<h3>6.1 Schicht 1: Persistent Queue</h3>
+<p>
+    Beide Destinations verwenden PQ als erste Verteidigungslinie gegen kurzzeitige Ausfaelle.
+    Events werden lokal gepuffert und bei Wiederherstellung automatisch nachgeliefert.
+</p>
+
+<h3>6.2 Schicht 2: Verbindungswiederholung</h3>
+<p>Cribl Stream versucht automatisch, fehlgeschlagene Zustellungen erneut durchzufuehren:</p>
+<table>
+    <tr><th>Parameter</th><th>Wert</th><th>Beschreibung</th></tr>
+    <tr><td>Retry-Intervall</td><td>5 Sekunden (initial)</td><td>Exponentielles Backoff bis max. 300s</td></tr>
+    <tr><td>Max. Retries</td><td>Unbegrenzt (solange PQ-Kapazitaet)</td><td>Retries stoppen erst bei PQ-Ueberlauf</td></tr>
+    <tr><td>Connection Timeout</td><td>30 Sekunden</td><td>Zeitlimit fuer den Verbindungsaufbau</td></tr>
+</table>
+
+<h3>6.3 Schicht 3: Alerting</h3>
+<p>
+    Bei PQ-Fuellstand ueber 80% wird ein Alert ausgeloest (Konfiguration im Monitoring,
+    siehe <a href="09-betriebshandbuch.html">Kapitel 09 - Betriebshandbuch</a>). Der Alert informiert
+    das Betriebsteam per E-Mail und/oder Splunk-Alert.
+</p>
+
+<h3>6.4 Schicht 4: Manuelle Eskalation</h3>
+<p>
+    Wenn die automatischen Mechanismen nicht ausreichen (PQ > 95%), erfolgt eine manuelle Eskalation
+    gemaess der Kontaktliste im Betriebshandbuch. Massnahmen:
+</p>
+<ul>
+    <li>Pruefung der Netzwerkverbindung (Tailscale-VPN-Tunnel)</li>
+    <li>Pruefung des Splunk-Indexers (Dienststatus, Disk-Space, Lizenz)</li>
+    <li>Temporaere Erhoehung der PQ-Groesse</li>
+    <li>Im Extremfall: Umleitung der Events auf eine alternative Destination (z.B. lokales Dateisystem)</li>
+</ul>
+
+<!-- 7. Verifikation -->
+<h2 id="verifikation">7. Verifikation der Ziele</h2>
+<p>
+    Nach der Konfiguration der Destinations muessen folgende Pruefungen durchgefuehrt werden:
+</p>
+
+<h3>7.1 HEC-Destination pruefen</h3>
+<pre><code># Manueller HEC-Test vom Cribl-Server
+curl -k https://${SPLUNK_HOST}:8088/services/collector/event \
+  -H "Authorization: Splunk ${SPLUNK_HEC_TOKEN}" \
+  -d '{"event":"HEC test from Cribl","sourcetype":"cribl:test","index":"main"}'
+
+# Erwartete Antwort:
+# {"text":"Success","code":0}</code></pre>
+
+<h3>7.2 S2S-Destination pruefen</h3>
+<pre><code># Port-Erreichbarkeit pruefen
+nc -zv ${SPLUNK_HOST} 9997
+
+# In Cribl Stream UI:
+# Settings &rarr; Destinations &rarr; splunk_s2s &rarr; Test Connection</code></pre>
+
+<h3>7.3 PQ-Status pruefen</h3>
+<pre><code># Cribl Stream API: PQ-Status abfragen
+curl -s http://localhost:9000/api/v1/system/metrics \
+  | jq '.pq'
+
+# Oder im Cribl UI:
+# Monitoring &rarr; Destinations &rarr; PQ-Status</code></pre>
+
+<h3>7.4 Verifikations-Checkliste</h3>
+<ul class="checklist">
+    <li>HEC-Token in Splunk erstellt und getestet</li>
+    <li>HEC-Destination in Cribl konfiguriert und Verbindung erfolgreich</li>
+    <li>S2S-Receiving-Port (9997) in Splunk aktiviert</li>
+    <li>S2S-Destination in Cribl konfiguriert und Verbindung erfolgreich</li>
+    <li>PQ fuer beide Destinations aktiviert und Speicherplatz ausreichend</li>
+    <li>TLS fuer HEC-Verbindung verifiziert (Zertifikat gueltig)</li>
+    <li>Test-Events in Splunk sichtbar (beide Wege)</li>
+    <li>PQ-Failover getestet (Splunk kurzzeitig stoppen, Events puffern, wieder starten)</li>
+</ul>
+
+<div class="nav">
+    <a href="05-quellen.html">&larr; 05 - Quellen-Konfiguration</a>
+    <a href="07-pipelines-routen.html">07 - Pipelines und Routen &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    Regulierte Umgebung: Deutsche Bankenaufsicht (BaFin) &ndash; MaRisk / BAIT / DORA
+</div>
+
+</body>
+</html>

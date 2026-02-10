@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>09 - Betriebshandbuch | IceDataEmphasise</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>09 - Betriebshandbuch</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2 id="revisionshistorie">Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion: Betriebsaufgaben, Prozeduren, Monitoring, Backup, Eskalation</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2 id="inhaltsverzeichnis">Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#taegliche-aufgaben">Taegliche Betriebsaufgaben</a></li>
+    <li><a href="#start-stop-restart">Start/Stop/Restart Prozeduren</a></li>
+    <li><a href="#log-rotation">Log-Rotation und Housekeeping</a></li>
+    <li><a href="#performance-monitoring">Performance-Monitoring</a></li>
+    <li><a href="#kapazitaetsplanung">Kapazitaetsplanung</a></li>
+    <li><a href="#backup-restore">Backup und Restore</a></li>
+    <li><a href="#wartungsfenster">Wartungsfenster-Prozedur</a></li>
+    <li><a href="#kontaktliste">Kontaktliste und Eskalation</a></li>
+</ol>
+
+<!-- 1. Taegliche Betriebsaufgaben -->
+<h2 id="taegliche-aufgaben">1. Taegliche Betriebsaufgaben</h2>
+<p>
+    Die folgenden Aufgaben muessen taeglich im Rahmen des regulaeren Betriebs durchgefuehrt werden.
+    Die Checkliste dient als Nachweis fuer die Aufsicht (MaRisk AT 7.2).
+</p>
+
+<h3>Morgendliche Checkliste (bis 09:00 Uhr)</h3>
+<ul class="checklist">
+    <li>Cribl Stream UI erreichbar unter <code>https://&lt;cribl-host&gt;:9000</code></li>
+    <li>Alle Quellen (Sources) melden aktiven Status (gruene Indikatoren)</li>
+    <li>Beide Destinations (HEC + S2S) zeigen <em>Connected</em></li>
+    <li>PQ-Fuellstand beider Destinations unter 5%</li>
+    <li>Keine Fehlermeldungen im Cribl-System-Log der letzten 24h</li>
+    <li>Splunk-seitig: Daten in allen Indexes aktuell (letzte 15 Minuten)</li>
+    <li>Cribl Edge Nodes: Alle registrierten Nodes sind <em>online</em></li>
+    <li>Tailscale-VPN: Alle Peers verbunden</li>
+    <li>Disk-Space auf Cribl-Server &gt; 20% frei</li>
+    <li>CPU-Auslastung des Cribl-Servers &lt; 70% (Durchschnitt letzte Stunde)</li>
+</ul>
+
+<h3>RACI-Matrix: Taegliche Aufgaben</h3>
+<table class="raci">
+    <tr><th>Aufgabe</th><th>IT-Betrieb</th><th>Security</th><th>Teamleitung</th></tr>
+    <tr><td>Morgendliche Checkliste</td><td>R/A</td><td>I</td><td>I</td></tr>
+    <tr><td>PQ-Fuellstand pruefen</td><td>R/A</td><td>C</td><td>I</td></tr>
+    <tr><td>Fehler im System-Log pruefen</td><td>R</td><td>C/A</td><td>I</td></tr>
+    <tr><td>Datenaktualitaet in Splunk</td><td>R</td><td>R</td><td>A</td></tr>
+</table>
+<p><em>R = Responsible, A = Accountable, C = Consulted, I = Informed</em></p>
+
+<!-- 2. Start/Stop/Restart -->
+<h2 id="start-stop-restart">2. Start/Stop/Restart Prozeduren</h2>
+
+<h3>2.1 Cribl Stream</h3>
+<p>Cribl Stream laeuft als systemd-Dienst auf dem NUC-Server:</p>
+
+<pre><code># Status pruefen
+sudo systemctl status cribl
+
+# Starten
+sudo systemctl start cribl
+
+# Stoppen (Graceful Shutdown)
+sudo systemctl stop cribl
+
+# Neustart
+sudo systemctl restart cribl
+
+# Logs anzeigen
+sudo journalctl -u cribl -f --no-pager</code></pre>
+
+<div class="warning">
+    <strong>Achtung:</strong> Beim Stoppen von Cribl Stream werden Events, die sich in der
+    In-Memory-Pipeline befinden, in die Persistent Queue geschrieben. Der Shutdown dauert bis zu
+    30 Sekunden, waehrend die Queues geleert werden. Einen <code>kill -9</code> auf den
+    Cribl-Prozess <strong>niemals</strong> ausfuehren &ndash; dies fuehrt zu Datenverlust.
+</div>
+
+<h3>2.2 Cribl Edge</h3>
+<pre><code># Status pruefen
+sudo systemctl status cribl-edge
+
+# Starten
+sudo systemctl start cribl-edge
+
+# Stoppen
+sudo systemctl stop cribl-edge
+
+# Neustart
+sudo systemctl restart cribl-edge
+
+# Logs anzeigen
+sudo journalctl -u cribl-edge -f --no-pager</code></pre>
+
+<h3>2.3 Abhaengigkeiten und Reihenfolge</h3>
+<table>
+    <tr><th>Aktion</th><th>Reihenfolge</th><th>Begruendung</th></tr>
+    <tr><td>Starten</td><td>1. Tailscale &rarr; 2. Cribl Stream &rarr; 3. Cribl Edge</td><td>Stream muss erreichbar sein, bevor Edge sich verbindet</td></tr>
+    <tr><td>Stoppen</td><td>1. Cribl Edge &rarr; 2. Cribl Stream &rarr; 3. Tailscale</td><td>Edge-Daten muessen zugestellt sein, bevor Stream gestoppt wird</td></tr>
+    <tr><td>Neustart Stream</td><td>Edge muss nicht neugestartet werden</td><td>Edge puffert Events lokal und liefert nach, sobald Stream wieder verfuegbar ist</td></tr>
+</table>
+
+<h3>2.4 Notfall-Restart (bei Haenger)</h3>
+<pre><code># Nur wenn normaler Restart nicht funktioniert:
+# 1. Sanftes Signal senden
+sudo kill -SIGTERM $(pgrep -f cribl)
+sleep 30
+
+# 2. Falls Prozess immer noch laeuft:
+sudo kill -SIGTERM $(pgrep -f cribl)
+sleep 10
+
+# 3. Dienst normal starten
+sudo systemctl start cribl
+
+# 4. Sofort PQ-Status pruefen (moeglicher Datenverlust?)
+curl -s http://localhost:9000/api/v1/system/metrics | jq '.pq'</code></pre>
+
+<!-- 3. Log-Rotation -->
+<h2 id="log-rotation">3. Log-Rotation und Housekeeping</h2>
+
+<h3>3.1 Cribl-eigene Logs</h3>
+<p>Cribl Stream erzeugt eigene Betriebslogs unter <code>/opt/cribl/log/</code>:</p>
+<table>
+    <tr><th>Log-Datei</th><th>Inhalt</th><th>Rotation</th></tr>
+    <tr><td><code>cribl.log</code></td><td>Hauptlog: Verarbeitungsfehler, Warnungen</td><td>Automatisch durch Cribl (5 x 5 MB)</td></tr>
+    <tr><td><code>cribl-ui-access.log</code></td><td>Web-UI Zugriffe</td><td>Automatisch durch Cribl</td></tr>
+    <tr><td><code>audit.log</code></td><td>Aenderungen an der Konfiguration</td><td>Automatisch, 365 Tage Aufbewahrung</td></tr>
+</table>
+
+<h3>3.2 Zusaetzliche Log-Rotation via logrotate</h3>
+<pre><code># /etc/logrotate.d/cribl
+/opt/cribl/log/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 0640 cribl cribl
+    sharedscripts
+    postrotate
+        systemctl reload cribl 2>/dev/null || true
+    endscript
+}</code></pre>
+
+<h3>3.3 Housekeeping-Aufgaben</h3>
+<table>
+    <tr><th>Aufgabe</th><th>Frequenz</th><th>Beschreibung</th></tr>
+    <tr><td>PQ-Verzeichnis pruefen</td><td>Taeglich</td><td><code>du -sh /opt/cribl/state/</code> &ndash; darf 2 GB nicht ueberschreiten</td></tr>
+    <tr><td>Alte Backups bereinigen</td><td>Woechentlich</td><td>Backups aelter als 90 Tage loeschen</td></tr>
+    <tr><td>Temp-Dateien bereinigen</td><td>Woechentlich</td><td><code>/tmp/cribl*</code> pruefen und bereinigen</td></tr>
+    <tr><td>Audit-Log pruefen</td><td>Woechentlich</td><td>Ungeplante Konfigurationsaenderungen identifizieren</td></tr>
+</table>
+
+<!-- 4. Performance-Monitoring -->
+<h2 id="performance-monitoring">4. Performance-Monitoring</h2>
+
+<h3>4.1 Wichtige Metriken</h3>
+<table>
+    <tr><th>Metrik</th><th>Schwellenwert (Warnung)</th><th>Schwellenwert (Kritisch)</th><th>Quelle</th></tr>
+    <tr><td>CPU-Auslastung</td><td>&gt; 70%</td><td>&gt; 90%</td><td><code>top</code>, <code>htop</code>, Cribl Metrics</td></tr>
+    <tr><td>RAM-Nutzung</td><td>&gt; 75%</td><td>&gt; 90%</td><td><code>free -h</code>, Cribl Metrics</td></tr>
+    <tr><td>Disk I/O Wait</td><td>&gt; 20%</td><td>&gt; 40%</td><td><code>iostat</code></td></tr>
+    <tr><td>Events In/s</td><td>Abweichung &gt; 30% vom Baseline</td><td>Abweichung &gt; 50%</td><td>Cribl Monitoring</td></tr>
+    <tr><td>Events Out/s</td><td>Abweichung &gt; 30% vom Baseline</td><td>Events Out &lt; Events In (Stau)</td><td>Cribl Monitoring</td></tr>
+    <tr><td>PQ-Fuellstand (HEC)</td><td>&gt; 50%</td><td>&gt; 80%</td><td>Cribl Monitoring</td></tr>
+    <tr><td>PQ-Fuellstand (S2S)</td><td>&gt; 50%</td><td>&gt; 80%</td><td>Cribl Monitoring</td></tr>
+    <tr><td>Destination-Latenz</td><td>&gt; 5 Sekunden</td><td>&gt; 30 Sekunden</td><td>Cribl Monitoring</td></tr>
+    <tr><td>Disk-Space (/opt)</td><td>&lt; 30% frei</td><td>&lt; 15% frei</td><td><code>df -h</code></td></tr>
+    <tr><td>Tailscale-VPN Status</td><td>1 Peer offline</td><td>VPN-Tunnel down</td><td><code>tailscale status</code></td></tr>
+</table>
+
+<h3>4.2 Monitoring-Befehle</h3>
+<pre><code># Cribl Stream Metriken (API)
+curl -s http://localhost:9000/api/v1/system/metrics | jq '.'
+
+# Cribl Stream Health Check
+curl -s http://localhost:9000/api/v1/health | jq '.'
+
+# Systemressourcen
+top -bn1 | head -20
+free -h
+df -h /opt
+
+# Netzwerk-Durchsatz (Cribl-Ports)
+ss -s
+ss -tlnp | grep -E '(9000|9420|9997|8088)'
+
+# Tailscale-Status
+tailscale status</code></pre>
+
+<h3>4.3 Splunk-basiertes Monitoring</h3>
+<pre><code># Cribl-Durchsatz in Splunk verfolgen (letzte 4 Stunden)
+index=* cribl_pipeline=*
+| timechart span=5m count by cribl_pipeline
+
+# Alarmierung bei fehlenden Daten (Saved Search)
+index=idx_security sourcetype=linux_secure earliest=-15m
+| stats count
+| where count &lt; 10
+| eval alert_message="Weniger als 10 Security-Events in den letzten 15 Minuten"</code></pre>
+
+<!-- 5. Kapazitaetsplanung -->
+<h2 id="kapazitaetsplanung">5. Kapazitaetsplanung</h2>
+
+<h3>5.1 Aktuelle Ressourcenauslastung (PoC-Phase)</h3>
+<table>
+    <tr><th>Ressource</th><th>Verfuegbar</th><th>Genutzt (Durchschnitt)</th><th>Reserve</th></tr>
+    <tr><td>CPU-Kerne</td><td>4</td><td>~1.5 (37%)</td><td>63%</td></tr>
+    <tr><td>RAM</td><td>8 GB</td><td>~3 GB (37%)</td><td>63%</td></tr>
+    <tr><td>Disk (/opt)</td><td>50 GB</td><td>~8 GB (16%)</td><td>84%</td></tr>
+    <tr><td>Netzwerk</td><td>1 Gbit/s</td><td>~5 Mbit/s (0.5%)</td><td>99.5%</td></tr>
+</table>
+
+<h3>5.2 Skalierungsplanung</h3>
+<table>
+    <tr><th>Wachstumsfaktor</th><th>Auswirkung</th><th>Massnahme</th></tr>
+    <tr><td>Verdopplung der Quellen</td><td>CPU +40%, RAM +30%</td><td>Skalierung auf 8 CPU-Kerne, 16 GB RAM</td></tr>
+    <tr><td>Verdopplung des Volumens</td><td>CPU +60%, Disk I/O +80%</td><td>SSD-Upgrade, ggf. Worker Processes erhoehen</td></tr>
+    <tr><td>Neue Edge Nodes (+10)</td><td>Netzwerk +20%, CPU +10%</td><td>Keine Aenderung erforderlich</td></tr>
+    <tr><td>Neue Pipelines (+5)</td><td>CPU +15%, RAM +10%</td><td>Keine Aenderung erforderlich</td></tr>
+</table>
+
+<div class="info">
+    <strong>Empfehlung:</strong> Die aktuelle PoC-Hardware (NUC, 4 Kerne, 8 GB RAM) reicht fuer das
+    aktuelle Volumen aus. Bei einer Produktivstellung mit erweitertem Scope sollte auf mindestens
+    8 Kerne und 16 GB RAM aufgeruestet werden. Cribl empfiehlt fuer Produktivumgebungen mindestens
+    4 Kerne und 8 GB RAM pro Worker Process.
+</div>
+
+<!-- 6. Backup und Restore -->
+<h2 id="backup-restore">6. Backup und Restore</h2>
+
+<h3>6.1 Backup-Konzept</h3>
+<p>
+    Das Backup umfasst die vollstaendige Cribl-Konfiguration. Das Skript
+    <code>08-backup-cribl-config.sh</code> automatisiert den Backup-Prozess.
+</p>
+
+<table>
+    <tr><th>Komponente</th><th>Pfad</th><th>Enthalten im Backup</th></tr>
+    <tr><td>Cribl Stream Konfiguration</td><td><code>/opt/cribl/local/</code></td><td>Ja</td></tr>
+    <tr><td>Pipelines</td><td><code>/opt/cribl/local/cribl/pipelines/</code></td><td>Ja</td></tr>
+    <tr><td>Routes</td><td><code>/opt/cribl/local/cribl/routes/</code></td><td>Ja</td></tr>
+    <tr><td>Destinations</td><td><code>/opt/cribl/local/cribl/outputs/</code></td><td>Ja</td></tr>
+    <tr><td>Sources</td><td><code>/opt/cribl/local/cribl/inputs/</code></td><td>Ja</td></tr>
+    <tr><td>TLS-Zertifikate</td><td><code>/opt/cribl/certs/</code></td><td>Ja</td></tr>
+    <tr><td>Umgebungsvariablen</td><td><code>.env</code></td><td>Ja (verschluesselt)</td></tr>
+    <tr><td>Persistent Queue Daten</td><td><code>/opt/cribl/state/</code></td><td>Nein (transient)</td></tr>
+</table>
+
+<h3>6.2 Backup-Durchfuehrung</h3>
+<pre><code># Manuelles Backup
+sudo /home/mpauli/IceDataEmphasise/scripts/08-backup-cribl-config.sh
+
+# Automatisiertes Backup via Cron (taeglich um 02:00 Uhr)
+# Eintrag in /etc/crontab:
+0 2 * * * root /home/mpauli/IceDataEmphasise/scripts/08-backup-cribl-config.sh
+
+# Backup-Verzeichnis pruefen
+ls -lah /var/backups/cribl/</code></pre>
+
+<h3>6.3 Restore-Prozedur</h3>
+<div class="warning">
+    <strong>Achtung:</strong> Ein Restore ueberschreibt die aktuelle Konfiguration vollstaendig.
+    Vor einem Restore immer ein Backup des aktuellen Zustands erstellen.
+</div>
+
+<ol>
+    <li>Cribl Stream stoppen:
+        <pre><code>sudo systemctl stop cribl</code></pre>
+    </li>
+    <li>Aktuellen Zustand sichern:
+        <pre><code>sudo cp -r /opt/cribl/local/ /opt/cribl/local.pre-restore.$(date +%Y%m%d)</code></pre>
+    </li>
+    <li>Backup entpacken:
+        <pre><code>sudo tar xzf /var/backups/cribl/cribl-backup-YYYYMMDD-HHMMSS.tar.gz -C /opt/cribl/</code></pre>
+    </li>
+    <li>Berechtigungen pruefen:
+        <pre><code>sudo chown -R cribl:cribl /opt/cribl/local/</code></pre>
+    </li>
+    <li>Cribl Stream starten:
+        <pre><code>sudo systemctl start cribl</code></pre>
+    </li>
+    <li>Funktionspruefung:
+        <pre><code>curl -s http://localhost:9000/api/v1/health | jq '.'</code></pre>
+    </li>
+    <li>Alle Quellen und Destinations im UI pruefen</li>
+</ol>
+
+<h3>6.4 Backup-Aufbewahrung</h3>
+<table>
+    <tr><th>Typ</th><th>Frequenz</th><th>Aufbewahrung</th><th>Speicherort</th></tr>
+    <tr><td>Taeglich</td><td>Jede Nacht (02:00)</td><td>30 Tage</td><td><code>/var/backups/cribl/</code></td></tr>
+    <tr><td>Woechentlich</td><td>Sonntags (03:00)</td><td>90 Tage</td><td><code>/var/backups/cribl/weekly/</code></td></tr>
+    <tr><td>Vor Aenderungen</td><td>Manuell</td><td>Unbegrenzt</td><td><code>/var/backups/cribl/pre-change/</code></td></tr>
+</table>
+
+<!-- 7. Wartungsfenster -->
+<h2 id="wartungsfenster">7. Wartungsfenster-Prozedur</h2>
+
+<h3>7.1 Planung</h3>
+<table>
+    <tr><th>Schritt</th><th>Zeitpunkt</th><th>Verantwortlich</th><th>Beschreibung</th></tr>
+    <tr><td>1. Ankuendigung</td><td>T-5 Werktage</td><td>Teamleitung</td><td>Change-Antrag stellen, Stakeholder informieren</td></tr>
+    <tr><td>2. Genehmigung</td><td>T-3 Werktage</td><td>Change Advisory Board</td><td>Genehmigung im Change-Management-System</td></tr>
+    <tr><td>3. Backup</td><td>T-0 (vor Start)</td><td>IT-Betrieb</td><td>Vollstaendiges Backup der Cribl-Konfiguration</td></tr>
+    <tr><td>4. Durchfuehrung</td><td>T-0</td><td>IT-Betrieb</td><td>Wartungsarbeiten gemaess Anleitung</td></tr>
+    <tr><td>5. Verifikation</td><td>T-0 (nach Abschluss)</td><td>IT-Betrieb + Security</td><td>Funktionspruefung, Checkliste abarbeiten</td></tr>
+    <tr><td>6. Abschluss</td><td>T+1</td><td>Teamleitung</td><td>Change-Ticket schliessen, Dokumentation aktualisieren</td></tr>
+</table>
+
+<h3>7.2 Empfohlenes Wartungsfenster</h3>
+<ul>
+    <li><strong>Zeitraum:</strong> Samstag 02:00 - 06:00 Uhr</li>
+    <li><strong>Begruendung:</strong> Geringstes Log-Volumen, minimale Auswirkung auf Betrieb</li>
+    <li><strong>Maximale Dauer:</strong> 4 Stunden</li>
+    <li><strong>Rollback-Zeitfenster:</strong> 1 Stunde innerhalb des Wartungsfensters</li>
+</ul>
+
+<h3>7.3 Checkliste: Wartungsfenster</h3>
+<ul class="checklist">
+    <li>Change-Genehmigung liegt vor</li>
+    <li>Backup erstellt und verifiziert</li>
+    <li>Rollback-Plan dokumentiert und getestet</li>
+    <li>Alle Beteiligten informiert und erreichbar</li>
+    <li>Monitoring-Dashboard geoeffnet</li>
+    <li>Wartungsarbeiten durchgefuehrt</li>
+    <li>Funktionspruefung abgeschlossen (alle Quellen, Destinations, Pipelines)</li>
+    <li>PQ-Status geprueft (keine Rueckstaende)</li>
+    <li>Splunk-Datenfluss verifiziert</li>
+    <li>Wartungsprotokoll ausgefuellt</li>
+</ul>
+
+<h3>7.4 Rollback-Prozedur</h3>
+<p>
+    Falls waehrend der Wartung ein Problem auftritt, das nicht innerhalb von 60 Minuten behoben
+    werden kann, wird der Rollback eingeleitet:
+</p>
+<ol>
+    <li>Cribl Stream stoppen</li>
+    <li>Restore des Backups (siehe Abschnitt 6.3)</li>
+    <li>Cribl Stream starten</li>
+    <li>Vollstaendige Funktionspruefung</li>
+    <li>Vorfall dokumentieren und Nachbesprechung planen</li>
+</ol>
+
+<!-- 8. Kontaktliste und Eskalation -->
+<h2 id="kontaktliste">8. Kontaktliste und Eskalation</h2>
+
+<h3>8.1 Kontaktliste</h3>
+<table>
+    <tr><th>Rolle</th><th>Name</th><th>Erreichbarkeit</th><th>Vertretung</th></tr>
+    <tr><td>Cribl-Administrator</td><td><em>[Name eintragen]</em></td><td>Tel. / E-Mail</td><td><em>[Vertretung]</em></td></tr>
+    <tr><td>Splunk-Administrator</td><td><em>[Name eintragen]</em></td><td>Tel. / E-Mail</td><td><em>[Vertretung]</em></td></tr>
+    <tr><td>Netzwerk-Team (Tailscale/VPN)</td><td><em>[Name eintragen]</em></td><td>Tel. / E-Mail</td><td><em>[Vertretung]</em></td></tr>
+    <tr><td>Security Operations</td><td><em>[Name eintragen]</em></td><td>Tel. / E-Mail</td><td><em>[Vertretung]</em></td></tr>
+    <tr><td>Teamleitung IT-Betrieb</td><td><em>[Name eintragen]</em></td><td>Tel. / E-Mail</td><td><em>[Vertretung]</em></td></tr>
+    <tr><td>Cribl Support</td><td>Cribl Inc.</td><td>support.cribl.io / +1-888-CRIBL</td><td>n/a</td></tr>
+</table>
+
+<div class="info">
+    <strong>Hinweis:</strong> Die Kontaktliste muss vor der Produktivstellung mit den tatsaechlichen
+    Kontaktdaten befuellt werden. Eine quartalsweise Ueberpruefung der Aktualitaet ist vorgeschrieben.
+</div>
+
+<h3>8.2 Eskalationsmatrix</h3>
+<table>
+    <tr><th>Schweregrad</th><th>Beschreibung</th><th>Reaktionszeit</th><th>Eskalation an</th></tr>
+    <tr><td><strong>Kritisch (P1)</strong></td><td>Komplettausfall: Keine Daten werden an Splunk geliefert, PQ &gt; 95%</td><td>15 Minuten</td><td>Cribl-Admin + Teamleitung + Security</td></tr>
+    <tr><td><strong>Hoch (P2)</strong></td><td>Teilausfall: Eine Destination ausgefallen, PQ fuellt sich</td><td>30 Minuten</td><td>Cribl-Admin + Teamleitung</td></tr>
+    <tr><td><strong>Mittel (P3)</strong></td><td>Degradiert: Einzelne Quelle liefert keine Daten, Performance-Einbruch</td><td>2 Stunden</td><td>Cribl-Admin</td></tr>
+    <tr><td><strong>Niedrig (P4)</strong></td><td>Kosmetisch: UI-Warnungen, nicht-kritische Fehlermeldungen</td><td>Naechster Werktag</td><td>Cribl-Admin (Ticket)</td></tr>
+</table>
+
+<h3>8.3 Eskalationspfad bei P1-Vorfaellen</h3>
+<ol>
+    <li><strong>0-15 Min:</strong> Cribl-Administrator analysiert das Problem, versucht Sofortmassnahme</li>
+    <li><strong>15-30 Min:</strong> Teamleitung wird informiert, Security Operations wird einbezogen</li>
+    <li><strong>30-60 Min:</strong> Falls nicht behoben: Rollback auf letztes Backup einleiten</li>
+    <li><strong>60+ Min:</strong> Cribl-Support kontaktieren, Management-Eskalation</li>
+    <li><strong>Nach Behebung:</strong> Incident-Report innerhalb von 24 Stunden, Post-Mortem innerhalb von 5 Werktagen</li>
+</ol>
+
+<div class="warning">
+    <strong>Regulatorische Anforderung:</strong> Bei einem P1-Vorfall, der laenger als 4 Stunden dauert
+    und die Integritaet sicherheitsrelevanter Log-Daten betrifft, muss gemaess BAIT II.7 eine Meldung
+    an den Informationssicherheitsbeauftragten (ISB) erfolgen.
+</div>
+
+<div class="nav">
+    <a href="08-splunk-integration.html">&larr; 08 - Splunk-Integration</a>
+    <a href="10-sicherheitshandbuch.html">10 - Sicherheitshandbuch &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    Regulierte Umgebung: Deutsche Bankenaufsicht (BaFin) &ndash; MaRisk / BAIT / DORA
+</div>
+
+</body>
+</html>

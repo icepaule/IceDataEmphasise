@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>07 - Pipelines und Routen | IceDataEmphasise</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>07 - Pipelines und Routen</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2 id="revisionshistorie">Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion: 5 Pipelines, Route-Tabelle, Design-Entscheidungen</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2 id="inhaltsverzeichnis">Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#pipeline-konzept">Pipeline-Konzept in Cribl</a></li>
+    <li><a href="#pipelines-detail">Die 5 Pipelines im Detail</a>
+        <ol>
+            <li><a href="#pipeline-syslog">pipeline_syslog_enrichment</a></li>
+            <li><a href="#pipeline-apache">pipeline_apache_clf</a></li>
+            <li><a href="#pipeline-docker">pipeline_docker_json</a></li>
+            <li><a href="#pipeline-security">pipeline_security_auth</a></li>
+            <li><a href="#pipeline-generic">pipeline_generic_passthrough</a></li>
+        </ol>
+    </li>
+    <li><a href="#route-tabelle">Route-Tabelle</a></li>
+    <li><a href="#design-entscheidung">Design-Entscheidung: Security via S2S, Web/IoT via HEC</a></li>
+    <li><a href="#testing">Testing von Pipelines</a></li>
+</ol>
+
+<!-- 1. Pipeline-Konzept -->
+<h2 id="pipeline-konzept">1. Pipeline-Konzept in Cribl</h2>
+<p>
+    In Cribl Stream ist eine <strong>Pipeline</strong> eine geordnete Kette von Verarbeitungsschritten
+    (Functions), die auf eingehende Events angewendet werden. Jede Function kann Events transformieren,
+    anreichern, filtern oder verwerfen.
+</p>
+
+<h3>Kernkomponenten</h3>
+<table>
+    <tr><th>Komponente</th><th>Beschreibung</th></tr>
+    <tr><td><strong>Function</strong></td><td>Einzelner Verarbeitungsschritt (z.B. Regex Extract, Eval, Serialize/Deserialize)</td></tr>
+    <tr><td><strong>Filter</strong></td><td>JavaScript-Ausdruck, der bestimmt, ob eine Function auf ein Event angewendet wird</td></tr>
+    <tr><td><strong>Pipeline</strong></td><td>Geordnete Sequenz von Functions mit einem eindeutigen Bezeichner</td></tr>
+    <tr><td><strong>Route</strong></td><td>Verbindet einen Filter-Ausdruck mit einer Pipeline und einer Destination</td></tr>
+</table>
+
+<p>Der Datenfluss ist: <strong>Quelle &rarr; Route (Filter) &rarr; Pipeline (Functions) &rarr; Destination</strong></p>
+
+<div class="info">
+    <strong>Hinweis:</strong> Alle Pipeline-Konfigurationen befinden sich unter
+    <code>configs/stream/pipelines/</code>. Jede Pipeline fuegt mindestens die Felder
+    <code>cribl_host</code> und <code>cribl_pipeline</code> hinzu, um die Herkunft und den
+    Verarbeitungspfad jedes Events nachvollziehbar zu machen (Auditierbarkeit).
+</div>
+
+<!-- 2. Pipelines im Detail -->
+<h2 id="pipelines-detail">2. Die 5 Pipelines im Detail</h2>
+
+<!-- 2.1 Syslog Enrichment -->
+<h3 id="pipeline-syslog">2.1 pipeline_syslog_enrichment</h3>
+<p>
+    <strong>Datei:</strong> <code>configs/stream/pipelines/pipeline-syslog-enrichment.json</code><br>
+    <strong>Zweck:</strong> Anreicherung und Parsing von Syslog-formatierten Events (z.B. Apache Error Logs, Systemd Journal)
+</p>
+
+<table>
+    <tr><th>#</th><th>Function</th><th>Filter</th><th>Beschreibung</th></tr>
+    <tr><td>1</td><td><code>comment</code></td><td><code>true</code></td><td>Dokumentation: Zweck der Pipeline</td></tr>
+    <tr><td>2</td><td><code>eval</code></td><td><code>true</code></td><td>Fuegt Metadaten hinzu: <code>cribl_host</code>, <code>cribl_environment</code>, <code>cribl_pipeline</code></td></tr>
+    <tr><td>3</td><td><code>regex_extract</code></td><td><code>true</code></td><td>Extrahiert aus <code>_raw</code>: <code>syslog_timestamp</code>, <code>syslog_host</code>, <code>syslog_program</code>, <code>syslog_pid</code>, <code>message</code></td></tr>
+    <tr><td>4</td><td><code>auto_timestamp</code></td><td><code>syslog_timestamp</code></td><td>Automatische Timestamp-Erkennung und -Normalisierung</td></tr>
+</table>
+
+<p><strong>Regex-Pattern:</strong></p>
+<pre><code>/^(?&lt;syslog_timestamp&gt;\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+
+  (?&lt;syslog_host&gt;\S+)\s+
+  (?&lt;syslog_program&gt;[^\[:\s]+)
+  (?:\[(?&lt;syslog_pid&gt;\d+)\])?:?\s+
+  (?&lt;message&gt;.*)/</code></pre>
+
+<p><strong>Beispiel-Input:</strong></p>
+<pre><code>Feb 10 14:23:01 nuc sshd[12345]: Connection from 192.168.1.100 port 52341</code></pre>
+
+<p><strong>Extrahierte Felder:</strong></p>
+<table>
+    <tr><th>Feld</th><th>Wert</th></tr>
+    <tr><td><code>syslog_timestamp</code></td><td><code>Feb 10 14:23:01</code></td></tr>
+    <tr><td><code>syslog_host</code></td><td><code>nuc</code></td></tr>
+    <tr><td><code>syslog_program</code></td><td><code>sshd</code></td></tr>
+    <tr><td><code>syslog_pid</code></td><td><code>12345</code></td></tr>
+    <tr><td><code>message</code></td><td><code>Connection from 192.168.1.100 port 52341</code></td></tr>
+    <tr><td><code>cribl_host</code></td><td><em>(Hostname des Cribl-Servers)</em></td></tr>
+    <tr><td><code>cribl_environment</code></td><td><code>production</code></td></tr>
+    <tr><td><code>cribl_pipeline</code></td><td><code>pipeline_syslog_enrichment</code></td></tr>
+</table>
+
+<!-- 2.2 Apache CLF -->
+<h3 id="pipeline-apache">2.2 pipeline_apache_clf</h3>
+<p>
+    <strong>Datei:</strong> <code>configs/stream/pipelines/pipeline-apache-clf.json</code><br>
+    <strong>Zweck:</strong> Parsing des Apache Combined Log Format (CLF) mit vollstaendiger Feldextraktion
+</p>
+
+<table>
+    <tr><th>#</th><th>Function</th><th>Filter</th><th>Beschreibung</th></tr>
+    <tr><td>1</td><td><code>comment</code></td><td><code>true</code></td><td>Dokumentation: Zweck der Pipeline</td></tr>
+    <tr><td>2</td><td><code>eval</code></td><td><code>true</code></td><td>Fuegt Metadaten hinzu: <code>cribl_host</code>, <code>cribl_environment</code>, <code>cribl_pipeline</code></td></tr>
+    <tr><td>3</td><td><code>regex_extract</code></td><td><code>true</code></td><td>Extrahiert CLF-Felder: <code>client_ip</code>, <code>remote_user</code>, <code>timestamp</code>, <code>method</code>, <code>uri</code>, <code>http_version</code>, <code>status</code>, <code>bytes</code>, <code>referrer</code>, <code>user_agent</code></td></tr>
+    <tr><td>4</td><td><code>eval</code></td><td><code>status</code></td><td>Typkonvertierung: <code>status</code> und <code>bytes</code> zu numerischen Werten</td></tr>
+    <tr><td>5</td><td><code>auto_timestamp</code></td><td><code>timestamp</code></td><td>Automatische Timestamp-Erkennung</td></tr>
+</table>
+
+<p><strong>Beispiel-Input:</strong></p>
+<pre><code>192.168.1.50 - admin [10/Feb/2026:14:30:15 +0100] "GET /dashboard HTTP/1.1" 200 4523 "https://portal.example.de/" "Mozilla/5.0"</code></pre>
+
+<p><strong>Extrahierte Felder:</strong></p>
+<table>
+    <tr><th>Feld</th><th>Wert</th><th>Typ</th></tr>
+    <tr><td><code>client_ip</code></td><td><code>192.168.1.50</code></td><td>String</td></tr>
+    <tr><td><code>remote_user</code></td><td><code>admin</code></td><td>String</td></tr>
+    <tr><td><code>method</code></td><td><code>GET</code></td><td>String</td></tr>
+    <tr><td><code>uri</code></td><td><code>/dashboard</code></td><td>String</td></tr>
+    <tr><td><code>http_version</code></td><td><code>HTTP/1.1</code></td><td>String</td></tr>
+    <tr><td><code>status</code></td><td><code>200</code></td><td>Number</td></tr>
+    <tr><td><code>bytes</code></td><td><code>4523</code></td><td>Number</td></tr>
+    <tr><td><code>referrer</code></td><td><code>https://portal.example.de/</code></td><td>String</td></tr>
+    <tr><td><code>user_agent</code></td><td><code>Mozilla/5.0</code></td><td>String</td></tr>
+</table>
+
+<div class="info">
+    <strong>Typkonvertierung:</strong> Die Felder <code>status</code> und <code>bytes</code> werden
+    explizit in numerische Werte konvertiert (<code>Number(status)</code>), um in Splunk korrekte
+    statistische Auswertungen (Durchschnitt, Summe, Percentile) zu ermoeglichen. Das Feld <code>bytes</code>
+    wird bei einem Wert von <code>"-"</code> auf <code>0</code> gesetzt.
+</div>
+
+<!-- 2.3 Docker JSON -->
+<h3 id="pipeline-docker">2.3 pipeline_docker_json</h3>
+<p>
+    <strong>Datei:</strong> <code>configs/stream/pipelines/pipeline-docker-json.json</code><br>
+    <strong>Zweck:</strong> Parsing von Docker-JSON-Logs mit Container-ID-Extraktion und Log-Level-Erkennung
+</p>
+
+<table>
+    <tr><th>#</th><th>Function</th><th>Filter</th><th>Beschreibung</th></tr>
+    <tr><td>1</td><td><code>comment</code></td><td><code>true</code></td><td>Dokumentation: Zweck der Pipeline</td></tr>
+    <tr><td>2</td><td><code>eval</code></td><td><code>true</code></td><td>Fuegt Metadaten hinzu: <code>cribl_host</code>, <code>cribl_environment</code>, <code>cribl_pipeline</code></td></tr>
+    <tr><td>3</td><td><code>serde</code> (JSON Extract)</td><td><code>true</code></td><td>Deserialisiert das JSON-Objekt aus <code>_raw</code></td></tr>
+    <tr><td>4</td><td><code>regex_extract</code></td><td><code>source</code></td><td>Extrahiert <code>container_id</code> (12 Zeichen) aus dem Dateipfad</td></tr>
+    <tr><td>5</td><td><code>regex_extract</code></td><td><code>log</code></td><td>Extrahiert <code>log_timestamp</code>, <code>log_level</code>, <code>log_message</code> aus dem Log-Feld</td></tr>
+    <tr><td>6</td><td><code>eval</code></td><td><code>log</code></td><td>Setzt <code>message</code> auf <code>log_message</code> oder <code>log</code> (Fallback)</td></tr>
+    <tr><td>7</td><td><code>auto_timestamp</code></td><td><code>time</code></td><td>Timestamp aus dem Docker-<code>time</code>-Feld</td></tr>
+</table>
+
+<p><strong>Beispiel-Input (Docker JSON):</strong></p>
+<pre><code>{"log":"2026-02-10T14:30:15.123Z INFO Starting Home Assistant Core...\n","stream":"stdout","time":"2026-02-10T14:30:15.123456789Z"}</code></pre>
+
+<p><strong>Extrahierte Felder:</strong></p>
+<table>
+    <tr><th>Feld</th><th>Wert</th></tr>
+    <tr><td><code>container_id</code></td><td><code>a1b2c3d4e5f6</code> (aus Dateipfad)</td></tr>
+    <tr><td><code>stream</code></td><td><code>stdout</code></td></tr>
+    <tr><td><code>log_timestamp</code></td><td><code>2026-02-10T14:30:15.123Z</code></td></tr>
+    <tr><td><code>log_level</code></td><td><code>INFO</code></td></tr>
+    <tr><td><code>message</code></td><td><code>Starting Home Assistant Core...</code></td></tr>
+</table>
+
+<div class="info">
+    <strong>Container-Mapping:</strong> Die Container-ID wird aus dem Source-Pfad extrahiert
+    (z.B. <code>/var/lib/docker/containers/&lt;id&gt;/&lt;id&gt;-json.log</code>). Im PoC
+    wird hauptsaechlich der Home-Assistant-Container (<code>docker_ha</code>) und der
+    Mosquitto-MQTT-Broker ueberwacht.
+</div>
+
+<!-- 2.4 Security Auth -->
+<h3 id="pipeline-security">2.4 pipeline_security_auth</h3>
+<p>
+    <strong>Datei:</strong> <code>configs/stream/pipelines/pipeline-security-auth.json</code><br>
+    <strong>Zweck:</strong> Sicherheitsorientiertes Parsing von SSH-Authentifizierungs-Events mit MITRE ATT&amp;CK-Tagging
+</p>
+
+<div class="warning">
+    <strong>Sicherheitsrelevant:</strong> Diese Pipeline verarbeitet Authentifizierungsdaten und reichert
+    fehlgeschlagene Logins mit MITRE ATT&amp;CK-Annotationen an. Die resultierenden Events werden ueber
+    den S2S-Kanal an den Security-Index in Splunk geliefert.
+</div>
+
+<table>
+    <tr><th>#</th><th>Function</th><th>Filter</th><th>Beschreibung</th></tr>
+    <tr><td>1</td><td><code>comment</code></td><td><code>true</code></td><td>Dokumentation: SSH/Auth Security Pipeline</td></tr>
+    <tr><td>2</td><td><code>eval</code></td><td><code>true</code></td><td>Metadaten: <code>cribl_host</code>, <code>cribl_environment</code>, <code>cribl_pipeline</code></td></tr>
+    <tr><td>3</td><td><code>regex_extract</code></td><td><code>true</code></td><td>Syslog-Parsing: <code>auth_timestamp</code>, <code>auth_host</code>, <code>auth_program</code>, <code>auth_pid</code>, <code>auth_message</code></td></tr>
+    <tr><td>4</td><td><code>regex_extract</code></td><td><code>/Failed password/</code></td><td>Extraktion bei fehlgeschlagenem Login: <code>failed_user</code>, <code>src_ip</code>, <code>src_port</code></td></tr>
+    <tr><td>5</td><td><code>eval</code></td><td><code>failed_user</code></td><td>MITRE-Tagging: <code>T1110 Brute Force</code>, <code>auth_action=failed_login</code></td></tr>
+    <tr><td>6</td><td><code>regex_extract</code></td><td><code>/Accepted/</code></td><td>Extraktion bei erfolgreichem Login: <code>auth_method</code>, <code>accepted_user</code>, <code>src_ip</code>, <code>src_port</code></td></tr>
+    <tr><td>7</td><td><code>eval</code></td><td><code>accepted_user</code></td><td>Tagging: <code>auth_action=successful_login</code></td></tr>
+    <tr><td>8</td><td><code>regex_extract</code></td><td><code>/session opened/</code></td><td>Session-Erkennung: <code>session_user</code></td></tr>
+    <tr><td>9</td><td><code>auto_timestamp</code></td><td><code>auth_timestamp</code></td><td>Timestamp-Normalisierung</td></tr>
+</table>
+
+<h4>MITRE ATT&amp;CK-Anreicherung</h4>
+<p>
+    Bei erkannten fehlgeschlagenen SSH-Logins werden folgende MITRE-Felder automatisch hinzugefuegt:
+</p>
+<table>
+    <tr><th>Feld</th><th>Wert</th><th>Beschreibung</th></tr>
+    <tr><td><code>mitre_technique_id</code></td><td><code>T1110</code></td><td>MITRE ATT&amp;CK Technique ID</td></tr>
+    <tr><td><code>mitre_technique_name</code></td><td><code>Brute Force</code></td><td>Name der Technik</td></tr>
+    <tr><td><code>mitre_tactic</code></td><td><code>Credential Access</code></td><td>Zugehoerige Taktik</td></tr>
+    <tr><td><code>auth_action</code></td><td><code>failed_login</code></td><td>Klassifikation der Aktion</td></tr>
+    <tr><td><code>security_tag</code></td><td><code>authentication_failure</code></td><td>Sicherheits-Tag fuer Korrelation</td></tr>
+</table>
+
+<p><strong>Beispiel-Input (fehlgeschlagener Login):</strong></p>
+<pre><code>Feb 10 14:45:22 nuc sshd[9876]: Failed password for invalid user admin from 10.0.0.50 port 44312 ssh2</code></pre>
+
+<p><strong>Resultierende Felder:</strong></p>
+<pre><code>{
+  "auth_host": "nuc",
+  "auth_program": "sshd",
+  "auth_pid": "9876",
+  "failed_user": "admin",
+  "src_ip": "10.0.0.50",
+  "src_port": "44312",
+  "auth_action": "failed_login",
+  "security_tag": "authentication_failure",
+  "mitre_technique_id": "T1110",
+  "mitre_technique_name": "Brute Force",
+  "mitre_tactic": "Credential Access",
+  "cribl_pipeline": "pipeline_security_auth"
+}</code></pre>
+
+<!-- 2.5 Generic Passthrough -->
+<h3 id="pipeline-generic">2.5 pipeline_generic_passthrough</h3>
+<p>
+    <strong>Datei:</strong> <code>configs/stream/pipelines/pipeline-generic-passthrough.json</code><br>
+    <strong>Zweck:</strong> Minimale Verarbeitung &ndash; fuegt nur Herkunftsmetadaten hinzu, ohne das Event zu veraendern
+</p>
+
+<table>
+    <tr><th>#</th><th>Function</th><th>Filter</th><th>Beschreibung</th></tr>
+    <tr><td>1</td><td><code>comment</code></td><td><code>true</code></td><td>Dokumentation: Minimale Verarbeitung</td></tr>
+    <tr><td>2</td><td><code>eval</code></td><td><code>true</code></td><td>Fuegt hinzu: <code>cribl_host</code>, <code>cribl_pipeline</code></td></tr>
+</table>
+
+<p>
+    Diese Pipeline wird fuer Quellen verwendet, die entweder bereits in einem gut strukturierten Format
+    vorliegen (z.B. Samba-Logs) oder fuer die im PoC kein spezifisches Parsing definiert wurde.
+    Sie dient als Auffang-Pipeline fuer die Default-Route.
+</p>
+
+<div class="success">
+    <strong>Design-Prinzip:</strong> Jedes Event, das Cribl Stream durchlaeuft, erhaelt mindestens die Felder
+    <code>cribl_host</code> und <code>cribl_pipeline</code>. Dies ermoeglicht im Nachhinein die
+    lueckenlose Nachverfolgung, welcher Cribl-Server und welche Pipeline ein Event verarbeitet hat
+    &ndash; eine zentrale Anforderung fuer die Auditierbarkeit.
+</div>
+
+<!-- 3. Route-Tabelle -->
+<h2 id="route-tabelle">3. Route-Tabelle</h2>
+<p>
+    Die Routen sind in <code>configs/stream/pipelines/routes.json</code> definiert und werden in der
+    angegebenen Reihenfolge (Prioritaet) ausgewertet. Die erste passende Route gewinnt (<code>"final": true</code>).
+</p>
+
+<table>
+    <tr>
+        <th>Prio</th>
+        <th>Route-ID</th>
+        <th>Name</th>
+        <th>Filter</th>
+        <th>Pipeline</th>
+        <th>Destination</th>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td><code>route_apache_access</code></td>
+        <td>Apache Access</td>
+        <td><code>source=='file_monitor:apache_access'</code></td>
+        <td><code>pipeline_apache_clf</code></td>
+        <td><code>splunk_hec</code></td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td><code>route_apache_error</code></td>
+        <td>Apache Error</td>
+        <td><code>source=='file_monitor:apache_error'</code></td>
+        <td><code>pipeline_syslog_enrichment</code></td>
+        <td><code>splunk_hec</code></td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td><code>route_ssh_auth</code></td>
+        <td>SSH Auth</td>
+        <td><code>source=='file_monitor:ssh_auth'</code></td>
+        <td><code>pipeline_security_auth</code></td>
+        <td><code>splunk_s2s</code></td>
+    </tr>
+    <tr>
+        <td>4</td>
+        <td><code>route_docker</code></td>
+        <td>Docker/HA</td>
+        <td><code>source=='file_monitor:docker_ha' || source=='file_monitor:mosquitto'</code></td>
+        <td><code>pipeline_docker_json</code></td>
+        <td><code>splunk_hec</code></td>
+    </tr>
+    <tr>
+        <td>5</td>
+        <td><code>route_journal</code></td>
+        <td>Systemd Journal</td>
+        <td><code>source=='journald:systemd_journal'</code></td>
+        <td><code>pipeline_syslog_enrichment</code></td>
+        <td><code>splunk_s2s</code></td>
+    </tr>
+    <tr>
+        <td>6</td>
+        <td><code>route_samba</code></td>
+        <td>Samba</td>
+        <td><code>source=='file_monitor:samba'</code></td>
+        <td><code>pipeline_generic_passthrough</code></td>
+        <td><code>splunk_s2s</code></td>
+    </tr>
+    <tr>
+        <td>7</td>
+        <td><code>route_default</code></td>
+        <td>Default</td>
+        <td><code>true</code></td>
+        <td><code>pipeline_generic_passthrough</code></td>
+        <td><code>splunk_hec</code></td>
+    </tr>
+</table>
+
+<h3>Filter-Logik</h3>
+<p>
+    Die Filter basieren auf dem <code>source</code>-Feld, das von Cribl Edge bzw. den konfigurierten
+    Quellen gesetzt wird. Das Format ist <code>Quellentyp:Quellen-ID</code>:
+</p>
+<ul>
+    <li><code>file_monitor:apache_access</code> &ndash; File-Monitor-Quelle fuer Apache Access Logs</li>
+    <li><code>file_monitor:ssh_auth</code> &ndash; File-Monitor-Quelle fuer <code>/var/log/auth.log</code></li>
+    <li><code>journald:systemd_journal</code> &ndash; Journald-Quelle fuer Systemd-Journal</li>
+    <li><code>true</code> &ndash; Fangt alle nicht zuvor gematchten Events auf (Default-Route)</li>
+</ul>
+
+<div class="warning">
+    <strong>Wichtig:</strong> Die Route-Reihenfolge ist entscheidend. Da alle Routen <code>"final": true</code>
+    gesetzt haben, wird ein Event nur von der <strong>ersten</strong> passenden Route verarbeitet. Die
+    Default-Route (<code>filter: "true"</code>) muss daher immer die <strong>letzte</strong> Route sein.
+</div>
+
+<!-- 4. Design-Entscheidung -->
+<h2 id="design-entscheidung">4. Design-Entscheidung: Security via S2S, Web/IoT via HEC</h2>
+
+<p>Die Zuordnung der Datenquellen zu den Destinations folgt einem bewussten Sicherheits- und Architekturkonzept:</p>
+
+<table>
+    <tr><th>Destination</th><th>Quellen</th><th>Begruendung</th></tr>
+    <tr>
+        <td><strong>S2S</strong> (splunk_s2s)</td>
+        <td>SSH Auth, Systemd Journal, Samba</td>
+        <td>
+            Sicherheitsrelevante Daten: Kein HTTP-Endpoint exponiert, geringere Angriffsflaeche,
+            natives Splunk-Protokoll fuer maximale Kompatibilitaet mit Splunk Enterprise Security (ES)
+        </td>
+    </tr>
+    <tr>
+        <td><strong>HEC</strong> (splunk_hec)</td>
+        <td>Apache Access/Error, Docker/HA, Default</td>
+        <td>
+            Web- und Anwendungsdaten: Flexibles HTTP-Protokoll, einfachere Firewall-Konfiguration,
+            gzip-Kompression fuer volumenreiche Web-Logs, Token-basierte Zugriffskontrolle pro Index
+        </td>
+    </tr>
+</table>
+
+<h3>Sicherheitsbegruendung</h3>
+<ul>
+    <li><strong>Trennung der Datenstroeme:</strong> Security-Daten und Anwendungsdaten nutzen unterschiedliche
+        Transportwege, was die Auswirkung eines Ausfalls oder einer Kompromittierung begrenzt (Blast Radius).</li>
+    <li><strong>Priorisierung:</strong> Bei einem HEC-Ausfall sind Security-Daten nicht betroffen (und umgekehrt).</li>
+    <li><strong>Compliance:</strong> Die Trennung entspricht dem Prinzip der Aufgabentrennung (Segregation of Duties)
+        gemaess MaRisk AT 4.3.1.</li>
+</ul>
+
+<!-- 5. Testing -->
+<h2 id="testing">5. Testing von Pipelines</h2>
+
+<h3>5.1 Sample Data (Testdaten)</h3>
+<p>
+    Fuer jede Pipeline sollten repraesentative Testdaten vorbereitet werden. Die Testdaten koennen
+    in der Cribl-UI unter <em>Pipelines &rarr; [Pipeline] &rarr; Preview</em> eingefuegt werden.
+</p>
+
+<h4>Beispiel-Testdaten je Pipeline</h4>
+<pre><code># pipeline_syslog_enrichment
+Feb 10 14:23:01 nuc sshd[12345]: Connection from 192.168.1.100 port 52341
+Feb 10 14:23:05 nuc systemd[1]: Started Session 42 of user root.
+
+# pipeline_apache_clf
+192.168.1.50 - admin [10/Feb/2026:14:30:15 +0100] "GET /api/v1/status HTTP/1.1" 200 1234 "-" "curl/7.68.0"
+10.0.0.1 - - [10/Feb/2026:14:30:16 +0100] "POST /login HTTP/1.1" 401 89 "https://app.example.de/login" "Mozilla/5.0"
+
+# pipeline_docker_json
+{"log":"2026-02-10T14:30:15.123Z INFO Starting service...\n","stream":"stdout","time":"2026-02-10T14:30:15.123456789Z"}
+
+# pipeline_security_auth
+Feb 10 14:45:22 nuc sshd[9876]: Failed password for invalid user admin from 10.0.0.50 port 44312 ssh2
+Feb 10 14:45:30 nuc sshd[9877]: Accepted publickey for mpauli from 192.168.1.1 port 55123 ssh2
+
+# pipeline_generic_passthrough
+[2026/02/10 14:30:00, 0] smbd: server started</code></pre>
+
+<h3>5.2 Preview-Funktion</h3>
+<p>Die Preview-Funktion in der Cribl-UI ermoeglicht es, Testdaten durch eine Pipeline zu schicken und das Ergebnis sofort zu sehen:</p>
+<ol>
+    <li>Navigieren zu <em>Processing &rarr; Pipelines &rarr; [Pipeline auswaehlen]</em></li>
+    <li>Rechts auf <em>Preview</em> klicken</li>
+    <li>Testdaten einfuegen oder eine Datei hochladen</li>
+    <li>Die Ausgabe zeigt die extrahierten Felder und Transformationen</li>
+    <li>Jede Function kann einzeln aktiviert/deaktiviert werden, um Schritte zu isolieren</li>
+</ol>
+
+<h3>5.3 Verifikations-Checkliste</h3>
+<ul class="checklist">
+    <li>Jede Pipeline hat mindestens 3 repraesentative Testdatensaetze</li>
+    <li>Alle erwarteten Felder werden korrekt extrahiert (Preview pruefen)</li>
+    <li>Timestamps werden korrekt normalisiert</li>
+    <li>Numerische Felder (status, bytes) haben den korrekten Typ</li>
+    <li>MITRE ATT&amp;CK-Tags werden bei fehlgeschlagenen Logins korrekt gesetzt</li>
+    <li>Die Metadaten-Felder (cribl_host, cribl_pipeline) sind in jedem Output vorhanden</li>
+    <li>Die Route-Tabelle leitet jede Quelle an die korrekte Pipeline und Destination</li>
+    <li>Die Default-Route faengt nicht zuvor gematchte Events auf</li>
+    <li>End-to-End-Test: Event von Quelle bis Splunk-Index verifiziert</li>
+</ul>
+
+<div class="nav">
+    <a href="06-ziele.html">&larr; 06 - Ziel-Konfiguration</a>
+    <a href="08-splunk-integration.html">08 - Splunk-Integration &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    Regulierte Umgebung: Deutsche Bankenaufsicht (BaFin) &ndash; MaRisk / BAIT / DORA
+</div>
+
+</body>
+</html>

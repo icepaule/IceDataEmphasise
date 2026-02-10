@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>08 - Splunk-Integration | IceDataEmphasise</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>08 - Splunk-Integration</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2 id="revisionshistorie">Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion: Splunk-Vorbereitung, Index-Mapping, Verifikation, Migration</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2 id="inhaltsverzeichnis">Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#splunk-vorbereitung">Splunk-Vorbereitung</a>
+        <ol>
+            <li><a href="#hec-token">HEC Token erstellen</a></li>
+            <li><a href="#s2s-receiving">S2S Receiving konfigurieren</a></li>
+            <li><a href="#indexes">Indexes anlegen</a></li>
+        </ol>
+    </li>
+    <li><a href="#index-mapping">Index-Mapping</a></li>
+    <li><a href="#sourcetype-zuordnung">Sourcetype-Zuordnung</a></li>
+    <li><a href="#verifikation">Verifikation der Datenlieferung</a></li>
+    <li><a href="#search-beispiele">Splunk Search Beispiele</a></li>
+    <li><a href="#vergleich-uf">Vergleich: Cribl vs. Splunk Universal Forwarder</a></li>
+    <li><a href="#migration">Migration von bestehenden UF-Installationen</a></li>
+</ol>
+
+<!-- 1. Splunk-Vorbereitung -->
+<h2 id="splunk-vorbereitung">1. Splunk-Vorbereitung</h2>
+<p>
+    Bevor Cribl Stream Daten an Splunk liefern kann, muessen auf dem Splunk-Indexer drei Komponenten
+    konfiguriert werden: ein HEC-Token, ein S2S-Receiving-Port und die Ziel-Indexes.
+</p>
+
+<h3 id="hec-token">1.1 HEC Token erstellen</h3>
+<ol>
+    <li>In Splunk Web anmelden als Administrator</li>
+    <li>Navigieren zu <em>Settings &rarr; Data Inputs &rarr; HTTP Event Collector</em></li>
+    <li>Auf <em>Global Settings</em> klicken:
+        <ul>
+            <li><strong>All Tokens:</strong> Enabled</li>
+            <li><strong>Default Source Type:</strong> (leer lassen)</li>
+            <li><strong>Default Index:</strong> main</li>
+            <li><strong>Enable SSL:</strong> Aktiviert</li>
+            <li><strong>HTTP Port Number:</strong> 8088</li>
+        </ul>
+    </li>
+    <li>Auf <em>New Token</em> klicken:
+        <ul>
+            <li><strong>Name:</strong> <code>cribl_hec_token</code></li>
+            <li><strong>Source Type:</strong> Automatic</li>
+            <li><strong>Allowed Indexes:</strong> Alle PoC-Indexes auswaehlen (siehe unten)</li>
+            <li><strong>Default Index:</strong> <code>main</code></li>
+        </ul>
+    </li>
+    <li>Token-Wert notieren und in <code>.env</code> auf dem Cribl-Server hinterlegen</li>
+</ol>
+
+<pre><code># .env auf dem Cribl-Server
+SPLUNK_HEC_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></pre>
+
+<div class="warning">
+    <strong>Sicherheitshinweis:</strong> Das HEC-Token darf nicht in Git eingecheckt werden.
+    Die <code>.env</code>-Datei muss in <code>.gitignore</code> aufgefuehrt sein.
+</div>
+
+<h3 id="s2s-receiving">1.2 S2S Receiving konfigurieren</h3>
+<ol>
+    <li>In Splunk Web: <em>Settings &rarr; Forwarding and Receiving</em></li>
+    <li>Unter <em>Receive data</em> auf <em>Configure receiving</em> klicken</li>
+    <li>Auf <em>New Receiving Port</em> klicken:
+        <ul>
+            <li><strong>Listen on this port:</strong> <code>9997</code></li>
+        </ul>
+    </li>
+    <li>Speichern und Splunk-Dienst neu starten (falls erforderlich)</li>
+</ol>
+
+<pre><code># Verifikation: Port pruefen
+netstat -tlnp | grep 9997
+# oder
+ss -tlnp | grep 9997</code></pre>
+
+<h3 id="indexes">1.3 Indexes anlegen</h3>
+<p>
+    Fuer die saubere Trennung der Datenquellen werden dedizierte Indexes erstellt.
+    Navigieren zu <em>Settings &rarr; Indexes &rarr; New Index</em>:
+</p>
+
+<table>
+    <tr><th>Index-Name</th><th>Datentyp</th><th>Max. Groesse</th><th>Aufbewahrung</th><th>Beschreibung</th></tr>
+    <tr><td><code>idx_web</code></td><td>Events</td><td>10 GB</td><td>90 Tage</td><td>Apache Access und Error Logs</td></tr>
+    <tr><td><code>idx_security</code></td><td>Events</td><td>10 GB</td><td>365 Tage</td><td>SSH-Authentifizierung, Sicherheits-Events</td></tr>
+    <tr><td><code>idx_infrastructure</code></td><td>Events</td><td>15 GB</td><td>90 Tage</td><td>Systemd Journal, Samba, allgemeine Infrastruktur</td></tr>
+    <tr><td><code>idx_containers</code></td><td>Events</td><td>10 GB</td><td>30 Tage</td><td>Docker/Home Assistant, Mosquitto</td></tr>
+</table>
+
+<div class="info">
+    <strong>Hinweis:</strong> Die Aufbewahrungsdauer fuer den Security-Index betraegt 365 Tage, um den
+    regulatorischen Anforderungen (MaRisk AT 7.2, BAIT II.7) an die Aufbewahrung sicherheitsrelevanter
+    Protokolldaten zu entsprechen.
+</div>
+
+<pre><code># CLI-Alternative: Indexes ueber Splunk REST API anlegen
+curl -k -u admin:password https://localhost:8089/services/data/indexes \
+  -d name=idx_security \
+  -d datatype=event \
+  -d maxTotalDataSizeMB=10240 \
+  -d frozenTimePeriodInSecs=31536000</code></pre>
+
+<!-- 2. Index-Mapping -->
+<h2 id="index-mapping">2. Index-Mapping</h2>
+<p>
+    Das folgende Mapping definiert, welche Datenquellen in welchen Splunk-Index geschrieben werden.
+    Die Zuordnung erfolgt ueber die Cribl-Route und die Destination-Konfiguration:
+</p>
+
+<table>
+    <tr><th>Quelle</th><th>Route</th><th>Pipeline</th><th>Destination</th><th>Splunk-Index</th></tr>
+    <tr><td>Apache Access Log</td><td><code>route_apache_access</code></td><td><code>pipeline_apache_clf</code></td><td>HEC</td><td><code>idx_web</code></td></tr>
+    <tr><td>Apache Error Log</td><td><code>route_apache_error</code></td><td><code>pipeline_syslog_enrichment</code></td><td>HEC</td><td><code>idx_web</code></td></tr>
+    <tr><td>SSH Auth Log</td><td><code>route_ssh_auth</code></td><td><code>pipeline_security_auth</code></td><td>S2S</td><td><code>idx_security</code></td></tr>
+    <tr><td>Docker/HA Logs</td><td><code>route_docker</code></td><td><code>pipeline_docker_json</code></td><td>HEC</td><td><code>idx_containers</code></td></tr>
+    <tr><td>Mosquitto Logs</td><td><code>route_docker</code></td><td><code>pipeline_docker_json</code></td><td>HEC</td><td><code>idx_containers</code></td></tr>
+    <tr><td>Systemd Journal</td><td><code>route_journal</code></td><td><code>pipeline_syslog_enrichment</code></td><td>S2S</td><td><code>idx_infrastructure</code></td></tr>
+    <tr><td>Samba Logs</td><td><code>route_samba</code></td><td><code>pipeline_generic_passthrough</code></td><td>S2S</td><td><code>idx_infrastructure</code></td></tr>
+    <tr><td>Sonstige (Default)</td><td><code>route_default</code></td><td><code>pipeline_generic_passthrough</code></td><td>HEC</td><td><code>main</code></td></tr>
+</table>
+
+<!-- 3. Sourcetype-Zuordnung -->
+<h2 id="sourcetype-zuordnung">3. Sourcetype-Zuordnung</h2>
+<p>
+    Sourcetypes bestimmen, wie Splunk die eingehenden Daten parsed und indiziert.
+    Die folgende Zuordnung wird ueber die Quellen-Konfiguration in Cribl oder ueber Splunk <code>props.conf</code> gesteuert:
+</p>
+
+<table>
+    <tr><th>Quelle</th><th>Sourcetype</th><th>Beschreibung</th></tr>
+    <tr><td>Apache Access Log</td><td><code>access_combined</code></td><td>Apache Combined Log Format (Splunk-Standard)</td></tr>
+    <tr><td>Apache Error Log</td><td><code>apache:error</code></td><td>Apache Error Log Format</td></tr>
+    <tr><td>SSH Auth Log</td><td><code>linux_secure</code></td><td>Linux-Authentifizierungslogs (Splunk TA Standard)</td></tr>
+    <tr><td>Docker/HA Logs</td><td><code>docker:json</code></td><td>Docker JSON Log Format</td></tr>
+    <tr><td>Mosquitto Logs</td><td><code>mosquitto</code></td><td>Mosquitto MQTT Broker Logs</td></tr>
+    <tr><td>Systemd Journal</td><td><code>syslog</code></td><td>Standard-Syslog-Format</td></tr>
+    <tr><td>Samba Logs</td><td><code>samba</code></td><td>Samba/SMB Server Logs</td></tr>
+    <tr><td>Boot Logs</td><td><code>linux:boot</code></td><td>Linux Boot Messages</td></tr>
+    <tr><td>CUPS Logs</td><td><code>cups:access</code></td><td>CUPS Druckserver Logs</td></tr>
+    <tr><td>DNSmasq Logs</td><td><code>dnsmasq</code></td><td>DNSmasq DNS/DHCP Logs</td></tr>
+    <tr><td>dpkg Logs</td><td><code>dpkg</code></td><td>Debian Paketmanager Logs</td></tr>
+    <tr><td>Tor Logs</td><td><code>tor</code></td><td>Tor Service Logs</td></tr>
+</table>
+
+<div class="info">
+    <strong>Best Practice:</strong> Die Sourcetypes orientieren sich an den Splunk TA-Standards
+    (Technology Add-ons), um maximale Kompatibilitaet mit bestehenden Splunk-Apps und
+    Dashboards sicherzustellen. Insbesondere <code>linux_secure</code> ist kompatibel mit
+    dem Splunk Add-on for Unix and Linux.
+</div>
+
+<!-- 4. Verifikation -->
+<h2 id="verifikation">4. Verifikation der Datenlieferung</h2>
+<p>
+    Nach der vollstaendigen Konfiguration von Cribl und Splunk muss die Datenlieferung
+    end-to-end verifiziert werden.
+</p>
+
+<h3>4.1 Schritt-fuer-Schritt-Verifikation</h3>
+<ol>
+    <li><strong>Cribl-seitig:</strong> Im Cribl-UI unter <em>Monitoring &rarr; Destinations</em> pruefen,
+        ob Events an beide Destinations (HEC und S2S) geliefert werden. Die Metriken
+        <code>events_out</code> und <code>bytes_out</code> muessen steigen.</li>
+    <li><strong>Splunk-seitig:</strong> In Splunk Web die folgenden Searches ausfuehren (siehe unten).</li>
+    <li><strong>Latenz pruefen:</strong> Die Zeit zwischen Event-Erzeugung und Verfuegbarkeit in Splunk
+        sollte unter 30 Sekunden liegen (Near-Realtime).</li>
+    <li><strong>Feld-Extraktion pruefen:</strong> In Splunk pruefen, ob die von Cribl extrahierten
+        Felder korrekt als indizierte Felder verfuegbar sind.</li>
+</ol>
+
+<h3>4.2 Verifikations-Checkliste</h3>
+<ul class="checklist">
+    <li>HEC-Events erscheinen in Splunk (mindestens 1 Event pro Quelltyp)</li>
+    <li>S2S-Events erscheinen in Splunk (mindestens 1 Event pro Quelltyp)</li>
+    <li>Alle Indexes enthalten Daten (idx_web, idx_security, idx_infrastructure, idx_containers)</li>
+    <li>Sourcetypes sind korrekt zugeordnet</li>
+    <li>Timestamps sind korrekt (keine Zeitverschiebung)</li>
+    <li>Cribl-Metadaten-Felder (cribl_host, cribl_pipeline) sind in Splunk suchbar</li>
+    <li>MITRE ATT&amp;CK-Felder sind bei Security-Events vorhanden</li>
+    <li>Numerische Felder (status, bytes) sind als Zahlen erkennbar</li>
+</ul>
+
+<!-- 5. Search-Beispiele -->
+<h2 id="search-beispiele">5. Splunk Search Beispiele</h2>
+
+<h3>5.1 Apache Access Logs</h3>
+<pre><code>index=idx_web sourcetype=access_combined
+| stats count by status, method
+| sort -count</code></pre>
+
+<pre><code>index=idx_web sourcetype=access_combined status>=400
+| stats count by client_ip, status, uri
+| sort -count
+| head 20</code></pre>
+
+<h3>5.2 Apache Error Logs</h3>
+<pre><code>index=idx_web sourcetype="apache:error"
+| stats count by syslog_program, syslog_host
+| sort -count</code></pre>
+
+<h3>5.3 SSH-Authentifizierung (Security)</h3>
+<pre><code>index=idx_security sourcetype=linux_secure auth_action=failed_login
+| stats count by src_ip, failed_user
+| sort -count
+| head 20</code></pre>
+
+<pre><code># MITRE ATT&amp;CK-annotierte Events
+index=idx_security mitre_technique_id=T1110
+| stats count by src_ip, mitre_technique_name, mitre_tactic
+| sort -count</code></pre>
+
+<pre><code># Erfolgreiche Logins
+index=idx_security sourcetype=linux_secure auth_action=successful_login
+| table _time, accepted_user, src_ip, auth_method</code></pre>
+
+<h3>5.4 Docker/Home-Assistant Logs</h3>
+<pre><code>index=idx_containers sourcetype="docker:json"
+| stats count by log_level, container_id
+| sort -count</code></pre>
+
+<pre><code>index=idx_containers sourcetype="docker:json" log_level=ERROR
+| table _time, container_id, message</code></pre>
+
+<h3>5.5 Systemd Journal</h3>
+<pre><code>index=idx_infrastructure sourcetype=syslog
+| stats count by syslog_program
+| sort -count
+| head 20</code></pre>
+
+<h3>5.6 Samba Logs</h3>
+<pre><code>index=idx_infrastructure sourcetype=samba
+| stats count by host
+| sort -count</code></pre>
+
+<h3>5.7 Cribl-Herkunftspruefung (uebergreifend)</h3>
+<pre><code># Alle Events, die von Cribl verarbeitet wurden
+index=* cribl_pipeline=*
+| stats count by cribl_pipeline, index
+| sort -count</code></pre>
+
+<pre><code># Durchsatz pro Pipeline in den letzten 24 Stunden
+index=* cribl_pipeline=*
+| timechart span=1h count by cribl_pipeline</code></pre>
+
+<!-- 6. Vergleich Cribl vs. UF -->
+<h2 id="vergleich-uf">6. Vergleich: Cribl vs. Splunk Universal Forwarder</h2>
+
+<table>
+    <tr><th>Kriterium</th><th>Cribl Stream + Edge</th><th>Splunk Universal Forwarder</th></tr>
+    <tr><td>Datenverarbeitung</td><td>Volle Pipeline-Verarbeitung (Parsing, Anreicherung, Filterung) vor der Zustellung</td><td>Minimal: Nur Weiterleitung, Parsing erfolgt auf dem Indexer</td></tr>
+    <tr><td>Datenreduktion</td><td>Ja (Sampling, Aggregation, Suppression moeglich)</td><td>Nein (alle Daten werden weitergeleitet)</td></tr>
+    <tr><td>Routing</td><td>Flexible Routing-Regeln, mehrere Destinations pro Event</td><td>Festes Routing an konfigurierte Indexer</td></tr>
+    <tr><td>Format-Unterstuetzung</td><td>HEC, S2S, Kafka, S3, Azure, und weitere</td><td>Nur S2S an Splunk-Indexer</td></tr>
+    <tr><td>Vendor Lock-in</td><td>Gering (Daten koennen an verschiedene Ziele geliefert werden)</td><td>Hoch (nur Splunk als Ziel)</td></tr>
+    <tr><td>Lizenzierung</td><td>Eigene Lizenz (Cribl), reduziert Splunk-Lizenzvolumen durch Datenreduktion</td><td>Kostenfrei, aber gesamtes Datenvolumen zaehlt zur Splunk-Lizenz</td></tr>
+    <tr><td>MITRE-Anreicherung</td><td>Ja (in Pipelines konfigurierbar)</td><td>Nein (erst in Splunk Enterprise Security)</td></tr>
+    <tr><td>Edge-Deployment</td><td>Cribl Edge: Leichtgewichtiger Agent fuer Endpoints</td><td>UF: Etablierter Agent, breite Plattformunterstuetzung</td></tr>
+    <tr><td>Management</td><td>Zentrale UI (Cribl Stream), Fleet Management fuer Edge Nodes</td><td>Deployment Server, Splunk Cloud Gateway</td></tr>
+    <tr><td>Ressourcenverbrauch</td><td>Stream: Mittel (Server). Edge: Gering (Agent)</td><td>Gering (Agent)</td></tr>
+</table>
+
+<div class="success">
+    <strong>Fazit:</strong> Cribl Stream bietet im Vergleich zum Universal Forwarder deutliche Vorteile
+    in Bezug auf Datenverarbeitung, Flexibilitaet und Kostenoptimierung. Fuer eine regulierte Bank
+    ist insbesondere die Faehigkeit zur Datenanreicherung (MITRE ATT&amp;CK) und die Reduktion des
+    Splunk-Lizenzvolumens relevant.
+</div>
+
+<!-- 7. Migration -->
+<h2 id="migration">7. Migration von bestehenden UF-Installationen</h2>
+
+<h3>7.1 Migrationsstrategie</h3>
+<p>
+    Die Migration von bestehenden Splunk Universal Forwarders (UF) zu Cribl Edge erfolgt schrittweise
+    nach dem Blue-Green-Prinzip:
+</p>
+
+<ol>
+    <li><strong>Phase 1: Parallelbetrieb</strong>
+        <ul>
+            <li>Cribl Edge wird neben dem bestehenden UF auf dem gleichen Host installiert</li>
+            <li>Beide Agenten senden Daten an Splunk (Duplikation beabsichtigt)</li>
+            <li>Verifikation: Daten in Splunk vergleichen (Vollstaendigkeit, Latenz, Feldzuordnung)</li>
+        </ul>
+    </li>
+    <li><strong>Phase 2: Validierung</strong>
+        <ul>
+            <li>Mindestens 7 Tage Parallelbetrieb</li>
+            <li>Automatisierte Vergleichssuchen in Splunk (Event-Counts, Feld-Coverage)</li>
+            <li>Abnahme durch Security- und Betriebsteam</li>
+        </ul>
+    </li>
+    <li><strong>Phase 3: Umschaltung</strong>
+        <ul>
+            <li>UF wird deaktiviert (nicht sofort deinstalliert)</li>
+            <li>Cribl Edge uebernimmt vollstaendig</li>
+            <li>Monitoring der Datenlieferung fuer 48 Stunden</li>
+        </ul>
+    </li>
+    <li><strong>Phase 4: Bereinigung</strong>
+        <ul>
+            <li>UF wird deinstalliert</li>
+            <li>Deployment-Server-Konfiguration bereinigt</li>
+            <li>Dokumentation aktualisiert</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>7.2 Mapping: UF-Konfiguration zu Cribl</h3>
+<table>
+    <tr><th>UF-Konfiguration</th><th>Cribl-Aequivalent</th><th>Hinweis</th></tr>
+    <tr><td><code>inputs.conf</code> (monitor://)</td><td>File Monitor Source</td><td>Pfade 1:1 uebernehmen</td></tr>
+    <tr><td><code>outputs.conf</code></td><td>Destination (HEC/S2S)</td><td>Ziel-Server uebernehmen</td></tr>
+    <tr><td><code>props.conf</code> (Sourcetype)</td><td>Route + Pipeline</td><td>Sourcetype in Cribl setzen</td></tr>
+    <tr><td><code>transforms.conf</code></td><td>Pipeline Functions</td><td>Regex in Cribl-Functions uebersetzen</td></tr>
+    <tr><td><code>serverclass.conf</code></td><td>Fleet Management</td><td>Gruppen und Policies migrieren</td></tr>
+</table>
+
+<h3>7.3 Verifikations-Search fuer Migration</h3>
+<pre><code># Event-Count-Vergleich: UF vs. Cribl (letzten 24h)
+index=* host=migrierter_host
+| eval source_system=if(isnotnull(cribl_pipeline),"Cribl","UF")
+| stats count by source_system, sourcetype
+| sort sourcetype</code></pre>
+
+<div class="warning">
+    <strong>Wichtig:</strong> Waehrend der Migrationsphase werden Daten doppelt indiziert, was sich auf
+    die Splunk-Lizenz auswirkt. Die Phase 1 und 2 sollten daher zeitlich begrenzt sein und vorab mit
+    dem Splunk-Lizenzmanagement abgestimmt werden.
+</div>
+
+<div class="nav">
+    <a href="07-pipelines-routen.html">&larr; 07 - Pipelines und Routen</a>
+    <a href="09-betriebshandbuch.html">09 - Betriebshandbuch &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    Regulierte Umgebung: Deutsche Bankenaufsicht (BaFin) &ndash; MaRisk / BAIT / DORA
+</div>
+
+</body>
+</html>

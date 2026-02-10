@@ -1,0 +1,25 @@
+{
+  "id": "pipeline_generic_passthrough",
+  "conf": {
+    "asyncFuncTimeout": 1000,
+    "functions": [
+      {
+        "id": "comment",
+        "filter": "true",
+        "conf": {
+          "comment": "Generic Passthrough Pipeline - Minimal processing, adds cribl_host and cribl_pipeline metadata for traceability"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "conf": {
+          "add": [
+            { "name": "cribl_host", "value": "C.os.hostname()" },
+            { "name": "cribl_pipeline", "value": "'pipeline_generic_passthrough'" }
+          ]
+        }
+      }
+    ]
+  }
+}

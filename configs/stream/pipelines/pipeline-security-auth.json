@@ -1,0 +1,86 @@
+{
+  "id": "pipeline_security_auth",
+  "conf": {
+    "asyncFuncTimeout": 1000,
+    "functions": [
+      {
+        "id": "comment",
+        "filter": "true",
+        "conf": {
+          "comment": "SSH/Auth Security Pipeline - Parses auth.log events, tags failed logins, adds MITRE ATT&CK annotations (T1110 Brute Force)"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "conf": {
+          "add": [
+            { "name": "cribl_host", "value": "C.os.hostname()" },
+            { "name": "cribl_environment", "value": "'production'" },
+            { "name": "cribl_pipeline", "value": "'pipeline_security_auth'" }
+          ]
+        }
+      },
+      {
+        "id": "regex_extract",
+        "filter": "true",
+        "conf": {
+          "regex": "/^(?<auth_timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<auth_host>\\S+)\\s+(?<auth_program>[^\\[:\\s]+)(?:\\[(?<auth_pid>\\d+)\\])?:?\\s+(?<auth_message>.*)/",
+          "fieldName": "_raw"
+        }
+      },
+      {
+        "id": "regex_extract",
+        "filter": "auth_message && /Failed password/.test(auth_message)",
+        "conf": {
+          "regex": "/Failed password for (?:invalid user )?(?<failed_user>\\S+) from (?<src_ip>[\\d.]+) port (?<src_port>\\d+)/",
+          "fieldName": "auth_message"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "failed_user",
+        "conf": {
+          "add": [
+            { "name": "auth_action", "value": "'failed_login'" },
+            { "name": "security_tag", "value": "'authentication_failure'" },
+            { "name": "mitre_technique_id", "value": "'T1110'" },
+            { "name": "mitre_technique_name", "value": "'Brute Force'" },
+            { "name": "mitre_tactic", "value": "'Credential Access'" }
+          ]
+        }
+      },
+      {
+        "id": "regex_extract",
+        "filter": "auth_message && /Accepted/.test(auth_message)",
+        "conf": {
+          "regex": "/Accepted (?<auth_method>\\S+) for (?<accepted_user>\\S+) from (?<src_ip>[\\d.]+) port (?<src_port>\\d+)/",
+          "fieldName": "auth_message"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "accepted_user",
+        "conf": {
+          "add": [
+            { "name": "auth_action", "value": "'successful_login'" },
+            { "name": "security_tag", "value": "'authentication_success'" }
+          ]
+        }
+      },
+      {
+        "id": "regex_extract",
+        "filter": "auth_message && /session opened/.test(auth_message)",
+        "conf": {
+          "regex": "/session opened for user (?<session_user>\\S+)/",
+          "fieldName": "auth_message"
+        }
+      },
+      {
+        "id": "auto_timestamp",
+        "filter": "auth_timestamp",
+        "conf": {}
+      }
+    ]
+  }
+}

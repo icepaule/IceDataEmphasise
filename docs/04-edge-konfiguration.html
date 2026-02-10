@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cribl Edge Konfiguration - IceDataEmphasise ITSO-Dokumentation</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Cribl Edge Konfiguration</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Autor: IceDataEmphasise Team</span>
+        <span>Klassifikation: INTERN</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr>
+        <th>Version</th>
+        <th>Datum</th>
+        <th>Autor</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>1.0</td>
+        <td>2026-02-10</td>
+        <td>IceDataEmphasise Team</td>
+        <td>Initiale Erstellung der Edge-Konfigurationsdokumentation</td>
+    </tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#modi">Managed Edge vs. Standalone Edge</a></li>
+    <li><a href="#fleet">Fleet-Zuweisung</a></li>
+    <li><a href="#quellen">Edge-spezifische Quellen-Konfiguration</a></li>
+    <li><a href="#windows">Windows Edge Deployment</a></li>
+    <li><a href="#monitoring">Edge Health Monitoring</a></li>
+    <li><a href="#troubleshooting">Troubleshooting Edge-Verbindung</a></li>
+</ol>
+
+<!-- 1. Managed vs. Standalone -->
+<h2 id="modi">1. Managed Edge vs. Standalone Edge</h2>
+
+<h3>1.1 Betriebsmodi</h3>
+<table>
+    <tr>
+        <th>Eigenschaft</th>
+        <th>Managed Edge</th>
+        <th>Standalone Edge</th>
+    </tr>
+    <tr>
+        <td>Konfigurationsmanagement</td>
+        <td>Zentral ueber Stream Leader</td>
+        <td>Lokal auf dem Edge Node</td>
+    </tr>
+    <tr>
+        <td>Verbindung zum Leader</td>
+        <td>Permanent (Port 4200)</td>
+        <td>Keine</td>
+    </tr>
+    <tr>
+        <td>Fleet-Zugehoerigkeit</td>
+        <td>Ja, verpflichtend</td>
+        <td>Nein</td>
+    </tr>
+    <tr>
+        <td>Konfigurationsaenderungen</td>
+        <td>Commit &amp; Deploy ueber Leader</td>
+        <td>Lokale Dateibearbeitung</td>
+    </tr>
+    <tr>
+        <td>Monitoring</td>
+        <td>Zentrales Dashboard in Stream</td>
+        <td>Nur lokal (CLI, lokale Metriken)</td>
+    </tr>
+    <tr>
+        <td>Einsatzgebiet</td>
+        <td>Produktivbetrieb mit vielen Nodes</td>
+        <td>Tests, isolierte Umgebungen</td>
+    </tr>
+</table>
+
+<h3>1.2 PoC-Entscheidung: Managed Edge</h3>
+<div class="success">
+    <strong>Entscheidung:</strong> Im PoC wird ausschliesslich der <strong>Managed-Edge-Modus</strong> verwendet.
+    Dies ermoeglicht die vollstaendige Evaluierung des Fleet Managements und entspricht dem geplanten
+    Produktivbetrieb.
+</div>
+
+<h3>1.3 Konfiguration des Managed-Edge-Modus</h3>
+<p>
+    Die Managed-Edge-Konfiguration wird vom Installationsskript <code>03-install-cribl-edge-linux.sh</code>
+    automatisch erstellt. Die zentrale Konfigurationsdatei:
+</p>
+<pre><code># /opt/cribl-edge/local/cribl/cribl.yml
+distributed:
+  mode: managed-edge
+  master:
+    host: "127.0.0.1"
+    port: 4200
+    tls:
+      disabled: true
+    authToken: ""</code></pre>
+
+<p>Zusaetzlich werden Umgebungsvariablen im systemd-Service gesetzt:</p>
+<pre><code># /etc/systemd/system/cribl-edge.service (Auszug)
+Environment=CRIBL_DIST_MODE=managed-edge
+Environment=CRIBL_DIST_MASTER_URL=tcp://127.0.0.1:4200</code></pre>
+
+<!-- 2. Fleet-Zuweisung -->
+<h2 id="fleet">2. Fleet-Zuweisung</h2>
+
+<h3>2.1 Fleet-Konzept</h3>
+<p>
+    Fleets sind logische Gruppen von Edge Nodes, die eine gemeinsame Konfiguration erhalten.
+    Jeder Edge Node wird genau einem Fleet zugewiesen. Die Fleet-Konfiguration umfasst:
+</p>
+<ul>
+    <li>Quellen (welche Logs werden gesammelt)</li>
+    <li>Pipelines (wie werden Events verarbeitet)</li>
+    <li>Routes (wohin werden Events weitergeleitet)</li>
+    <li>Systemeinstellungen (Logging, Metriken)</li>
+</ul>
+
+<h3>2.2 Definierte Fleets</h3>
+<table>
+    <tr>
+        <th>Fleet-ID</th>
+        <th>Beschreibung</th>
+        <th>Zielsysteme</th>
+        <th>Quellen-Typen</th>
+        <th>Status</th>
+    </tr>
+    <tr>
+        <td><code>nuc-linux</code></td>
+        <td>Linux Edge Nodes auf Intel NUC</td>
+        <td>NUC-Server (Debian 12+)</td>
+        <td>File Monitor (11x), Journald (1x)</td>
+        <td>Aktiv</td>
+    </tr>
+    <tr>
+        <td><code>windows-workstations</code></td>
+        <td>Windows-Arbeitsplaetze</td>
+        <td>Windows 10/11 PCs</td>
+        <td>Windows Event Log, File Monitor</td>
+        <td>Geplant</td>
+    </tr>
+</table>
+
+<h3>2.3 Fleet-Zuweisung in der Praxis</h3>
+<p>
+    Beim ersten Verbindungsaufbau wird ein neuer Edge Node im Stream Leader unter <em>Manage Edge Nodes</em>
+    als unverzugeordneter Node angezeigt. Die Zuweisung erfolgt manuell ueber die UI oder automatisch
+    ueber Tags in der Edge-Konfiguration.
+</p>
+
+<pre><code># Fleet-Zuweisung ueber die API
+curl -s -X PATCH "http://localhost:9000/api/v1/edge/nodes/&lt;NODE_ID&gt;" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"fleet": "nuc-linux"}'</code></pre>
+
+<!-- 3. Edge-spezifische Quellen -->
+<h2 id="quellen">3. Edge-spezifische Quellen-Konfiguration</h2>
+
+<h3>3.1 Linux Edge: Quellen-Uebersicht</h3>
+<p>
+    Die folgenden Quellen werden auf dem Linux Edge Node (Fleet: <code>nuc-linux</code>) konfiguriert.
+    Die detaillierte Beschreibung jeder Quelle findet sich im Dokument
+    <a href="05-quellen.html">05 - Quellen-Konfiguration</a>.
+</p>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Quellen-ID</th>
+        <th>Typ</th>
+        <th>Pfad / Quelle</th>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td><code>journald:systemd_journal</code></td>
+        <td>Journald</td>
+        <td><code>/run/log/journal</code></td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td><code>file_monitor:apache_access</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/apache2/access.log*</code></td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td><code>file_monitor:apache_error</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/apache2/error.log*</code></td>
+    </tr>
+    <tr>
+        <td>4</td>
+        <td><code>file_monitor:samba</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/samba/log.*</code></td>
+    </tr>
+    <tr>
+        <td>5</td>
+        <td><code>file_monitor:docker_ha</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/lib/docker/containers/*/*.log</code></td>
+    </tr>
+    <tr>
+        <td>6</td>
+        <td><code>file_monitor:mosquitto</code></td>
+        <td>File Monitor</td>
+        <td>Docker-Logs (gefiltert auf Mosquitto)</td>
+    </tr>
+    <tr>
+        <td>7</td>
+        <td><code>file_monitor:ssh_auth</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/auth.log</code></td>
+    </tr>
+    <tr>
+        <td>8</td>
+        <td><code>file_monitor:tor_logs</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/tor/*</code></td>
+    </tr>
+    <tr>
+        <td>9</td>
+        <td><code>file_monitor:dnsmasq</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/dnsmasq-tor.log</code></td>
+    </tr>
+    <tr>
+        <td>10</td>
+        <td><code>file_monitor:cups</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/cups/access_log</code></td>
+    </tr>
+    <tr>
+        <td>11</td>
+        <td><code>file_monitor:boot_logs</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/boot.log*</code></td>
+    </tr>
+    <tr>
+        <td>12</td>
+        <td><code>file_monitor:dpkg</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/dpkg.log*</code></td>
+    </tr>
+</table>
+
+<h3>3.2 Berechtigungen des Edge-Service-Users</h3>
+<p>
+    Der Edge-Prozess laeuft unter dem User <code>cribl</code>. Damit alle Quellen gelesen werden koennen,
+    sind folgende Gruppenzugehoerigkeiten und Capabilities konfiguriert:
+</p>
+
+<table>
+    <tr>
+        <th>Berechtigung</th>
+        <th>Typ</th>
+        <th>Zweck</th>
+    </tr>
+    <tr>
+        <td><code>systemd-journal</code></td>
+        <td>Supplementaere Gruppe</td>
+        <td>Zugriff auf systemd Journal (<code>/run/log/journal</code>)</td>
+    </tr>
+    <tr>
+        <td><code>adm</code></td>
+        <td>Supplementaere Gruppe</td>
+        <td>Lesen von <code>/var/log/</code> Dateien</td>
+    </tr>
+    <tr>
+        <td><code>docker</code></td>
+        <td>Supplementaere Gruppe</td>
+        <td>Zugriff auf Docker-Container-Logs</td>
+    </tr>
+    <tr>
+        <td><code>CAP_DAC_READ_SEARCH</code></td>
+        <td>Ambient Capability</td>
+        <td>Lesen von Dateien ohne Besitzer-Berechtigung</td>
+    </tr>
+    <tr>
+        <td><code>CAP_SYSLOG</code></td>
+        <td>Ambient Capability</td>
+        <td>Zugriff auf Kernel-/Syslog-Nachrichten</td>
+    </tr>
+</table>
+
+<!-- 4. Windows Edge -->
+<h2 id="windows">4. Windows Edge Deployment</h2>
+
+<h3>4.1 Uebersicht</h3>
+<p>
+    Fuer den Einsatz auf Windows-Arbeitsplaetzen ist ein separates Deployment ueber PowerShell geplant.
+    Die Skripte befinden sich im Verzeichnis <code>windows/</code>.
+</p>
+
+<div class="info">
+    <strong>Status:</strong> Das Windows Edge Deployment befindet sich in der Planungsphase. Die
+    grundlegende Infrastruktur (Fleet <code>windows-workstations</code>) ist im Stream Leader vorbereitet.
+</div>
+
+<h3>4.2 Geplante Windows-Quellen</h3>
+<table>
+    <tr>
+        <th>Quellen-Typ</th>
+        <th>Quelle</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>Windows Event Log</td>
+        <td>Security</td>
+        <td>Anmelde- und Sicherheitsereignisse</td>
+    </tr>
+    <tr>
+        <td>Windows Event Log</td>
+        <td>System</td>
+        <td>System- und Dienstereignisse</td>
+    </tr>
+    <tr>
+        <td>Windows Event Log</td>
+        <td>Application</td>
+        <td>Anwendungsereignisse</td>
+    </tr>
+    <tr>
+        <td>File Monitor</td>
+        <td>IIS-Logs</td>
+        <td>Webserver-Zugriffsprotokolle (falls vorhanden)</td>
+    </tr>
+</table>
+
+<h3>4.3 Geplanter Installationsablauf (Windows)</h3>
+<ol>
+    <li>PowerShell-Skript herunterladen (aus dem Repository oder ueber Netzlaufwerk)</li>
+    <li>Cribl Edge MSI/ZIP von <code>cdn.cribl.io</code> herunterladen</li>
+    <li>Installation als Windows-Service</li>
+    <li>Managed-Edge-Konfiguration mit Stream Leader URL</li>
+    <li>Service starten und Fleet-Registrierung pruefen</li>
+</ol>
+
+<pre><code># Geplantes PowerShell-Deployment (Entwurf)
+# .\Install-CriblEdge.ps1 -StreamLeaderUrl "tcp://&lt;tailscale-ip&gt;:4200" -Fleet "windows-workstations"</code></pre>
+
+<!-- 5. Health Monitoring -->
+<h2 id="monitoring">5. Edge Health Monitoring</h2>
+
+<h3>5.1 Monitoring ueber Stream UI</h3>
+<p>
+    Der Status aller Edge Nodes ist im Cribl Stream Dashboard unter <em>Manage Edge Nodes</em> einsehbar.
+    Folgende Informationen werden pro Node angezeigt:
+</p>
+
+<table>
+    <tr>
+        <th>Metrik</th>
+        <th>Beschreibung</th>
+        <th>Erwarteter Wert (PoC)</th>
+    </tr>
+    <tr>
+        <td>Status</td>
+        <td>Verbindungsstatus zum Leader</td>
+        <td>Connected (gruen)</td>
+    </tr>
+    <tr>
+        <td>Version</td>
+        <td>Installierte Cribl-Version</td>
+        <td>4.16.0</td>
+    </tr>
+    <tr>
+        <td>OS</td>
+        <td>Betriebssystem</td>
+        <td>Linux (Debian)</td>
+    </tr>
+    <tr>
+        <td>Events In</td>
+        <td>Eingehende Events pro Sekunde</td>
+        <td>Variiert nach Aktivitaet</td>
+    </tr>
+    <tr>
+        <td>Events Out</td>
+        <td>Weitergeleitete Events pro Sekunde</td>
+        <td>Entspricht Events In</td>
+    </tr>
+    <tr>
+        <td>CPU %</td>
+        <td>CPU-Auslastung des Edge-Prozesses</td>
+        <td>&lt; 5%</td>
+    </tr>
+    <tr>
+        <td>Memory</td>
+        <td>Speicherverbrauch</td>
+        <td>&lt; 500 MB</td>
+    </tr>
+    <tr>
+        <td>Uptime</td>
+        <td>Zeit seit letztem Start</td>
+        <td>Fortlaufend</td>
+    </tr>
+</table>
+
+<h3>5.2 Monitoring ueber die API</h3>
+<pre><code># Alle Edge Nodes abfragen
+curl -s -u admin:&lt;passwort&gt; http://localhost:9000/api/v1/edge/nodes | jq '.items[] | {
+  id: .id,
+  hostname: .hostname,
+  status: .connectionStatus,
+  version: .version,
+  os: .os,
+  uptime: .uptime
+}'</code></pre>
+
+<h3>5.3 Monitoring ueber systemd</h3>
+<pre><code># Service-Status pruefen
+systemctl status cribl-edge
+
+# Live-Logs verfolgen
+journalctl -fu cribl-edge
+
+# Letzten Neustart pruefen
+systemctl show cribl-edge --property=ActiveEnterTimestamp</code></pre>
+
+<h3>5.4 Alerting-Empfehlungen</h3>
+<div class="info">
+    <strong>Empfehlung:</strong> Fuer den Produktivbetrieb sollten folgende Alarme eingerichtet werden:
+    <ul>
+        <li>Edge Node nicht verbunden seit &gt; 5 Minuten</li>
+        <li>Edge-Service gestoppt (systemd inactive)</li>
+        <li>CPU-Auslastung &gt; 80% ueber 10 Minuten</li>
+        <li>Speicherverbrauch &gt; 1 GB</li>
+        <li>Events In = 0 ueber 15 Minuten (keine Logs werden gesammelt)</li>
+    </ul>
+</div>
+
+<!-- 6. Troubleshooting -->
+<h2 id="troubleshooting">6. Troubleshooting Edge-Verbindung</h2>
+
+<h3>6.1 Haeufige Probleme und Loesungen</h3>
+
+<table>
+    <tr>
+        <th>Problem</th>
+        <th>Symptom</th>
+        <th>Loesung</th>
+    </tr>
+    <tr>
+        <td>Edge verbindet sich nicht</td>
+        <td>Status in Stream UI: "Disconnected"</td>
+        <td>
+            1. Port 4200 pruefen: <code>ss -tlnp | grep 4200</code><br>
+            2. Edge-Logs pruefen: <code>journalctl -u cribl-edge -n 50</code><br>
+            3. Konfiguration pruefen: <code>cat /opt/cribl-edge/local/cribl/cribl.yml</code>
+        </td>
+    </tr>
+    <tr>
+        <td>Edge startet nicht</td>
+        <td><code>systemctl status cribl-edge</code> zeigt "failed"</td>
+        <td>
+            1. Berechtigungen pruefen: <code>ls -la /opt/cribl-edge/</code><br>
+            2. Port-Konflikt: <code>ss -tlnp | grep -E '4200|9420'</code><br>
+            3. Service-User existiert: <code>id cribl</code>
+        </td>
+    </tr>
+    <tr>
+        <td>Keine Events</td>
+        <td>Edge verbunden, aber Events In = 0</td>
+        <td>
+            1. Quellen-Konfiguration im Fleet pruefen<br>
+            2. Dateiberechtigungen: <code>sudo -u cribl cat /var/log/auth.log</code><br>
+            3. Gruppen pruefen: <code>id cribl</code> (adm, systemd-journal)
+        </td>
+    </tr>
+    <tr>
+        <td>Hoher Speicherverbrauch</td>
+        <td>RSS &gt; 1 GB</td>
+        <td>
+            1. Anzahl offener Dateien pruefen: <code>ls -la /proc/$(pgrep -f cribl-edge)/fd | wc -l</code><br>
+            2. Persistent Queue Groesse pruefen<br>
+            3. Edge-Neustart: <code>systemctl restart cribl-edge</code>
+        </td>
+    </tr>
+    <tr>
+        <td>TLS-Fehler</td>
+        <td>"TLS handshake failed" in Logs</td>
+        <td>
+            1. TLS-Konfiguration in <code>cribl.yml</code> pruefen<br>
+            2. Im PoC: <code>tls.disabled: true</code> verwenden<br>
+            3. Zertifikate pruefen: <code>openssl s_client -connect 127.0.0.1:4200</code>
+        </td>
+    </tr>
+</table>
+
+<h3>6.2 Diagnose-Befehle</h3>
+<pre><code># 1. Edge-Service-Status
+systemctl status cribl-edge
+
+# 2. Edge-Version und -Modus
+/opt/cribl-edge/bin/cribl version
+/opt/cribl-edge/bin/cribl mode
+
+# 3. Letzte 50 Log-Zeilen
+journalctl -u cribl-edge --no-pager -n 50
+
+# 4. Port-Pruefung (Leader Management Port)
+ss -tlnp | grep 4200
+
+# 5. Verbindung zum Leader testen
+curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9000/api/v1/health
+
+# 6. Dateiberechtigungen fuer den cribl-User pruefen
+sudo -u cribl test -r /var/log/auth.log && echo "OK" || echo "KEIN ZUGRIFF"
+sudo -u cribl test -r /run/log/journal && echo "OK" || echo "KEIN ZUGRIFF"
+
+# 7. Supplementaere Gruppen des Service-Users
+id cribl
+
+# 8. Capabilities pruefen
+getpcaps $(pgrep -f "cribl-edge") 2>/dev/null || echo "Prozess nicht gefunden"
+
+# 9. Diagnostics-Bundle erstellen
+/opt/cribl-edge/bin/cribl diag</code></pre>
+
+<h3>6.3 Neustart-Verfahren</h3>
+<pre><code># Sanfter Neustart (graceful)
+systemctl restart cribl-edge
+
+# Erzwungener Neustart (bei haengendem Prozess)
+systemctl kill cribl-edge
+systemctl start cribl-edge
+
+# Nach Konfigurationsaenderung: systemd neu laden
+systemctl daemon-reload
+systemctl restart cribl-edge</code></pre>
+
+<h3>6.4 Log-Analyse</h3>
+<pre><code># Nur Fehler anzeigen
+journalctl -u cribl-edge --no-pager -p err
+
+# Logs seit dem letzten Start
+journalctl -u cribl-edge --no-pager -b
+
+# Verbindungsereignisse filtern
+journalctl -u cribl-edge --no-pager | grep -i "connect\|register\|master"</code></pre>
+
+<div class="warning">
+    <strong>Eskalation:</strong> Sollte ein Problem mit den oben beschriebenen Schritten nicht loesbar sein,
+    erstellen Sie ein Diagnostics-Bundle mit <code>/opt/cribl-edge/bin/cribl diag</code> und kontaktieren
+    Sie den Cribl-Support oder pruefen Sie die <a href="https://cribl.io/community/">Cribl Community</a>.
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="03-stream-konfiguration.html">&larr; Zurueck: Stream Konfiguration</a>
+    <a href="05-quellen.html">Weiter: Quellen-Konfiguration &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise - ITSO-Dokumentation
+</div>
+
+</body>
+</html>

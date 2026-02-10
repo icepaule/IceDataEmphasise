@@ -1,0 +1,65 @@
+{
+  "id": "pipeline_docker_json",
+  "conf": {
+    "asyncFuncTimeout": 1000,
+    "functions": [
+      {
+        "id": "comment",
+        "filter": "true",
+        "conf": {
+          "comment": "Docker JSON Log Parser - Parses Docker JSON log format, extracts container_name, log level, and message body"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "conf": {
+          "add": [
+            { "name": "cribl_host", "value": "C.os.hostname()" },
+            { "name": "cribl_environment", "value": "'production'" },
+            { "name": "cribl_pipeline", "value": "'pipeline_docker_json'" }
+          ]
+        }
+      },
+      {
+        "id": "serde",
+        "filter": "true",
+        "conf": {
+          "mode": "extract",
+          "type": "json",
+          "srcField": "_raw"
+        }
+      },
+      {
+        "id": "regex_extract",
+        "filter": "source",
+        "conf": {
+          "regex": "/\\/containers\\/(?<container_id>[a-f0-9]{12})[a-f0-9]*\\//",
+          "fieldName": "source"
+        }
+      },
+      {
+        "id": "regex_extract",
+        "filter": "log",
+        "conf": {
+          "regex": "/^(?<log_timestamp>\\S+)\\s+(?<log_level>\\w+)\\s+(?<log_message>.*)/",
+          "fieldName": "log"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "log",
+        "conf": {
+          "add": [
+            { "name": "message", "value": "log_message || log" }
+          ]
+        }
+      },
+      {
+        "id": "auto_timestamp",
+        "filter": "time",
+        "conf": {}
+      }
+    ]
+  }
+}

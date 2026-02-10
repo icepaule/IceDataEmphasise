@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:docker_ha",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Docker container logs - Home Assistant and all containers",
+  "fileFilter": "*.log",
+  "path": "/var/lib/docker/containers/*/*.log",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

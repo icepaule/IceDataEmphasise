@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:apache_access",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Apache HTTP Server - access logs (Combined Log Format)",
+  "fileFilter": "access.log*",
+  "path": "/var/log/apache2/access.log*",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

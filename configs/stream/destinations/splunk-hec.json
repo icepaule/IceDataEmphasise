@@ -1,0 +1,13 @@
+{
+  "id": "splunk_hec",
+  "type": "splunk_hec",
+  "host": "${SPLUNK_HOST}",
+  "port": 8088,
+  "token": "${SPLUNK_HEC_TOKEN}",
+  "tls": { "disabled": false },
+  "compress": true,
+  "pqEnabled": true,
+  "pqMaxSize": "1GB",
+  "pqMaxFiles": 100,
+  "description": "Splunk HEC - HTTP Event Collector"
+}

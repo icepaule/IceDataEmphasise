@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:ssh_auth",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "SSH authentication log - login attempts and PAM events",
+  "fileFilter": "auth.log",
+  "path": "/var/log/auth.log",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

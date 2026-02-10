@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:dnsmasq",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "dnsmasq DNS/DHCP - Tor DNS resolver log",
+  "fileFilter": "dnsmasq-tor.log",
+  "path": "/var/log/dnsmasq-tor.log",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

@@ -1,0 +1,49 @@
+{
+  "id": "pipeline_apache_clf",
+  "conf": {
+    "asyncFuncTimeout": 1000,
+    "functions": [
+      {
+        "id": "comment",
+        "filter": "true",
+        "conf": {
+          "comment": "Apache Combined Log Format Parser - Extracts client_ip, method, uri, status, bytes, referrer, and user_agent"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "conf": {
+          "add": [
+            { "name": "cribl_host", "value": "C.os.hostname()" },
+            { "name": "cribl_environment", "value": "'production'" },
+            { "name": "cribl_pipeline", "value": "'pipeline_apache_clf'" }
+          ]
+        }
+      },
+      {
+        "id": "regex_extract",
+        "filter": "true",
+        "conf": {
+          "regex": "/^(?<client_ip>\\S+)\\s+\\S+\\s+(?<remote_user>\\S+)\\s+\\[(?<timestamp>[^\\]]+)\\]\\s+\"(?<method>\\S+)\\s+(?<uri>\\S+)\\s+(?<http_version>[^\"]+)\"\\s+(?<status>\\d{3})\\s+(?<bytes>\\S+)\\s+\"(?<referrer>[^\"]*)\"\\s+\"(?<user_agent>[^\"]*)\"/",
+          "fieldName": "_raw"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "status",
+        "conf": {
+          "add": [
+            { "name": "status", "value": "Number(status)" },
+            { "name": "bytes", "value": "bytes === '-' ? 0 : Number(bytes)" }
+          ]
+        }
+      },
+      {
+        "id": "auto_timestamp",
+        "filter": "timestamp",
+        "conf": {}
+      }
+    ]
+  }
+}

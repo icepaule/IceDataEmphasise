@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:samba",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Samba file server - all log files",
+  "fileFilter": "log.*",
+  "path": "/var/log/samba/log.*",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

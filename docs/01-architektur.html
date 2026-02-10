@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architekturuebersicht - IceDataEmphasise ITSO-Dokumentation</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Architekturuebersicht</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Autor: IceDataEmphasise Team</span>
+        <span>Klassifikation: INTERN</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr>
+        <th>Version</th>
+        <th>Datum</th>
+        <th>Autor</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>1.0</td>
+        <td>2026-02-10</td>
+        <td>IceDataEmphasise Team</td>
+        <td>Initiale Erstellung der Architekturuebersicht</td>
+    </tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#ziel">Systemuebersicht und Zielsetzung</a></li>
+    <li><a href="#komponenten">Komponentendiagramm</a></li>
+    <li><a href="#netzwerk">Netzwerktopologie</a></li>
+    <li><a href="#datenfluss">Datenfluss</a></li>
+    <li><a href="#sizing">Sizing und Ressourcenbedarf</a></li>
+    <li><a href="#lizenz">Lizenzmodell</a></li>
+    <li><a href="#raci">RACI-Matrix</a></li>
+</ol>
+
+<!-- 1. Systemuebersicht -->
+<h2 id="ziel">1. Systemuebersicht und Zielsetzung</h2>
+
+<h3>1.1 Projektziel</h3>
+<p>
+    Das Projekt <strong>IceDataEmphasise</strong> evaluiert <strong>Cribl Stream</strong> und <strong>Cribl Edge</strong>
+    als moderne Alternative zu Splunk Universal Forwardern (UF) fuer den Einsatz in einer regulierten
+    deutschen Bankumgebung. Ziel des Proof of Concept (PoC) ist die Validierung folgender Aspekte:
+</p>
+<ul>
+    <li>Zentrale Sammlung und Weiterleitung von Log-Daten an Splunk Enterprise</li>
+    <li>Unabhaengigkeit vom Splunk Universal Forwarder bei gleichbleibender Funktionalitaet</li>
+    <li>Daten-Enrichment und -Transformation in Echtzeit (Pipelines)</li>
+    <li>Skalierbare Architektur mit zentralem Management (Fleet Management)</li>
+    <li>Compliance-konforme Log-Verarbeitung gemaess bankaufsichtlicher Anforderungen</li>
+</ul>
+
+<h3>1.2 Warum Cribl statt Splunk Universal Forwarder?</h3>
+<table>
+    <tr>
+        <th>Kriterium</th>
+        <th>Splunk UF</th>
+        <th>Cribl Stream + Edge</th>
+    </tr>
+    <tr>
+        <td>Datentransformation</td>
+        <td>Begrenzt (props.conf/transforms.conf)</td>
+        <td>Vollstaendige Pipeline-Engine mit JavaScript</td>
+    </tr>
+    <tr>
+        <td>Routing</td>
+        <td>Nur zu Splunk-Indexern</td>
+        <td>Multi-Destination (Splunk, S3, Kafka, etc.)</td>
+    </tr>
+    <tr>
+        <td>Volumenreduktion</td>
+        <td>Nicht moeglich</td>
+        <td>Bis zu 50% durch Aggregation und Filterung</td>
+    </tr>
+    <tr>
+        <td>Quellen-Vielfalt</td>
+        <td>Datei-basiert, Syslog</td>
+        <td>Datei, Journald, Syslog, HTTP, Kafka, etc.</td>
+    </tr>
+    <tr>
+        <td>Zentrales Management</td>
+        <td>Deployment Server erforderlich</td>
+        <td>Integriertes Fleet Management</td>
+    </tr>
+    <tr>
+        <td>Lizenzkosten</td>
+        <td>Im Splunk-Lizenzvolumen</td>
+        <td>Free Tier: 1 TB/Tag, 100 Edge Nodes</td>
+    </tr>
+</table>
+
+<h3>1.3 Scope des PoC</h3>
+<p>
+    Der PoC wird auf einem Intel NUC durchgefuehrt, der gleichzeitig als Home-Assistant-Server dient.
+    Es werden 12 Log-Quellen ueber Cribl Edge gesammelt, durch Cribl Stream verarbeitet und an eine
+    externe Splunk-Instanz weitergeleitet.
+</p>
+
+<!-- 2. Komponentendiagramm -->
+<h2 id="komponenten">2. Komponentendiagramm</h2>
+
+<h3>2.1 Uebersicht der Systemkomponenten</h3>
+<pre><code>
+  +=========================================================================+
+  |                        Intel NUC (Debian Linux)                         |
+  |                                                                         |
+  |  +---------------------------+    +----------------------------------+  |
+  |  |     Cribl Edge            |    |        Cribl Stream              |  |
+  |  |     /opt/cribl-edge       |    |        /opt/cribl                |  |
+  |  |                           |    |                                  |  |
+  |  |  - File Monitor (11x)    |--->|  - Routes & Pipelines           |  |
+  |  |  - Journald (1x)         |    |  - Syslog Enrichment            |  |
+  |  |  - Managed-Edge Mode     |    |  - Apache CLF Parser            |  |
+  |  |                           |    |  - Fleet Management             |  |
+  |  |  Port: 4200 (Mgmt)       |    |  - Port: 9000 (UI/API)         |  |
+  |  +---------------------------+    |  - Port: 9420 (intern)          |  |
+  |                                   |  - Port: 4200 (Edge Mgmt)      |  |
+  |  +---------------------------+    |                                  |  |
+  |  |  Tailscale/Headscale      |    +---------------+------------------+  |
+  |  |  VPN-Overlay-Netzwerk     |                    |                     |
+  |  +---------------------------+                    |                     |
+  |                                                   |                     |
+  +===================================================|=====================+
+                                                      |
+                              +----------+------------+----------+
+                              |          |                       |
+                              v          v                       v
+                        +-----------+ +-----------+    +------------------+
+                        | Splunk HEC| | Splunk S2S|    | Windows Edge     |
+                        | Port 8088 | | Port 9997 |    | (geplant)        |
+                        +-----+-----+ +-----+-----+    +------------------+
+                              |              |
+                              v              v
+                      +---------------------------+
+                      |    Splunk Enterprise       |
+                      |    (externe Instanz)       |
+                      +---------------------------+
+</code></pre>
+
+<h3>2.2 Komponentenbeschreibung</h3>
+<table>
+    <tr>
+        <th>Komponente</th>
+        <th>Installationspfad</th>
+        <th>Funktion</th>
+        <th>Service-Name</th>
+    </tr>
+    <tr>
+        <td>Cribl Stream</td>
+        <td><code>/opt/cribl</code></td>
+        <td>Zentrale Verarbeitung, Routing, Fleet Management</td>
+        <td><code>cribl.service</code></td>
+    </tr>
+    <tr>
+        <td>Cribl Edge</td>
+        <td><code>/opt/cribl-edge</code></td>
+        <td>Log-Sammlung direkt auf dem Host</td>
+        <td><code>cribl-edge.service</code></td>
+    </tr>
+    <tr>
+        <td>Tailscale</td>
+        <td>Systempaket</td>
+        <td>VPN-Overlay fuer sicheren Remote-Zugriff</td>
+        <td><code>tailscaled.service</code></td>
+    </tr>
+</table>
+
+<!-- 3. Netzwerktopologie -->
+<h2 id="netzwerk">3. Netzwerktopologie</h2>
+
+<h3>3.1 Ports und Protokolle</h3>
+<table>
+    <tr>
+        <th>Port</th>
+        <th>Protokoll</th>
+        <th>Komponente</th>
+        <th>Richtung</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>9000</td>
+        <td>TCP/HTTPS</td>
+        <td>Cribl Stream</td>
+        <td>Eingehend</td>
+        <td>Web-UI und REST-API</td>
+    </tr>
+    <tr>
+        <td>9420</td>
+        <td>TCP</td>
+        <td>Cribl Stream</td>
+        <td>Intern</td>
+        <td>Interner Stream-Kommunikationsport</td>
+    </tr>
+    <tr>
+        <td>4200</td>
+        <td>TCP</td>
+        <td>Cribl Stream</td>
+        <td>Eingehend</td>
+        <td>Edge-Node-Management (Fleet)</td>
+    </tr>
+    <tr>
+        <td>8088</td>
+        <td>TCP/HTTPS</td>
+        <td>Splunk HEC</td>
+        <td>Ausgehend</td>
+        <td>HTTP Event Collector Destination</td>
+    </tr>
+    <tr>
+        <td>9997</td>
+        <td>TCP</td>
+        <td>Splunk S2S</td>
+        <td>Ausgehend</td>
+        <td>Splunk-to-Splunk natives Protokoll</td>
+    </tr>
+    <tr>
+        <td>514</td>
+        <td>TCP/UDP</td>
+        <td>Cribl Stream</td>
+        <td>Eingehend</td>
+        <td>Syslog-Empfang (optional)</td>
+    </tr>
+</table>
+
+<h3>3.2 Firewall-Regeln</h3>
+<div class="info">
+    <strong>Empfehlung:</strong> Der Zugriff auf Port 9000 (Cribl Stream UI) sollte ausschliesslich ueber
+    das Tailscale-VPN-Interface erfolgen. Siehe Installationshandbuch fuer iptables/ufw-Konfiguration.
+</div>
+
+<pre><code># Cribl Stream UI nur ueber Tailscale erlauben
+iptables -A INPUT -i tailscale0 -p tcp --dport 9000 -j ACCEPT
+iptables -A INPUT -p tcp --dport 9000 -j DROP
+
+# Edge Management (lokal oder ueber Tailscale)
+iptables -A INPUT -i lo -p tcp --dport 4200 -j ACCEPT
+iptables -A INPUT -i tailscale0 -p tcp --dport 4200 -j ACCEPT
+iptables -A INPUT -p tcp --dport 4200 -j DROP</code></pre>
+
+<!-- 4. Datenfluss -->
+<h2 id="datenfluss">4. Datenfluss</h2>
+
+<h3>4.1 End-to-End Datenflusspfad</h3>
+<pre><code>
+  Log-Quellen (12 Stueck)          Cribl Edge              Cribl Stream              Splunk
+  ========================    ==================    ==========================    ============
+
+  /var/log/auth.log       \                        +------------------------+
+  /var/log/apache2/*.log   \   +--------------+    | Routes                 |
+  /var/log/samba/log.*      -->| File Monitor |    |  - filter(source)      |    +---------+
+  /var/log/tor/*            /  | (11 Quellen) |--->|  - pipeline-zuordnung  |--->| Splunk  |
+  /var/log/cups/access_log /   +--------------+    +------------------------+    | HEC     |
+  /var/log/boot.log*      /                        | Pipelines              |    | :8088   |
+  /var/log/dpkg.log*     /     +--------------+    |  - syslog_enrichment   |    +---------+
+  /var/log/dnsmasq-tor.log     | Journald     |    |  - apache_clf          |
+  /var/lib/docker/**/*.log --->| (1 Quelle)   |--->|  - Eval (Metadaten)    |--->+---------+
+                               +--------------+    |  - Regex Extract       |    | Splunk  |
+                                                   |  - Auto Timestamp      |    | S2S     |
+  /run/log/journal ------->    Managed Edge        +------------------------+    | :9997   |
+                               tcp://127.0.0.1:4200                              +---------+
+</code></pre>
+
+<h3>4.2 Verarbeitungsschritte im Detail</h3>
+<ol>
+    <li><strong>Erfassung (Collection):</strong> Cribl Edge liest Log-Dateien ueber File Monitor und systemd Journal ueber die Journald-Quelle.</li>
+    <li><strong>Transport:</strong> Edge sendet Events ueber die interne Verbindung (Port 4200) an Cribl Stream.</li>
+    <li><strong>Routing:</strong> Die Route-Tabelle in Stream ordnet eingehende Events anhand von Filtern den passenden Pipelines zu.</li>
+    <li><strong>Transformation (Pipelines):</strong>
+        <ul>
+            <li><code>pipeline_syslog_enrichment</code> -- Hostname, Environment-Metadaten; Syslog-Felder-Extraktion</li>
+            <li><code>pipeline_apache_clf</code> -- Combined Log Format Parsing; Statuscode-/Bytes-Konvertierung</li>
+        </ul>
+    </li>
+    <li><strong>Ausgabe (Destinations):</strong> Verarbeitete Events werden parallel an Splunk HEC (Port 8088) und Splunk S2S (Port 9997) gesendet.</li>
+</ol>
+
+<h3>4.3 Persistent Queues</h3>
+<div class="info">
+    <strong>Hinweis:</strong> Beide Splunk-Destinations sind mit Persistent Queues (PQ) konfiguriert:
+    <code>pqMaxSize: 1GB</code>, <code>pqMaxFiles: 100</code>. Dies stellt sicher, dass bei einem
+    Ausfall der Splunk-Verbindung keine Daten verloren gehen.
+</div>
+
+<!-- 5. Sizing -->
+<h2 id="sizing">5. Sizing und Ressourcenbedarf</h2>
+
+<h3>5.1 Mindestanforderungen (PoC)</h3>
+<table>
+    <tr>
+        <th>Ressource</th>
+        <th>Mindestanforderung</th>
+        <th>Empfohlen (PoC)</th>
+        <th>Pruefung</th>
+    </tr>
+    <tr>
+        <td>Kernel</td>
+        <td>&gt;= 3.10</td>
+        <td>5.x oder hoeher</td>
+        <td><code>00-preflight-check.sh</code></td>
+    </tr>
+    <tr>
+        <td>CPU-Kerne</td>
+        <td>&gt;= 4</td>
+        <td>4-8 Kerne</td>
+        <td><code>00-preflight-check.sh</code></td>
+    </tr>
+    <tr>
+        <td>RAM</td>
+        <td>&gt;= 8 GB</td>
+        <td>16 GB</td>
+        <td><code>00-preflight-check.sh</code></td>
+    </tr>
+    <tr>
+        <td>Festplatte (<code>/opt</code>)</td>
+        <td>&gt;= 5 GB frei</td>
+        <td>20 GB frei</td>
+        <td><code>00-preflight-check.sh</code></td>
+    </tr>
+    <tr>
+        <td>Netzwerk</td>
+        <td>HTTPS zu cdn.cribl.io</td>
+        <td>+ Zugang zu Splunk-Host</td>
+        <td><code>00-preflight-check.sh</code></td>
+    </tr>
+</table>
+
+<h3>5.2 Ressourcenverteilung</h3>
+<table>
+    <tr>
+        <th>Komponente</th>
+        <th>CPU (geschaetzt)</th>
+        <th>RAM (geschaetzt)</th>
+        <th>Festplatte</th>
+    </tr>
+    <tr>
+        <td>Cribl Stream</td>
+        <td>1-2 Kerne</td>
+        <td>2-4 GB</td>
+        <td>~1 GB + PQ-Speicher</td>
+    </tr>
+    <tr>
+        <td>Cribl Edge</td>
+        <td>0.5-1 Kern</td>
+        <td>512 MB - 1 GB</td>
+        <td>~500 MB</td>
+    </tr>
+    <tr>
+        <td>Tailscale</td>
+        <td>minimal</td>
+        <td>~50 MB</td>
+        <td>~20 MB</td>
+    </tr>
+</table>
+
+<h3>5.3 Skalierungshinweise fuer Produktionsbetrieb</h3>
+<div class="warning">
+    <strong>Achtung:</strong> Die hier beschriebene Dimensionierung gilt ausschliesslich fuer den PoC-Betrieb.
+    Fuer einen produktiven Einsatz mit hoeherem Datenvolumen sind dedizierte Server, Worker Groups und ein
+    verteilter Cribl Stream Cluster erforderlich. Bitte konsultieren Sie die offizielle
+    <a href="https://docs.cribl.io/stream/scaling/">Cribl Sizing-Dokumentation</a>.
+</div>
+
+<!-- 6. Lizenzmodell -->
+<h2 id="lizenz">6. Lizenzmodell</h2>
+
+<h3>6.1 Cribl Free Tier</h3>
+<table>
+    <tr>
+        <th>Feature</th>
+        <th>Free Tier Limit</th>
+        <th>PoC-Nutzung</th>
+    </tr>
+    <tr>
+        <td>Datenvolumen (Stream)</td>
+        <td>1 TB / Tag</td>
+        <td>Weit unter dem Limit</td>
+    </tr>
+    <tr>
+        <td>Edge Nodes</td>
+        <td>100 Nodes</td>
+        <td>1-2 Nodes</td>
+    </tr>
+    <tr>
+        <td>Worker Processes</td>
+        <td>Einzelner Worker</td>
+        <td>Ausreichend</td>
+    </tr>
+    <tr>
+        <td>Fleet Management</td>
+        <td>Enthalten</td>
+        <td>Genutzt</td>
+    </tr>
+    <tr>
+        <td>Pipelines &amp; Routes</td>
+        <td>Unbegrenzt</td>
+        <td>2 Pipelines, 1 Route-Tabelle</td>
+    </tr>
+    <tr>
+        <td>Support</td>
+        <td>Community (Slack, Docs)</td>
+        <td>--</td>
+    </tr>
+</table>
+
+<h3>6.2 Upgrade-Pfade</h3>
+<p>Bei Uebergang in den Produktivbetrieb stehen folgende Lizenzoptionen zur Verfuegung:</p>
+<ul>
+    <li><strong>Cribl.Cloud Standard:</strong> SaaS-Variante mit verwalteter Infrastruktur</li>
+    <li><strong>Cribl Enterprise:</strong> On-Premise mit Multi-Worker-Gruppen, RBAC, SSO-Integration</li>
+    <li><strong>Cribl Enterprise (Hybrid):</strong> Kombination aus Cloud-Management und On-Premise-Workern</li>
+</ul>
+
+<!-- 7. RACI-Matrix -->
+<h2 id="raci">7. RACI-Matrix</h2>
+
+<div class="info">
+    <strong>Legende:</strong>
+    <strong>R</strong> = Responsible (fuehrt durch),
+    <strong>A</strong> = Accountable (genehmigt/verantwortet),
+    <strong>C</strong> = Consulted (wird befragt),
+    <strong>I</strong> = Informed (wird informiert)
+</div>
+
+<table class="raci">
+    <tr>
+        <th>Aufgabe / Aktivitaet</th>
+        <th>Infrastruktur-Team</th>
+        <th>Security-Team</th>
+        <th>Splunk-Admin</th>
+        <th>Projektleitung</th>
+        <th>Fachabteilung</th>
+    </tr>
+    <tr>
+        <td>PoC-Planung und Freigabe</td>
+        <td>C</td>
+        <td>C</td>
+        <td>C</td>
+        <td>A/R</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Server-Bereitstellung (NUC)</td>
+        <td>R</td>
+        <td>I</td>
+        <td>I</td>
+        <td>A</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Netzwerk/Firewall-Konfiguration</td>
+        <td>R</td>
+        <td>A</td>
+        <td>C</td>
+        <td>I</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Tailscale/Headscale-Einrichtung</td>
+        <td>R</td>
+        <td>C</td>
+        <td>I</td>
+        <td>I</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Cribl Stream Installation</td>
+        <td>R</td>
+        <td>C</td>
+        <td>C</td>
+        <td>A</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Cribl Edge Deployment</td>
+        <td>R</td>
+        <td>I</td>
+        <td>C</td>
+        <td>A</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Quellen-Konfiguration</td>
+        <td>R</td>
+        <td>C</td>
+        <td>C</td>
+        <td>I</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Pipeline-Entwicklung</td>
+        <td>R</td>
+        <td>C</td>
+        <td>C</td>
+        <td>I</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Splunk-Destination einrichten</td>
+        <td>C</td>
+        <td>I</td>
+        <td>R</td>
+        <td>A</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Sicherheitspruefung / Audit</td>
+        <td>C</td>
+        <td>A/R</td>
+        <td>C</td>
+        <td>I</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>PoC-Auswertung und Bericht</td>
+        <td>C</td>
+        <td>C</td>
+        <td>C</td>
+        <td>A/R</td>
+        <td>I</td>
+    </tr>
+    <tr>
+        <td>Go/No-Go-Entscheidung Produktion</td>
+        <td>C</td>
+        <td>C</td>
+        <td>C</td>
+        <td>R</td>
+        <td>A</td>
+    </tr>
+</table>
+
+<!-- Navigation -->
+<div class="nav">
+    <span></span>
+    <a href="02-installation.html">Weiter: Installationshandbuch &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise - ITSO-Dokumentation
+</div>
+
+</body>
+</html>

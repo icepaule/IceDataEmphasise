@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:dpkg",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Debian package manager - install/upgrade/remove log",
+  "fileFilter": "dpkg.log*",
+  "path": "/var/log/dpkg.log*",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installationshandbuch - IceDataEmphasise ITSO-Dokumentation</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Installationshandbuch</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Autor: IceDataEmphasise Team</span>
+        <span>Klassifikation: INTERN</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr>
+        <th>Version</th>
+        <th>Datum</th>
+        <th>Autor</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>1.0</td>
+        <td>2026-02-10</td>
+        <td>IceDataEmphasise Team</td>
+        <td>Initiale Erstellung des Installationshandbuchs</td>
+    </tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#voraussetzungen">Voraussetzungen</a></li>
+    <li><a href="#uebersicht">Installationsuebersicht</a></li>
+    <li><a href="#phase0">Phase 0: Repository klonen</a></li>
+    <li><a href="#phase1">Phase 1: Tailscale/Headscale</a></li>
+    <li><a href="#phase2">Phase 2: Cribl Stream</a></li>
+    <li><a href="#phase3">Phase 3: Cribl Edge</a></li>
+    <li><a href="#postinstall">Post-Installations-Pruefungen</a></li>
+    <li><a href="#rollback">Rollback-Verfahren</a></li>
+</ol>
+
+<!-- 1. Voraussetzungen -->
+<h2 id="voraussetzungen">1. Voraussetzungen</h2>
+
+<h3>1.1 Hardware-Anforderungen</h3>
+<table>
+    <tr>
+        <th>Ressource</th>
+        <th>Minimum</th>
+        <th>Empfohlen</th>
+    </tr>
+    <tr>
+        <td>Linux-Kernel</td>
+        <td>&gt;= 3.10</td>
+        <td>5.x oder hoeher</td>
+    </tr>
+    <tr>
+        <td>CPU-Kerne</td>
+        <td>4</td>
+        <td>8</td>
+    </tr>
+    <tr>
+        <td>Arbeitsspeicher (RAM)</td>
+        <td>8 GB</td>
+        <td>16 GB</td>
+    </tr>
+    <tr>
+        <td>Festplatte (<code>/opt</code>)</td>
+        <td>5 GB frei</td>
+        <td>20 GB frei</td>
+    </tr>
+</table>
+
+<h3>1.2 Software-Anforderungen</h3>
+<table>
+    <tr>
+        <th>Paket</th>
+        <th>Zweck</th>
+        <th>Pruefung</th>
+    </tr>
+    <tr>
+        <td><code>curl</code></td>
+        <td>HTTP-Downloads und API-Aufrufe</td>
+        <td><code>curl --version</code></td>
+    </tr>
+    <tr>
+        <td><code>tar</code></td>
+        <td>Entpacken der Cribl-Tarballs</td>
+        <td><code>tar --version</code></td>
+    </tr>
+    <tr>
+        <td><code>jq</code></td>
+        <td>JSON-Verarbeitung in Skripten</td>
+        <td><code>jq --version</code></td>
+    </tr>
+    <tr>
+        <td><code>openssl</code></td>
+        <td>TLS-Zertifikatspruefungen</td>
+        <td><code>openssl version</code></td>
+    </tr>
+    <tr>
+        <td><code>systemctl</code></td>
+        <td>Systemd-Service-Management</td>
+        <td><code>systemctl --version</code></td>
+    </tr>
+</table>
+
+<h3>1.3 Netzwerk-Voraussetzungen</h3>
+<ul class="checklist">
+    <li>HTTPS-Zugang zu <code>cdn.cribl.io</code> (Port 443) fuer den Download der Cribl-Pakete</li>
+    <li>HTTPS-Zugang zu <code>pkgs.tailscale.com</code> (Port 443) fuer Tailscale-Installation</li>
+    <li>Zugang zum Headscale-Server (URL in <code>.env</code> definiert)</li>
+    <li>Ausgehende Verbindung zum Splunk-Host auf Port 8088 (HEC) und 9997 (S2S)</li>
+    <li>Freie lokale Ports: 9000, 9420, 9997, 4200, 514</li>
+</ul>
+
+<h3>1.4 Berechtigungen</h3>
+<div class="warning">
+    <strong>Root-Zugriff erforderlich:</strong> Alle Installationsskripte muessen mit <code>sudo</code>
+    ausgefuehrt werden. Die Skripte pruefen dies automatisch und brechen mit einer Fehlermeldung ab,
+    falls sie ohne Root-Rechte gestartet werden.
+</div>
+
+<h3>1.5 Umgebungsvariablen (.env)</h3>
+<p>
+    Vor der Installation muss die Datei <code>.env</code> im Projektroot erstellt und konfiguriert werden.
+    Eine Vorlage befindet sich in <code>.env.example</code>.
+</p>
+<pre><code># Beispiel .env Konfiguration
+CRIBL_VERSION=4.16.0
+CRIBL_EDGE_HOME=/opt/cribl-edge
+CRIBL_SERVICE_USER=cribl
+CRIBL_SERVICE_GROUP=cribl
+CRIBL_EDGE_MGMT_PORT=4200
+CRIBL_STREAM_API_PORT=9000
+CRIBL_ADMIN_USER=admin
+CRIBL_ADMIN_PASSWORD=&lt;sicheres_passwort&gt;
+
+HEADSCALE_URL=https://&lt;headscale-server&gt;
+HEADSCALE_AUTH_KEY=&lt;pre-auth-key&gt;
+
+SPLUNK_HOST=&lt;splunk-host&gt;
+SPLUNK_HEC_PORT=8088
+SPLUNK_HEC_TOKEN=&lt;hec-token&gt;</code></pre>
+
+<!-- 2. Installationsuebersicht -->
+<h2 id="uebersicht">2. Installationsuebersicht</h2>
+
+<h3>2.1 Installationsphasen</h3>
+<table>
+    <tr>
+        <th>Phase</th>
+        <th>Skript</th>
+        <th>Beschreibung</th>
+        <th>Dauer (ca.)</th>
+    </tr>
+    <tr>
+        <td>0</td>
+        <td><code>git clone</code></td>
+        <td>Repository klonen</td>
+        <td>1 Min.</td>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td><code>01-install-tailscale.sh</code></td>
+        <td>Tailscale installieren und mit Headscale verbinden</td>
+        <td>3-5 Min.</td>
+    </tr>
+    <tr>
+        <td>2a</td>
+        <td><code>00-preflight-check.sh</code></td>
+        <td>Systemvoraussetzungen pruefen</td>
+        <td>1 Min.</td>
+    </tr>
+    <tr>
+        <td>2b</td>
+        <td><code>02-install-cribl-stream.sh</code></td>
+        <td>Cribl Stream installieren und starten</td>
+        <td>5-10 Min.</td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td><code>03-install-cribl-edge-linux.sh</code></td>
+        <td>Cribl Edge als Managed-Edge-Node installieren</td>
+        <td>5-10 Min.</td>
+    </tr>
+</table>
+
+<h3>2.2 Skriptverzeichnis-Struktur</h3>
+<pre><code>scripts/
+  00-preflight-check.sh          # Systemvoraussetzungen pruefen
+  01-install-tailscale.sh        # Tailscale + Headscale
+  02-install-cribl-stream.sh     # Cribl Stream Installation (geplant)
+  03-install-cribl-edge-linux.sh # Cribl Edge (Linux)
+  09-uninstall-cribl.sh          # Deinstallation (geplant)
+  lib/
+    common.sh                    # Gemeinsame Hilfsfunktionen
+    api-helpers.sh               # Cribl REST API Wrapper</code></pre>
+
+<div class="info">
+    <strong>Hinweis:</strong> Alle Skripte nutzen die gemeinsame Bibliothek <code>scripts/lib/common.sh</code>,
+    die Logging, Farbausgabe, Root-Pruefung, Netzwerk-Hilfsfunktionen und weitere Utilities bereitstellt.
+    Die API-Interaktion erfolgt ueber <code>scripts/lib/api-helpers.sh</code>.
+</div>
+
+<!-- 3. Phase 0 -->
+<h2 id="phase0">3. Phase 0: Repository klonen</h2>
+
+<pre><code># Repository klonen
+git clone &lt;repository-url&gt; IceDataEmphasise
+cd IceDataEmphasise
+
+# Umgebungsdatei erstellen
+cp .env.example .env
+# .env mit den korrekten Werten befuellen (siehe Abschnitt 1.5)
+nano .env</code></pre>
+
+<div class="warning">
+    <strong>Wichtig:</strong> Die Datei <code>.env</code> enthaelt sensible Zugangsdaten (Passwoerter, API-Tokens).
+    Sie ist in <code>.gitignore</code> eingetragen und darf niemals in das Repository eingecheckt werden.
+</div>
+
+<!-- 4. Phase 1 -->
+<h2 id="phase1">4. Phase 1: Tailscale/Headscale</h2>
+
+<h3>4.1 Zweck</h3>
+<p>
+    Tailscale stellt ein verschluesseltes VPN-Overlay-Netzwerk bereit, ueber das die Cribl Stream Web-UI
+    sicher erreichbar ist. Die Verbindung erfolgt zum selbstgehosteten Headscale-Koordinationsserver.
+</p>
+
+<h3>4.2 Ausfuehrung</h3>
+<pre><code># Skript: scripts/01-install-tailscale.sh
+sudo ./scripts/01-install-tailscale.sh</code></pre>
+
+<h3>4.3 Ablauf des Skripts</h3>
+<ol>
+    <li><strong>Distributions-Erkennung:</strong> Liest <code>/etc/os-release</code> aus, um die Distribution (Debian/Ubuntu) und den Codename (z.B. bookworm) zu bestimmen.</li>
+    <li><strong>Repository hinzufuegen:</strong> Fuegt das offizielle Tailscale APT-Repository hinzu, inkl. GPG-Schluessel unter <code>/usr/share/keyrings/tailscale-archive-keyring.gpg</code>.</li>
+    <li><strong>Paket installieren:</strong> Installiert das <code>tailscale</code>-Paket via <code>apt-get</code>.</li>
+    <li><strong>Daemon starten:</strong> Aktiviert und startet <code>tailscaled.service</code> via systemd.</li>
+    <li><strong>Headscale-Verbindung:</strong> Fuehrt <code>tailscale up --login-server &lt;HEADSCALE_URL&gt;</code> aus.
+        <ul>
+            <li>Mit <code>HEADSCALE_AUTH_KEY</code>: Automatische Registrierung</li>
+            <li>Ohne Auth-Key: Login-URL wird angezeigt, manuelle Freigabe in Headscale erforderlich</li>
+        </ul>
+    </li>
+    <li><strong>Verifikation:</strong> Zeigt den Tailscale-Status und die zugewiesene IPv4-Adresse an.</li>
+    <li><strong>Firewall-Empfehlungen:</strong> Gibt iptables/ufw-Regeln aus, um Port 9000 auf das Tailscale-Interface zu beschraenken.</li>
+</ol>
+
+<h3>4.4 Erwartete Ausgabe</h3>
+<pre><code>>>> Adding Tailscale package repository
+[OK]    GPG key installed to /usr/share/keyrings/tailscale-archive-keyring.gpg
+[OK]    APT source added
+[OK]    Package index updated
+>>> Installing Tailscale package
+[OK]    Tailscale package installed: 1.76.1
+>>> Starting tailscaled service
+[OK]    tailscaled is running
+>>> Connecting to Headscale
+[OK]    tailscale up completed
+>>> Verifying Tailscale connection
+[OK]    Tailscale IPv4 address: 100.64.x.x</code></pre>
+
+<!-- 5. Phase 2 -->
+<h2 id="phase2">5. Phase 2: Cribl Stream</h2>
+
+<h3>5.1 Preflight-Check</h3>
+<pre><code># Systemvoraussetzungen pruefen
+sudo ./scripts/00-preflight-check.sh</code></pre>
+
+<h3>5.2 Pruefliste des Preflight-Checks</h3>
+<p>Der Preflight-Check validiert folgende Punkte:</p>
+<table>
+    <tr>
+        <th>Pruefung</th>
+        <th>Kriterium</th>
+        <th>Methode</th>
+    </tr>
+    <tr>
+        <td>Kernel-Version</td>
+        <td>&gt;= 3.10</td>
+        <td><code>uname -r</code></td>
+    </tr>
+    <tr>
+        <td>CPU-Kerne</td>
+        <td>&gt;= 4</td>
+        <td><code>nproc</code></td>
+    </tr>
+    <tr>
+        <td>Verfuegbarer RAM</td>
+        <td>&gt;= 8 GB</td>
+        <td><code>/proc/meminfo (MemAvailable)</code></td>
+    </tr>
+    <tr>
+        <td>Freier Festplattenspeicher</td>
+        <td>&gt;= 5 GB auf <code>/opt</code></td>
+        <td><code>df -BG</code></td>
+    </tr>
+    <tr>
+        <td>Freie Ports</td>
+        <td>9000, 9420, 9997, 4200, 514</td>
+        <td><code>ss -tlnp</code></td>
+    </tr>
+    <tr>
+        <td>Netzwerk-Konnektivitaet</td>
+        <td>cdn.cribl.io (HTTPS), Splunk-Host</td>
+        <td><code>curl</code>, <code>check_port_open()</code></td>
+    </tr>
+    <tr>
+        <td>Installierte Pakete</td>
+        <td>curl, tar, jq, openssl</td>
+        <td><code>command -v</code></td>
+    </tr>
+</table>
+
+<div class="info">
+    <strong>Ergebnis:</strong> Am Ende des Preflight-Checks wird eine Zusammenfassungstabelle mit allen Pruefergebnissen
+    (PASS/FAIL) ausgegeben. Das Skript beendet sich mit Exit-Code 1, falls mindestens eine Pruefung fehlschlaegt.
+</div>
+
+<h3>5.3 Cribl Stream Installation</h3>
+<pre><code># Cribl Stream installieren (Skript 02)
+sudo ./scripts/02-install-cribl-stream.sh</code></pre>
+
+<h3>5.4 Erwarteter Ablauf</h3>
+<ol>
+    <li><strong>Download:</strong> Tarball von <code>cdn.cribl.io</code> herunterladen (Cribl Version aus <code>.env</code>)</li>
+    <li><strong>Extraktion:</strong> Entpacken nach <code>/opt/cribl</code></li>
+    <li><strong>Service-User:</strong> Benutzer <code>cribl</code> mit passender Gruppenzugehoerigkeit erstellen</li>
+    <li><strong>Eigentuemer setzen:</strong> <code>/opt/cribl</code> dem <code>cribl</code>-Benutzer zuweisen</li>
+    <li><strong>Systemd-Service:</strong> <code>cribl.service</code> erstellen, aktivieren und starten</li>
+    <li><strong>Warten auf Port 9000:</strong> Sicherstellen, dass die Web-UI erreichbar ist</li>
+    <li><strong>Initiale Konfiguration:</strong> Admin-Passwort setzen, API-Token generieren</li>
+</ol>
+
+<h3>5.5 Verifikation</h3>
+<pre><code># Service-Status pruefen
+systemctl status cribl
+
+# Web-UI Erreichbarkeit testen
+curl -s -o /dev/null -w '%{http_code}' http://localhost:9000
+
+# API Health-Check
+curl -s http://localhost:9000/api/v1/health | jq .</code></pre>
+
+<!-- 6. Phase 3 -->
+<h2 id="phase3">6. Phase 3: Cribl Edge</h2>
+
+<h3>6.1 Ausfuehrung</h3>
+<pre><code># Cribl Edge (Linux) installieren
+sudo ./scripts/03-install-cribl-edge-linux.sh</code></pre>
+
+<h3>6.2 Detaillierter Ablauf</h3>
+<p>Das Skript <code>03-install-cribl-edge-linux.sh</code> fuehrt folgende Schritte durch:</p>
+
+<ol>
+    <li><strong>Umgebung validieren:</strong>
+        <ul>
+            <li>Root-Rechte pruefen</li>
+            <li>Benoetigte Befehle vorhanden: <code>curl</code>, <code>tar</code>, <code>systemctl</code>, <code>id</code>, <code>getent</code></li>
+            <li>Alle erforderlichen Umgebungsvariablen gesetzt: <code>CRIBL_VERSION</code>, <code>CRIBL_EDGE_HOME</code>, <code>CRIBL_SERVICE_USER</code>, <code>CRIBL_SERVICE_GROUP</code>, <code>CRIBL_EDGE_MGMT_PORT</code></li>
+            <li>Service-User <code>cribl</code> existiert</li>
+        </ul>
+    </li>
+    <li><strong>Bestehende Installation pruefen:</strong> Falls bereits vorhanden, wird Benutzerbestaetigung eingeholt. Laufender Service wird gestoppt.</li>
+    <li><strong>Tarball herunterladen:</strong> Von <code>cdn.cribl.io</code>, oder gecachte Version unter <code>/tmp/</code> verwenden.</li>
+    <li><strong>Entpacken:</strong> Nach <code>/opt/cribl-edge</code> mit Backup bestehender lokaler Konfiguration.</li>
+    <li><strong>Managed-Edge konfigurieren:</strong> Schreibt <code>cribl.yml</code> mit <code>distributed.mode: managed-edge</code> und Master-Verbindung zu <code>127.0.0.1:4200</code>.</li>
+    <li><strong>Systemd-Service erstellen:</strong> <code>cribl-edge.service</code> mit:
+        <ul>
+            <li>Service-User/Group: <code>cribl</code></li>
+            <li>Supplementaere Gruppen: <code>systemd-journal</code>, <code>adm</code>, <code>docker</code> (falls vorhanden)</li>
+            <li>Capabilities: <code>CAP_DAC_READ_SEARCH</code>, <code>CAP_SYSLOG</code></li>
+            <li>Sicherheits-Hardening: <code>ProtectSystem=full</code>, <code>ProtectHome=true</code></li>
+            <li>Limits: <code>LimitNOFILE=65536</code>, <code>LimitNPROC=8192</code></li>
+        </ul>
+    </li>
+    <li><strong>Service starten:</strong> Aktivieren, starten und auf Registrierung beim Stream-Leader warten (Timeout: 90s).</li>
+    <li><strong>Verifikation:</strong> Binary-Check, Service-Status, Eigentuemer-Pruefung, optionaler API-Check.</li>
+</ol>
+
+<h3>6.3 Managed-Edge Konfiguration</h3>
+<p>Die generierte Konfigurationsdatei <code>/opt/cribl-edge/local/cribl/cribl.yml</code>:</p>
+<pre><code>distributed:
+  mode: managed-edge
+  master:
+    host: "127.0.0.1"
+    port: 4200
+    tls:
+      disabled: true
+    authToken: ""</code></pre>
+
+<h3>6.4 Verifikation</h3>
+<pre><code># Service-Status
+systemctl status cribl-edge
+
+# Edge-Version pruefen
+/opt/cribl-edge/bin/cribl version
+
+# Edge-Registrierung im Stream pruefen (API)
+curl -s -u admin:&lt;passwort&gt; http://localhost:9000/api/v1/edge/nodes | jq .
+
+# Logs pruefen
+journalctl -fu cribl-edge</code></pre>
+
+<!-- 7. Post-Installations-Pruefungen -->
+<h2 id="postinstall">7. Post-Installations-Pruefungen</h2>
+
+<h3>7.1 Checkliste</h3>
+<ul class="checklist">
+    <li>Tailscale verbunden: <code>tailscale status</code> zeigt Verbindung an</li>
+    <li>Cribl Stream laeuft: <code>systemctl is-active cribl</code> gibt <code>active</code> zurueck</li>
+    <li>Cribl Edge laeuft: <code>systemctl is-active cribl-edge</code> gibt <code>active</code> zurueck</li>
+    <li>Stream Web-UI erreichbar: <code>http://&lt;tailscale-ip&gt;:9000</code> zeigt Login-Seite</li>
+    <li>Edge-Node im Stream sichtbar: Unter <em>Manage Edge Nodes</em> aufgelistet</li>
+    <li>Alle 5 Ports offen: 9000, 9420, 4200, 8088 (ausgehend), 9997 (ausgehend)</li>
+    <li>Splunk-Destinations erreichbar: Health-Check in der Stream-UI gruen</li>
+    <li>Keine Fehler in den Logs: <code>journalctl -u cribl --no-pager -n 50</code></li>
+</ul>
+
+<h3>7.2 Automatisierte Pruefung</h3>
+<pre><code># Schnellpruefung aller Services
+for svc in tailscaled cribl cribl-edge; do
+    printf "%-20s: %s\n" "$svc" "$(systemctl is-active $svc 2>/dev/null || echo 'nicht gefunden')"
+done
+
+# Port-Pruefung
+for port in 9000 9420 4200; do
+    if ss -tlnp | grep -q ":${port} "; then
+        echo "Port $port: OFFEN"
+    else
+        echo "Port $port: GESCHLOSSEN"
+    fi
+done</code></pre>
+
+<!-- 8. Rollback -->
+<h2 id="rollback">8. Rollback-Verfahren</h2>
+
+<h3>8.1 Cribl Edge deinstallieren</h3>
+<pre><code># Service stoppen und deaktivieren
+sudo systemctl stop cribl-edge
+sudo systemctl disable cribl-edge
+
+# Systemd-Unit entfernen
+sudo rm /etc/systemd/system/cribl-edge.service
+sudo systemctl daemon-reload
+
+# Installationsverzeichnis entfernen
+sudo rm -rf /opt/cribl-edge</code></pre>
+
+<h3>8.2 Cribl Stream deinstallieren</h3>
+<pre><code># Service stoppen und deaktivieren
+sudo systemctl stop cribl
+sudo systemctl disable cribl
+
+# Systemd-Unit entfernen (falls manuell erstellt)
+sudo rm /etc/systemd/system/cribl.service
+sudo systemctl daemon-reload
+
+# Installationsverzeichnis entfernen
+sudo rm -rf /opt/cribl</code></pre>
+
+<h3>8.3 Tailscale deinstallieren</h3>
+<pre><code># Verbindung trennen
+sudo tailscale down
+
+# Paket entfernen
+sudo apt-get remove --purge tailscale
+sudo rm /usr/share/keyrings/tailscale-archive-keyring.gpg
+sudo rm /etc/apt/sources.list.d/tailscale.list
+sudo apt-get update</code></pre>
+
+<h3>8.4 Vollstaendige Deinstallation</h3>
+<div class="info">
+    <strong>Geplant:</strong> Das Skript <code>scripts/09-uninstall-cribl.sh</code> wird eine vollstaendige
+    Deinstallation aller Komponenten in umgekehrter Installationsreihenfolge durchfuehren. Bis zur
+    Fertigstellung des Skripts koennen die oben beschriebenen manuellen Schritte verwendet werden.
+</div>
+
+<h3>8.5 Service-User bereinigen</h3>
+<pre><code># Nur ausfuehren, wenn der cribl-User nicht mehr benoetigt wird
+sudo userdel cribl
+sudo groupdel cribl 2>/dev/null || true</code></pre>
+
+<div class="warning">
+    <strong>Achtung:</strong> Vor jeder Deinstallation sollte ein Backup der Konfiguration erstellt werden,
+    insbesondere der Verzeichnisse <code>/opt/cribl/local/</code> und <code>/opt/cribl-edge/local/</code>.
+    Diese enthalten alle angepassten Einstellungen.
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="01-architektur.html">&larr; Zurueck: Architekturuebersicht</a>
+    <a href="03-stream-konfiguration.html">Weiter: Stream Konfiguration &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise - ITSO-Dokumentation
+</div>
+
+</body>
+</html>

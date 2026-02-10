@@ -1,0 +1,11 @@
+{
+  "id": "journald:systemd_journal",
+  "type": "journald",
+  "disabled": false,
+  "description": "Systemd journal - all system journal entries via journald",
+  "journalDPath": "/run/log/journal",
+  "unitFilter": [],
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

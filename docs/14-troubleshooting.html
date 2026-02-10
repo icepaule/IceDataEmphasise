@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceDataEmphasise - Troubleshooting</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>14 &ndash; Troubleshooting</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion des Troubleshooting-Handbuchs</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#diagnose">Diagnose-Werkzeuge</a></li>
+    <li><a href="#probleme">Haeufige Probleme und Loesungen</a></li>
+    <li><a href="#logdateien">Log-Dateien und ihre Bedeutung</a></li>
+    <li><a href="#diag-bundle">Cribl Diagnostic Bundle erstellen</a></li>
+    <li><a href="#support">Support-Kontakte und Community-Ressourcen</a></li>
+    <li><a href="#faq">FAQ (Haeufig gestellte Fragen)</a></li>
+</ol>
+
+<!-- 1. Diagnose-Werkzeuge -->
+<h2 id="diagnose">1. Diagnose-Werkzeuge</h2>
+
+<h3>1.1 Cribl CLI</h3>
+
+<p>Cribl Stream und Edge bieten ein Kommandozeilen-Interface fuer Diagnose und Management:</p>
+
+<pre><code># Cribl Stream CLI - Allgemeine Befehle
+/opt/cribl/bin/cribl status          # Service-Status anzeigen
+/opt/cribl/bin/cribl version         # Installierte Version pruefen
+/opt/cribl/bin/cribl mode            # Betriebsmodus (master/worker/single)
+/opt/cribl/bin/cribl start           # Service starten
+/opt/cribl/bin/cribl stop            # Service stoppen
+/opt/cribl/bin/cribl restart         # Service neustarten
+/opt/cribl/bin/cribl reload          # Konfiguration neu laden (ohne Restart)
+
+# Cribl Edge CLI
+/opt/cribl-edge/bin/cribl status
+/opt/cribl-edge/bin/cribl version
+/opt/cribl-edge/bin/cribl restart</code></pre>
+
+<h3>1.2 Cribl REST API</h3>
+
+<pre><code># Authentifizierung - Token holen
+TOKEN=$(curl -s -X POST http://localhost:9000/api/v1/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"username":"admin","password":"'"${CRIBL_ADMIN_PASSWORD}"'"}' | jq -r '.token')
+
+# Health Check
+curl -s http://localhost:9000/api/v1/health | jq .
+
+# System-Informationen
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/system/info | jq .
+
+# Inputs (Sources) auflisten
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/m/default/system/inputs | jq '.items[] | {id, type, disabled}'
+
+# Outputs (Destinations) auflisten
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/m/default/system/outputs | jq '.items[] | {id, type}'
+
+# Pipelines auflisten
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/m/default/pipelines | jq '.items[] | .id'
+
+# Routes auflisten
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/m/default/routes | jq '.items[] | {id, name, pipeline, output}'
+
+# Fleet / Edge-Gruppen auflisten
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/master/groups | jq '.items[] | .id'
+
+# Worker-Status
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/master/workers | jq .</code></pre>
+
+<h3>1.3 System-Diagnose-Kommandos</h3>
+
+<pre><code># Service-Status (systemd)
+sudo systemctl status cribl
+sudo systemctl status cribl-edge
+
+# Prozesse pruefen
+ps aux | grep cribl
+pgrep -af cribl
+
+# Port-Belegung pruefen
+sudo ss -tlnp | grep -E '9000|9997|8088|10080'
+
+# Netzwerk-Konnektivitaet
+ping -c 3 10.10.0.66                            # Splunk-Host
+nc -zv 10.10.0.66 8088                           # Splunk HEC Port
+nc -zv 10.10.0.66 9997                           # Splunk S2S Port
+curl -sk https://10.10.0.66:8088/services/collector/health  # HEC Health
+
+# Festplattenspeicher
+df -h /opt
+du -sh /opt/cribl/state/queues/ 2>/dev/null      # Queue-Groesse
+du -sh /opt/cribl/log/ 2>/dev/null               # Log-Groesse
+
+# Speicher und CPU
+free -h
+top -bn1 | grep cribl
+
+# Tailscale-Verbindung
+tailscale status
+tailscale ip -4</code></pre>
+
+<h3>1.4 Cribl Diagnostics (diag)</h3>
+
+<pre><code># Diagnose-Informationen sammeln
+/opt/cribl/bin/cribl diag
+
+# Ausgabe: Erstellt ein tar.gz im aktuellen Verzeichnis mit:
+# - Cribl-Logs
+# - Konfiguration (bereinigt)
+# - System-Informationen
+# - Metriken-Snapshot</code></pre>
+
+<!-- 2. Haeufige Probleme und Loesungen -->
+<h2 id="probleme">2. Haeufige Probleme und Loesungen</h2>
+
+<h3>2.1 Problemuebersicht</h3>
+
+<table>
+    <tr>
+        <th style="width: 22%">Problem</th>
+        <th style="width: 30%">Moegliche Ursachen</th>
+        <th style="width: 48%">Loesung</th>
+    </tr>
+    <tr>
+        <td><strong>Cribl Stream startet nicht</strong></td>
+        <td>
+            <ul>
+                <li>Port 9000 bereits belegt</li>
+                <li>Fehlende Berechtigungen</li>
+                <li>Korrupte Konfiguration</li>
+                <li>Zu wenig Speicher</li>
+            </ul>
+        </td>
+        <td>
+            <pre><code># Port pruefen
+sudo ss -tlnp | grep 9000
+
+# Berechtigungen pruefen
+ls -la /opt/cribl/
+sudo chown -R cribl:cribl /opt/cribl
+
+# Logs pruefen
+sudo journalctl -u cribl --since "5 min ago" --no-pager
+tail -50 /opt/cribl/log/cribl.log
+
+# Konfiguration validieren
+/opt/cribl/bin/cribl status
+
+# Speicher pruefen
+free -h</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Cribl Edge verbindet nicht mit Stream</strong></td>
+        <td>
+            <ul>
+                <li>Netzwerk/Firewall blockiert</li>
+                <li>Falsche Leader-URL</li>
+                <li>TLS-Zertifikatsproblem</li>
+                <li>Authentifizierungsfehler</li>
+            </ul>
+        </td>
+        <td>
+            <pre><code># Netzwerk pruefen
+nc -zv &lt;stream-host&gt; 9000
+curl -sk https://&lt;stream-host&gt;:9000/api/v1/health
+
+# Edge-Konfiguration pruefen
+cat /opt/cribl-edge/local/cribl/cribl.yml | grep -A5 "leader"
+
+# Edge-Logs pruefen
+tail -50 /opt/cribl-edge/log/cribl.log
+
+# Firewall pruefen
+sudo iptables -L -n | grep 9000
+
+# Edge neu registrieren
+sudo systemctl restart cribl-edge</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Keine Events in Splunk</strong></td>
+        <td>
+            <ul>
+                <li>Route falsch konfiguriert</li>
+                <li>Destination-Fehler</li>
+                <li>HEC-Token ungueltig</li>
+                <li>Splunk nicht erreichbar</li>
+                <li>Pipeline filtert alles</li>
+            </ul>
+        </td>
+        <td>
+            <pre><code># Splunk-Konnektivitaet pruefen
+curl -sk https://10.10.0.66:8088/services/collector/health
+
+# HEC-Token testen
+curl -sk -X POST \
+  https://10.10.0.66:8088/services/collector/event \
+  -H "Authorization: Splunk ${SPLUNK_HEC_TOKEN}" \
+  -d '{"event":"test","sourcetype":"manual"}'
+
+# Routes in Cribl pruefen (API)
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+  http://localhost:9000/api/v1/m/default/routes | jq .
+
+# Destinations pruefen
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+  http://localhost:9000/api/v1/m/default/system/outputs | jq .
+
+# Live-Datenfluss in Cribl UI:
+# Monitoring -> Sources -> Events anzeigen
+# Monitoring -> Destinations -> Events anzeigen</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Hohe CPU/RAM-Auslastung</strong></td>
+        <td>
+            <ul>
+                <li>Zu viele Worker fuer Hardware</li>
+                <li>Aufwendige Pipeline-Funktionen</li>
+                <li>Regex-Explosionen</li>
+                <li>Memory Leak</li>
+                <li>Sehr hohes Event-Volumen</li>
+            </ul>
+        </td>
+        <td>
+            <pre><code># Ressourcenverbrauch pruefen
+top -bn1 | head -20
+ps aux --sort=-%mem | grep cribl
+
+# Worker-Anzahl anpassen
+# Cribl UI -> Settings -> System -> Worker Processes
+# Empfehlung fuer NUC: 1-2 Worker
+
+# Pipeline-Performance analysieren
+# Cribl UI -> Monitoring -> Pipelines
+# -> Verarbeitungszeit pro Pipeline pruefen
+
+# Problematische Regex identifizieren
+# Cribl UI -> Pipelines -> betroffene Pipeline
+# -> Funktionen einzeln deaktivieren und testen
+
+# Bei Memory Leak: Service neustarten
+sudo systemctl restart cribl</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Persistent Queue voll</strong></td>
+        <td>
+            <ul>
+                <li>Destination nicht erreichbar</li>
+                <li>Splunk nimmt keine Daten an</li>
+                <li>Festplattenspeicher erschoepft</li>
+                <li>Queue-Limit zu niedrig</li>
+            </ul>
+        </td>
+        <td>
+            <pre><code># Queue-Status pruefen
+du -sh /opt/cribl/state/queues/*
+df -h /opt
+
+# Destination-Konnektivitaet pruefen
+nc -zv 10.10.0.66 8088
+nc -zv 10.10.0.66 9997
+
+# In Cribl UI:
+# Destinations -> betroffene Destination
+# -> Status und Fehlermeldungen pruefen
+
+# Queue-Limit temporaer erhoehen
+# Destinations -> Destination -> Queue Settings
+# -> Max Queue Size erhoehen
+
+# Alte Queue-Daten manuell bereinigen (Vorsicht!)
+# Nur wenn Daten nicht mehr benoetigt werden:
+# sudo rm -rf /opt/cribl/state/queues/&lt;dest-id&gt;/*</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>TLS-Fehler</strong></td>
+        <td>
+            <ul>
+                <li>Zertifikat abgelaufen</li>
+                <li>Falsche Trust Chain</li>
+                <li>Hostname stimmt nicht</li>
+                <li>Selbstsigniertes Zertifikat</li>
+            </ul>
+        </td>
+        <td>
+            <pre><code># Zertifikat pruefen
+openssl s_client -connect 10.10.0.66:8088 \
+  -servername 10.10.0.66 2>/dev/null | \
+  openssl x509 -noout -dates -subject
+
+# Zertifikats-Ablaufdatum pruefen
+echo | openssl s_client -connect 10.10.0.66:8088 \
+  2>/dev/null | openssl x509 -noout -enddate
+
+# Trust Chain pruefen
+openssl s_client -connect 10.10.0.66:8088 \
+  -showcerts 2>/dev/null | grep "verify"
+
+# Bei selbstsigniertem Zertifikat:
+# In Cribl Destination -> TLS Settings
+# -> "Reject Unauthorized" deaktivieren (nur PoC!)
+# Oder: CA-Zertifikat in Cribl hinterlegen
+
+# Cribl TLS-Konfiguration
+ls -la /opt/cribl/local/cribl/auth/</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td><strong>API-Fehler</strong></td>
+        <td>
+            <ul>
+                <li>Auth-Token abgelaufen</li>
+                <li>Falsche Credentials</li>
+                <li>Rate Limiting aktiv</li>
+                <li>API-Endpunkt falsch</li>
+            </ul>
+        </td>
+        <td>
+            <pre><code># Neuen Token anfordern
+curl -s -X POST \
+  http://localhost:9000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"..."}' | jq .
+
+# Token-Gueltigkeit pruefen
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+  http://localhost:9000/api/v1/system/info | jq .
+
+# Bei HTTP 429 (Rate Limiting): Warten
+# Bei HTTP 401: Neuen Token holen
+# Bei HTTP 404: API-Pfad pruefen
+# Bei HTTP 500: Cribl-Logs pruefen
+
+# API-Dokumentation
+# http://localhost:9000/api/v1/docs</code></pre>
+        </td>
+    </tr>
+</table>
+
+<h3>2.2 Weitere haeufige Probleme</h3>
+
+<table>
+    <tr>
+        <th>Problem</th>
+        <th>Diagnose</th>
+        <th>Loesung</th>
+    </tr>
+    <tr>
+        <td>Daten werden doppelt an Splunk gesendet</td>
+        <td>Routes in Cribl UI pruefen: Mehrere Routes matchen auf gleiche Events</td>
+        <td>Route-Reihenfolge anpassen; <code>final: true</code> auf der gewuenschten Route setzen; Filterausdruecke verfeinern</td>
+    </tr>
+    <tr>
+        <td>Events kommen verzoegert an</td>
+        <td>Queue Depth pruefen; Destination-Latenz in Monitoring pruefen</td>
+        <td>Destination-Verbindung optimieren; Queue-Flush-Intervall verringern; Netzwerk pruefen</td>
+    </tr>
+    <tr>
+        <td>Felder fehlen nach Pipeline-Verarbeitung</td>
+        <td>Pipeline im Preview-Modus testen (Cribl UI &rarr; Pipeline &rarr; Preview)</td>
+        <td>Pipeline-Funktionen ueberpruefen; Remove-/Mask-Funktionen kontrollieren; Reihenfolge der Funktionen pruefen</td>
+    </tr>
+    <tr>
+        <td>Edge meldet "connection refused"</td>
+        <td><code>nc -zv &lt;stream-host&gt; 9000</code></td>
+        <td>Stream-Service pruefen; Firewall-Regeln anpassen; Tailscale-Verbindung pruefen</td>
+    </tr>
+    <tr>
+        <td>Systemd Journal Source liefert keine Daten</td>
+        <td>Edge-Logs pruefen; Berechtigungen auf Journal-Dateien pruefen</td>
+        <td>Edge-User zur <code>systemd-journal</code>-Gruppe hinzufuegen: <code>sudo usermod -aG systemd-journal cribl</code></td>
+    </tr>
+    <tr>
+        <td>Cribl UI laed langsam / nicht erreichbar</td>
+        <td>Browser-Konsole pruefen; <code>curl -s http://localhost:9000</code></td>
+        <td>Browser-Cache leeren; anderen Browser testen; Service-Status pruefen; RAM-Auslastung pruefen</td>
+    </tr>
+    <tr>
+        <td>Backup-Restore fehlgeschlagen</td>
+        <td>Pruefsummen validieren; Tar-Archiv-Integritaet pruefen</td>
+        <td>Backup-Integritaet mit <code>sha256sum -c</code> pruefen; Berechtigungen nach Restore korrigieren; siehe <a href="11-notfallhandbuch.html#backup-restore">Notfallhandbuch</a></td>
+    </tr>
+</table>
+
+<!-- 3. Log-Dateien und ihre Bedeutung -->
+<h2 id="logdateien">3. Log-Dateien und ihre Bedeutung</h2>
+
+<h3>3.1 Cribl Stream Log-Dateien</h3>
+
+<table>
+    <tr>
+        <th>Datei</th>
+        <th>Pfad</th>
+        <th>Inhalt</th>
+        <th>Rotation</th>
+    </tr>
+    <tr>
+        <td><strong>cribl.log</strong></td>
+        <td><code>/opt/cribl/log/cribl.log</code></td>
+        <td>Haupt-Log: Worker-Meldungen, Fehler, Warnungen, Event-Processing</td>
+        <td>Automatisch (10 MB, 5 Dateien)</td>
+    </tr>
+    <tr>
+        <td><strong>audit.log</strong></td>
+        <td><code>/opt/cribl/log/audit.log</code></td>
+        <td>Audit-Trail: Konfigurationsaenderungen, Logins, API-Zugriffe</td>
+        <td>Automatisch</td>
+    </tr>
+    <tr>
+        <td><strong>access.log</strong></td>
+        <td><code>/opt/cribl/log/access.log</code></td>
+        <td>HTTP-Zugriffsprotokolle auf die Cribl-Web-UI und API</td>
+        <td>Automatisch</td>
+    </tr>
+    <tr>
+        <td><strong>notifications.log</strong></td>
+        <td><code>/opt/cribl/log/notifications.log</code></td>
+        <td>Benachrichtigungen und Alerts aus dem Cribl-System</td>
+        <td>Automatisch</td>
+    </tr>
+    <tr>
+        <td><strong>clisrv.log</strong></td>
+        <td><code>/opt/cribl/log/clisrv.log</code></td>
+        <td>CLI-Server-Kommunikation, Start/Stop-Vorgaenge</td>
+        <td>Automatisch</td>
+    </tr>
+</table>
+
+<h3>3.2 Cribl Edge Log-Dateien</h3>
+
+<table>
+    <tr>
+        <th>Datei</th>
+        <th>Pfad</th>
+        <th>Inhalt</th>
+    </tr>
+    <tr>
+        <td><strong>cribl.log</strong></td>
+        <td><code>/opt/cribl-edge/log/cribl.log</code></td>
+        <td>Edge-Worker-Logs: Datensammlung, Verbindung zum Leader, Fehler</td>
+    </tr>
+    <tr>
+        <td><strong>audit.log</strong></td>
+        <td><code>/opt/cribl-edge/log/audit.log</code></td>
+        <td>Audit-Trail des Edge-Agenten</td>
+    </tr>
+</table>
+
+<h3>3.3 Systemd-Logs</h3>
+
+<pre><code># Cribl Stream systemd-Logs
+sudo journalctl -u cribl --since "1 hour ago" --no-pager
+sudo journalctl -u cribl --since "today" -p err --no-pager  # Nur Fehler
+
+# Cribl Edge systemd-Logs
+sudo journalctl -u cribl-edge --since "1 hour ago" --no-pager
+
+# Echtzeit-Logs verfolgen
+sudo journalctl -u cribl -f
+sudo journalctl -u cribl-edge -f</code></pre>
+
+<h3>3.4 Wichtige Log-Meldungen und ihre Bedeutung</h3>
+
+<table>
+    <tr><th>Log-Muster</th><th>Bedeutung</th><th>Handlung</th></tr>
+    <tr>
+        <td><code>Error: listen EADDRINUSE :::9000</code></td>
+        <td>Port 9000 ist bereits belegt</td>
+        <td><code>sudo ss -tlnp | grep 9000</code> und belegenden Prozess beenden</td>
+    </tr>
+    <tr>
+        <td><code>Error: EACCES: permission denied</code></td>
+        <td>Fehlende Dateiberechtigungen</td>
+        <td><code>sudo chown -R cribl:cribl /opt/cribl</code></td>
+    </tr>
+    <tr>
+        <td><code>WARN - Backpressure detected</code></td>
+        <td>Destination kann Events nicht schnell genug verarbeiten</td>
+        <td>Destination-Kapazitaet pruefen, Queue konfigurieren</td>
+    </tr>
+    <tr>
+        <td><code>ERROR - Connection refused</code></td>
+        <td>Ziel-Service nicht erreichbar</td>
+        <td>Netzwerk, Firewall, Ziel-Service pruefen</td>
+    </tr>
+    <tr>
+        <td><code>WARN - Queue is filling up</code></td>
+        <td>Persistent Queue waechst</td>
+        <td>Destination-Konnektivitaet pruefen, Kapazitaet erhoehen</td>
+    </tr>
+    <tr>
+        <td><code>ERROR - TLS handshake failed</code></td>
+        <td>TLS-Verbindung fehlgeschlagen</td>
+        <td>Zertifikate, Trust Chain, TLS-Version pruefen</td>
+    </tr>
+    <tr>
+        <td><code>WARN - Worker process exited</code></td>
+        <td>Ein Worker-Prozess ist unerwartet beendet</td>
+        <td>Logs auf Fehler pruefen, RAM-Verbrauch kontrollieren</td>
+    </tr>
+    <tr>
+        <td><code>INFO - Successfully connected to leader</code></td>
+        <td>Edge hat sich erfolgreich mit Stream verbunden</td>
+        <td>Keine (Normalbetrieb)</td>
+    </tr>
+    <tr>
+        <td><code>ERROR - Authentication failed</code></td>
+        <td>Login oder API-Authentifizierung fehlgeschlagen</td>
+        <td>Credentials pruefen, Token erneuern</td>
+    </tr>
+    <tr>
+        <td><code>WARN - Dropping events</code></td>
+        <td>Events werden verworfen (Queue voll oder Drop-Regel)</td>
+        <td>Sofort untersuchen: Queue-Status, Routes, Pipeline-Regeln</td>
+    </tr>
+</table>
+
+<!-- 4. Cribl Diagnostic Bundle -->
+<h2 id="diag-bundle">4. Cribl Diagnostic Bundle erstellen</h2>
+
+<h3>4.1 Automatisches Diagnostic Bundle</h3>
+
+<pre><code># Cribl Stream Diagnose erstellen
+sudo /opt/cribl/bin/cribl diag
+
+# Das Bundle wird als .tar.gz im aktuellen Verzeichnis erstellt
+# Inhalt:
+# - /log/          - Cribl-Logs (cribl.log, audit.log, etc.)
+# - /conf/         - Konfiguration (bereinigt, ohne Secrets)
+# - /metrics/      - Aktuelle Metriken-Snapshots
+# - /system/       - OS-Informationen, Ressourcenverbrauch
+# - diag-info.json - Zusammenfassung der Diagnose</code></pre>
+
+<h3>4.2 Manuelles Diagnostic Bundle</h3>
+
+<p>Falls <code>cribl diag</code> nicht funktioniert, kann ein manuelles Bundle erstellt werden:</p>
+
+<pre><code>#!/usr/bin/env bash
+# Manuelles Diagnostic Bundle erstellen
+
+DIAG_DIR="/tmp/cribl-diag-$(date +%Y%m%d_%H%M%S)"
+mkdir -p "${DIAG_DIR}"
+
+echo "Sammle Diagnose-Informationen..."
+
+# 1. System-Informationen
+echo "--- System Info ---" > "${DIAG_DIR}/system-info.txt"
+uname -a >> "${DIAG_DIR}/system-info.txt"
+cat /etc/os-release >> "${DIAG_DIR}/system-info.txt"
+free -h >> "${DIAG_DIR}/system-info.txt"
+df -h >> "${DIAG_DIR}/system-info.txt"
+uptime >> "${DIAG_DIR}/system-info.txt"
+
+# 2. Cribl-Version und Status
+/opt/cribl/bin/cribl version > "${DIAG_DIR}/cribl-version.txt" 2>&1
+/opt/cribl/bin/cribl status > "${DIAG_DIR}/cribl-status.txt" 2>&1
+systemctl status cribl > "${DIAG_DIR}/systemd-status.txt" 2>&1
+
+# 3. Logs (letzte 1000 Zeilen)
+tail -1000 /opt/cribl/log/cribl.log > "${DIAG_DIR}/cribl.log" 2>/dev/null
+tail -500 /opt/cribl/log/audit.log > "${DIAG_DIR}/audit.log" 2>/dev/null
+journalctl -u cribl --since "1 hour ago" --no-pager > "${DIAG_DIR}/journalctl.log" 2>/dev/null
+
+# 4. Netzwerk
+ss -tlnp > "${DIAG_DIR}/ports.txt" 2>&1
+ip addr > "${DIAG_DIR}/network.txt" 2>&1
+
+# 5. Prozesse
+ps aux | grep cribl > "${DIAG_DIR}/processes.txt" 2>&1
+
+# 6. Konfiguration (ohne Secrets)
+cp -r /opt/cribl/local/cribl/ "${DIAG_DIR}/config/" 2>/dev/null
+# Secrets entfernen
+find "${DIAG_DIR}/config/" -name "*.yml" -exec \
+    sed -i 's/password:.*/password: [REDACTED]/' {} \; 2>/dev/null
+find "${DIAG_DIR}/config/" -name "*.yml" -exec \
+    sed -i 's/token:.*/token: [REDACTED]/' {} \; 2>/dev/null
+
+# 7. Queue-Status
+du -sh /opt/cribl/state/queues/* > "${DIAG_DIR}/queue-status.txt" 2>/dev/null
+
+# 8. Health Check
+curl -s http://localhost:9000/api/v1/health > "${DIAG_DIR}/health.json" 2>/dev/null
+
+# Bundle erstellen
+tar czf "${DIAG_DIR}.tar.gz" -C /tmp "$(basename "${DIAG_DIR}")"
+rm -rf "${DIAG_DIR}"
+
+echo "Diagnostic Bundle erstellt: ${DIAG_DIR}.tar.gz"
+echo "Groesse: $(ls -lh "${DIAG_DIR}.tar.gz" | awk '{print $5}')"</code></pre>
+
+<div class="warning">
+    <strong>Datenschutz-Hinweis:</strong> Vor dem Versand eines Diagnostic Bundles an den Cribl-Support oder Dritte muessen sensible Daten (Passwoerter, Token, personenbezogene Daten) entfernt werden. Verwenden Sie das manuelle Bundle-Skript mit der integrierten Secret-Bereinigung.
+</div>
+
+<!-- 5. Support-Kontakte -->
+<h2 id="support">5. Support-Kontakte und Community-Ressourcen</h2>
+
+<h3>5.1 Interne Ansprechpartner</h3>
+
+<table>
+    <tr><th>Rolle</th><th>Zustaendigkeit</th><th>Erreichbarkeit</th></tr>
+    <tr><td>Cribl-Administrator</td><td>Erster Ansprechpartner fuer alle Cribl-Themen</td><td>E-Mail, Chat, Telefon (Buerozeiten)</td></tr>
+    <tr><td>Teamleitung IT-Betrieb</td><td>Eskalation, Koordination</td><td>E-Mail, Telefon</td></tr>
+    <tr><td>ISB</td><td>Sicherheitsvorfaelle, Compliance-Fragen</td><td>E-Mail, Telefon</td></tr>
+    <tr><td>Splunk-Administrator</td><td>Splunk-seitige Probleme (Indizierung, Suche)</td><td>E-Mail, Telefon (Buerozeiten)</td></tr>
+    <tr><td>Netzwerk-Team</td><td>Firewall, Routing, Tailscale</td><td>Ticketsystem</td></tr>
+</table>
+
+<h3>5.2 Cribl Support</h3>
+
+<table>
+    <tr><th>Ressource</th><th>URL</th><th>Beschreibung</th></tr>
+    <tr><td>Cribl Dokumentation</td><td><code>https://docs.cribl.io/</code></td><td>Offizielle Produktdokumentation</td></tr>
+    <tr><td>Cribl Support Portal</td><td><code>https://support.cribl.io/</code></td><td>Ticket-basierter Support (Lizenz erforderlich)</td></tr>
+    <tr><td>Cribl Community</td><td><code>https://cribl.io/community/</code></td><td>Community-Forum fuer Fragen und Austausch</td></tr>
+    <tr><td>Cribl Slack Community</td><td><code>https://cribl-community.slack.com/</code></td><td>Echtzeit-Chat mit Community und Cribl-Mitarbeitern</td></tr>
+    <tr><td>Cribl University</td><td><code>https://cribl.io/university/</code></td><td>Kostenlose Schulungen und Zertifizierungen</td></tr>
+    <tr><td>Cribl GitHub</td><td><code>https://github.com/criblio/</code></td><td>Open-Source-Projekte, Beispiel-Pipelines</td></tr>
+</table>
+
+<h3>5.3 Splunk-Ressourcen</h3>
+
+<table>
+    <tr><th>Ressource</th><th>URL</th><th>Beschreibung</th></tr>
+    <tr><td>Splunk Dokumentation</td><td><code>https://docs.splunk.com/</code></td><td>Offizielle Splunk-Dokumentation</td></tr>
+    <tr><td>Splunk Community (Answers)</td><td><code>https://community.splunk.com/</code></td><td>Community-Forum fuer Splunk-Fragen</td></tr>
+    <tr><td>Splunk Support</td><td><code>https://www.splunk.com/en_us/support.html</code></td><td>Splunk Enterprise Support</td></tr>
+</table>
+
+<!-- 6. FAQ -->
+<h2 id="faq">6. FAQ (Haeufig gestellte Fragen)</h2>
+
+<h3>Allgemein</h3>
+
+<p><strong>F: Was ist der Unterschied zwischen Cribl Stream und Cribl Edge?</strong></p>
+<p>A: <strong>Cribl Stream</strong> ist die zentrale Verarbeitungskomponente. Sie empfaengt Daten, verarbeitet sie in Pipelines und leitet sie an Destinations weiter. <strong>Cribl Edge</strong> ist ein leichtgewichtiger Agent, der auf den Quell-Systemen installiert wird und Daten sammelt (z.B. aus Systemd Journal, Log-Dateien). Im IceDataEmphasise-PoC laeuft Stream als zentraler Server und Edge als Agent auf dem gleichen NUC-Host.</p>
+
+<p><strong>F: Welche Cribl-Version wird im PoC eingesetzt?</strong></p>
+<p>A: Cribl Stream Version 4.16.0. Die genaue Version kann mit <code>/opt/cribl/bin/cribl version</code> geprueft werden.</p>
+
+<p><strong>F: Wie viele Log-Quellen sind konfiguriert?</strong></p>
+<p>A: 12 Log-Quellen sind konfiguriert, darunter Systemd Journal, SSH Auth, Apache Access/Error, Samba, Docker und weitere. Die Verifikationssuite (<code>07-verify-deployment.sh</code>) prueft, ob alle 12 Quellen aktiv sind.</p>
+
+<h3>Betrieb</h3>
+
+<p><strong>F: Wie starte ich Cribl Stream neu, ohne Daten zu verlieren?</strong></p>
+<p>A: Die Persistent Queue speichert Events waehrend eines Restarts. Ein <code>sudo systemctl restart cribl</code> fuehrt zu einem kurzen Unterbruch (typischerweise 5-10 Sekunden), aber Events gehen nicht verloren, da sie in der Queue gepuffert werden.</p>
+
+<p><strong>F: Wie pruefe ich, ob die gesamte Pipeline funktioniert?</strong></p>
+<p>A: Fuehren Sie die Verifikationssuite aus: <code>sudo ./scripts/07-verify-deployment.sh</code>. Sie fuehrt ca. 20 Tests durch und zeigt eine Zusammenfassung mit PASS/FAIL fuer jeden Test.</p>
+
+<p><strong>F: Wo finde ich die Cribl-Konfigurationsdateien?</strong></p>
+<p>A: Die Konfiguration liegt unter <code>/opt/cribl/local/</code>. Wichtige Unterverzeichnisse:</p>
+<ul>
+    <li><code>/opt/cribl/local/cribl/</code> &ndash; Systemkonfiguration (cribl.yml, auth)</li>
+    <li><code>/opt/cribl/local/cribl/pipelines/</code> &ndash; Pipeline-Definitionen</li>
+    <li><code>/opt/cribl/local/cribl/routes.yml</code> &ndash; Route-Tabelle</li>
+    <li><code>/opt/cribl/local/cribl/outputs/</code> &ndash; Destination-Konfigurationen</li>
+    <li><code>/opt/cribl/local/cribl/inputs/</code> &ndash; Source-Konfigurationen</li>
+</ul>
+
+<p><strong>F: Wie kann ich Aenderungen an der Konfiguration rueckgaengig machen?</strong></p>
+<p>A: Cribl verwaltet Konfigurationen intern ueber Git. Ueber die Cribl UI (Settings &rarr; Versioning) koennen vorherige Versionen angezeigt und wiederhergestellt werden. Alternativ kann ein Backup wiederhergestellt werden (siehe <a href="11-notfallhandbuch.html#backup-restore">Notfallhandbuch</a>).</p>
+
+<h3>Troubleshooting</h3>
+
+<p><strong>F: Die Verifikationssuite meldet "FAIL" bei einem Test. Was tun?</strong></p>
+<p>A: Die Detail-Spalte in der Testausgabe zeigt die Fehlerbeschreibung. Pruefen Sie zunaechst den spezifischen Fehler und verwenden Sie die Diagnose-Kommandos aus Abschnitt 1 dieses Dokuments. Bei Service-Fehlern starten Sie mit <code>sudo journalctl -u cribl --since "5 min ago"</code>.</p>
+
+<p><strong>F: Wie kann ich testen, ob ein einzelnes Event korrekt verarbeitet wird?</strong></p>
+<p>A: Nutzen Sie die Preview-Funktion in der Cribl UI: Pipeline oeffnen &rarr; "Preview" klicken &rarr; Testdaten eingeben oder aus einer Quelle laden &rarr; Verarbeitungsergebnis pruefen. Dies ist besonders hilfreich bei Pipeline-Problemen.</p>
+
+<p><strong>F: Cribl zeigt "Backpressure" an. Was bedeutet das?</strong></p>
+<p>A: Backpressure bedeutet, dass eine Destination Events nicht schnell genug annimmt. Cribl drosselt daraufhin die Aufnahme von Events, um einen Queue-Ueberlauf zu verhindern. Pruefen Sie die Destination-Konnektivitaet und -Kapazitaet. Im Fall von Splunk: HEC-/S2S-Verbindung und Splunk-Indizierungsleistung pruefen.</p>
+
+<p><strong>F: Warum sehe ich doppelte Events in Splunk?</strong></p>
+<p>A: Haeufige Ursachen: (1) Mehrere Routes in Cribl matchen auf das gleiche Event und senden es an die gleiche Destination. Loesung: Route-Reihenfolge und Filter pruefen, <code>final: true</code> auf der korrekten Route setzen. (2) Edge und Stream sammeln die gleiche Quelle. Loesung: Sicherstellen, dass jede Quelle nur an einer Stelle konfiguriert ist.</p>
+
+<p><strong>F: Wie aktualisiere ich Cribl Stream auf eine neue Version?</strong></p>
+<p>A: Vor einem Update unbedingt ein Backup erstellen (siehe <a href="11-notfallhandbuch.html#backup-restore">Notfallhandbuch</a>). Das Update erfordert einen Change Request (siehe <a href="13-compliance.html#change-management">Compliance-Dokument</a>). Ablauf: Service stoppen, neues Paket installieren, Service starten, Verifikation ausfuehren.</p>
+
+<div class="info">
+    <strong>Tipp:</strong> Bei unklaren Fehlern ist das Erstellen eines Diagnostic Bundles (Abschnitt 4) der schnellste Weg, um alle relevanten Informationen fuer die Fehleranalyse zusammenzufuehren.
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="13-compliance.html">&larr; 13 &ndash; Compliance und Regulatorik</a>
+    <span style="color: #a0aec0;">Ende der Dokumentation</span>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    ITSO-konforme Dokumentation &ndash; Version 1.0 &ndash; 2026-02-10
+</div>
+
+</body>
+</html>

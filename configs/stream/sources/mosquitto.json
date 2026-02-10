@@ -1,0 +1,12 @@
+{
+  "id": "file_monitor:mosquitto",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Mosquitto MQTT broker - Docker JSON logs",
+  "fileFilter": "*.log",
+  "path": "/var/lib/docker/containers/*/*.log",
+  "filterExpr": "_raw.includes('mosquitto') || source.includes('mosquitto')",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

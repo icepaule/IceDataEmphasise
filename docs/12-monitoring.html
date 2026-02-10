@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceDataEmphasise - Monitoring und Alerting</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>12 &ndash; Monitoring und Alerting</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion des Monitoring- und Alerting-Konzepts</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#internes-monitoring">Cribl-internes Monitoring</a></li>
+    <li><a href="#health-checks">Externe Health Checks</a></li>
+    <li><a href="#kpis">Key Performance Indicators (KPIs)</a></li>
+    <li><a href="#integration">Monitoring-Integration (Prometheus/Grafana)</a></li>
+    <li><a href="#alerting">Alerting-Konzept</a></li>
+    <li><a href="#dashboards">Dashboard-Empfehlungen</a></li>
+    <li><a href="#cron">Cron-basiertes Monitoring Setup</a></li>
+</ol>
+
+<!-- 1. Cribl-internes Monitoring -->
+<h2 id="internes-monitoring">1. Cribl-internes Monitoring</h2>
+
+<p>Cribl Stream bietet ein integriertes Monitoring-Dashboard, das ueber die Web-UI unter <code>http://&lt;stream-host&gt;:9000</code> erreichbar ist. Die folgenden Bereiche werden ueberwacht:</p>
+
+<h3>1.1 System Metrics</h3>
+
+<table>
+    <tr><th>Metrik</th><th>Beschreibung</th><th>Zugriff</th></tr>
+    <tr><td>CPU-Auslastung</td><td>CPU-Verbrauch der Cribl Worker-Prozesse</td><td>Monitoring &rarr; System &rarr; CPU</td></tr>
+    <tr><td>Speicherverbrauch (RAM)</td><td>Heap- und RSS-Speicher pro Worker</td><td>Monitoring &rarr; System &rarr; Memory</td></tr>
+    <tr><td>Disk I/O</td><td>Lese-/Schreiboperationen (insb. Persistent Queue)</td><td>Monitoring &rarr; System &rarr; Disk</td></tr>
+    <tr><td>Netzwerk I/O</td><td>Eingehende/ausgehende Bytes pro Sekunde</td><td>Monitoring &rarr; System &rarr; Network</td></tr>
+    <tr><td>Open File Descriptors</td><td>Anzahl offener Dateideskriptoren</td><td>Monitoring &rarr; System &rarr; Resources</td></tr>
+</table>
+
+<h3>1.2 Worker Health</h3>
+
+<table>
+    <tr><th>Metrik</th><th>Beschreibung</th><th>Normaler Bereich</th></tr>
+    <tr><td>Worker-Status</td><td>Running / Stopped / Error</td><td>Alle Worker: Running</td></tr>
+    <tr><td>Worker Uptime</td><td>Laufzeit seit letztem Restart</td><td>&gt; 24h (stabil)</td></tr>
+    <tr><td>Backpressure Status</td><td>Ob eine Destination Backpressure signalisiert</td><td>None</td></tr>
+    <tr><td>Event Processing Rate</td><td>Events/sec pro Worker</td><td>Abhaengig von Last</td></tr>
+</table>
+
+<h3>1.3 Monitoring-API Endpunkte</h3>
+
+<pre><code># Health Check
+curl -s http://localhost:9000/api/v1/health | jq .
+
+# System Info
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/system/info | jq .
+
+# Worker Status
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/master/workers | jq .
+
+# Aktive Inputs/Outputs
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/m/default/system/inputs | jq '.items | length'
+
+# Metriken (internes Metriken-Endpoint)
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/system/metrics | jq .</code></pre>
+
+<!-- 2. Externe Health Checks -->
+<h2 id="health-checks">2. Externe Health Checks</h2>
+
+<h3>2.1 Verifikationsskript (07-verify-deployment.sh)</h3>
+
+<p>Das Projekt beinhaltet eine umfassende Verifikationssuite unter <code>scripts/07-verify-deployment.sh</code>, die ca. 20 Tests durchfuehrt:</p>
+
+<table>
+    <tr><th>Testgruppe</th><th>Tests</th><th>Prueft</th></tr>
+    <tr><td>Service Checks</td><td>3</td><td>Cribl Stream/Edge Service aktiv, Port 9000 erreichbar</td></tr>
+    <tr><td>API Checks</td><td>2</td><td>Health Endpoint, Login-Authentifizierung</td></tr>
+    <tr><td>Konfiguration</td><td>5</td><td>Edge-Registrierung, Sources (&ge;12), Destinations (HEC+S2S), Pipelines (&ge;5), Routes</td></tr>
+    <tr><td>Splunk-Konnektivitaet</td><td>3</td><td>HEC-Port, S2S-Port, Test-Event via HEC</td></tr>
+    <tr><td>Datensammlung</td><td>1</td><td>Systemd-Journal-Quelle aktiv</td></tr>
+    <tr><td>System</td><td>5</td><td>Berechtigungen, PQ-Verzeichnisse, Service-Restart, Tailscale, Festplatte</td></tr>
+</table>
+
+<pre><code># Verifikationssuite ausfuehren
+sudo ./scripts/07-verify-deployment.sh
+
+# Ergebnis: Tabelle mit PASS/FAIL je Test
+# Exit-Code: 0 = alle Tests bestanden, 1 = mindestens ein Test fehlgeschlagen</code></pre>
+
+<h3>2.2 Einfacher Health Check (curl-basiert)</h3>
+
+<pre><code>#!/usr/bin/env bash
+# Einfacher Health Check fuer Cron oder externe Monitoring-Systeme
+
+STREAM_URL="http://localhost:9000/api/v1/health"
+SPLUNK_HEC="https://10.10.0.66:8088/services/collector/health"
+
+# Cribl Stream Health
+stream_status=$(curl -s -o /dev/null -w "%{http_code}" "${STREAM_URL}" 2>/dev/null)
+if [[ "${stream_status}" != "200" ]]; then
+    echo "CRITICAL: Cribl Stream nicht erreichbar (HTTP ${stream_status})"
+    exit 2
+fi
+
+# Cribl Edge Service
+if ! systemctl is-active cribl-edge &>/dev/null; then
+    echo "WARNING: Cribl Edge Service nicht aktiv"
+    exit 1
+fi
+
+# Splunk HEC
+splunk_status=$(curl -sk -o /dev/null -w "%{http_code}" "${SPLUNK_HEC}" 2>/dev/null)
+if [[ "${splunk_status}" != "200" ]]; then
+    echo "WARNING: Splunk HEC nicht erreichbar (HTTP ${splunk_status})"
+    exit 1
+fi
+
+echo "OK: Alle Komponenten erreichbar"
+exit 0</code></pre>
+
+<!-- 3. Key Performance Indicators -->
+<h2 id="kpis">3. Key Performance Indicators (KPIs)</h2>
+
+<h3>3.1 KPI-Definitionen</h3>
+
+<table>
+    <tr>
+        <th>KPI</th>
+        <th>Beschreibung</th>
+        <th>Messintervall</th>
+        <th>Zielwert (PoC)</th>
+        <th>Warnschwelle</th>
+        <th>Kritisch</th>
+    </tr>
+    <tr>
+        <td><strong>Events/sec (In)</strong></td>
+        <td>Eingehende Events pro Sekunde an Cribl Stream</td>
+        <td>10 Sekunden</td>
+        <td>&gt; 0 (kontinuierlich)</td>
+        <td>0 fuer &gt; 5 Min.</td>
+        <td>0 fuer &gt; 15 Min.</td>
+    </tr>
+    <tr>
+        <td><strong>Events/sec (Out)</strong></td>
+        <td>Ausgehende Events pro Sekunde an Destinations</td>
+        <td>10 Sekunden</td>
+        <td>&asymp; Events/sec (In)</td>
+        <td>Differenz &gt; 20%</td>
+        <td>Differenz &gt; 50%</td>
+    </tr>
+    <tr>
+        <td><strong>Bytes/sec (In)</strong></td>
+        <td>Eingehende Datenmenge pro Sekunde</td>
+        <td>10 Sekunden</td>
+        <td>Baseline abhaengig</td>
+        <td>&gt; 200% Baseline</td>
+        <td>&gt; 500% Baseline</td>
+    </tr>
+    <tr>
+        <td><strong>Bytes/sec (Out)</strong></td>
+        <td>Ausgehende Datenmenge pro Sekunde</td>
+        <td>10 Sekunden</td>
+        <td>&le; Bytes/sec (In)</td>
+        <td>&gt; Bytes/sec (In)</td>
+        <td>&ndash;</td>
+    </tr>
+    <tr>
+        <td><strong>Queue Depth</strong></td>
+        <td>Anzahl Events in der Persistent Queue</td>
+        <td>30 Sekunden</td>
+        <td>0 (keine Stauung)</td>
+        <td>&gt; 10.000 Events</td>
+        <td>&gt; 100.000 Events</td>
+    </tr>
+    <tr>
+        <td><strong>Queue Disk Usage</strong></td>
+        <td>Festplattenverbrauch der Persistent Queue</td>
+        <td>1 Minute</td>
+        <td>&lt; 100 MB</td>
+        <td>&gt; 500 MB</td>
+        <td>&gt; 2 GB</td>
+    </tr>
+    <tr>
+        <td><strong>Error Rate</strong></td>
+        <td>Fehlerhafte Events / Gesamte Events (Prozent)</td>
+        <td>1 Minute</td>
+        <td>&lt; 0,1%</td>
+        <td>&gt; 1%</td>
+        <td>&gt; 5%</td>
+    </tr>
+    <tr>
+        <td><strong>Latenz (E2E)</strong></td>
+        <td>Zeit von Quelle bis Splunk-Indizierung</td>
+        <td>5 Minuten</td>
+        <td>&lt; 30 Sekunden</td>
+        <td>&gt; 60 Sekunden</td>
+        <td>&gt; 5 Minuten</td>
+    </tr>
+    <tr>
+        <td><strong>Drop Rate</strong></td>
+        <td>Verworfene Events pro Minute</td>
+        <td>1 Minute</td>
+        <td>0</td>
+        <td>&gt; 0 fuer &gt; 5 Min.</td>
+        <td>&gt; 100/Min. kontinuierlich</td>
+    </tr>
+    <tr>
+        <td><strong>CPU-Auslastung</strong></td>
+        <td>CPU-Verbrauch der Cribl-Prozesse</td>
+        <td>30 Sekunden</td>
+        <td>&lt; 50%</td>
+        <td>&gt; 70%</td>
+        <td>&gt; 90%</td>
+    </tr>
+    <tr>
+        <td><strong>RAM-Verbrauch</strong></td>
+        <td>Speicherverbrauch der Cribl-Prozesse</td>
+        <td>30 Sekunden</td>
+        <td>&lt; 2 GB</td>
+        <td>&gt; 4 GB</td>
+        <td>&gt; 6 GB</td>
+    </tr>
+</table>
+
+<h3>3.2 Datenreduktions-KPIs</h3>
+
+<div class="info">
+    <strong>Hinweis:</strong> Ein Hauptziel des PoC ist die Validierung der Datenreduktion durch Cribl-Pipelines. Die folgenden KPIs messen den Erfolg dieser Optimierungen.
+</div>
+
+<table>
+    <tr><th>KPI</th><th>Berechnung</th><th>Zielwert</th></tr>
+    <tr><td>Datenreduktionsrate</td><td>(Bytes_In &minus; Bytes_Out) / Bytes_In &times; 100</td><td>&ge; 30% (PoC-Ziel)</td></tr>
+    <tr><td>Event-Reduktionsrate</td><td>(Events_In &minus; Events_Out) / Events_In &times; 100</td><td>Abhaengig von Pipeline</td></tr>
+    <tr><td>Lizenzverbrauch (geschaetzt)</td><td>Bytes_Out / Tag umgerechnet in GB/Tag</td><td>Innerhalb Splunk-Lizenz</td></tr>
+</table>
+
+<!-- 4. Monitoring-Integration -->
+<h2 id="integration">4. Monitoring-Integration (Prometheus/Grafana)</h2>
+
+<h3>4.1 Prometheus-Endpunkt</h3>
+
+<p>Cribl Stream kann Metriken im Prometheus-Format bereitstellen. Hierzu wird ein interner Metrics-Endpunkt genutzt oder alternativ ein Exporter konfiguriert.</p>
+
+<pre><code># Cribl Stream Metriken abrufen (Prometheus-Format)
+curl -s -H "Authorization: Bearer ${TOKEN}" \
+    http://localhost:9000/api/v1/system/metrics/prometheus
+
+# Alternativ: Eigener Exporter via Script
+# Siehe Abschnitt 7 (Cron-basiertes Monitoring)</code></pre>
+
+<h3>4.2 Prometheus Scrape-Konfiguration</h3>
+
+<pre><code># prometheus.yml - Scrape-Konfiguration fuer Cribl
+scrape_configs:
+  - job_name: 'cribl-stream'
+    scrape_interval: 30s
+    metrics_path: '/api/v1/system/metrics/prometheus'
+    bearer_token: '${CRIBL_API_TOKEN}'
+    static_configs:
+      - targets: ['localhost:9000']
+        labels:
+          environment: 'poc'
+          component: 'cribl-stream'
+
+  - job_name: 'cribl-health'
+    scrape_interval: 60s
+    metrics_path: '/api/v1/health'
+    static_configs:
+      - targets: ['localhost:9000']
+        labels:
+          environment: 'poc'</code></pre>
+
+<h3>4.3 Grafana-Integration</h3>
+
+<p>Fuer eine visuelle Darstellung der Metriken wird Grafana empfohlen. Konfiguration:</p>
+
+<ol>
+    <li>Prometheus als Datenquelle in Grafana hinzufuegen</li>
+    <li>Dashboard importieren oder manuell erstellen (siehe <a href="#dashboards">Abschnitt 6</a>)</li>
+    <li>Alerting-Regeln in Grafana konfigurieren (als Ergaenzung zu Cribl-eigenen Alerts)</li>
+</ol>
+
+<div class="info">
+    <strong>PoC-Hinweis:</strong> Im PoC-Betrieb ist eine Prometheus/Grafana-Integration optional. Das Cron-basierte Monitoring (Abschnitt 7) und die eingebauten Cribl-Dashboards sind fuer den initialen Betrieb ausreichend.
+</div>
+
+<!-- 5. Alerting-Konzept -->
+<h2 id="alerting">5. Alerting-Konzept</h2>
+
+<h3>5.1 Schwellwerte und Benachrichtigungen</h3>
+
+<table>
+    <tr>
+        <th>Alert</th>
+        <th>Bedingung</th>
+        <th>Severity</th>
+        <th>Benachrichtigung</th>
+        <th>Aktion</th>
+    </tr>
+    <tr>
+        <td>Stream Service Down</td>
+        <td>Health-Endpoint nicht erreichbar fuer &gt; 2 Min.</td>
+        <td>Sev1</td>
+        <td>E-Mail + SMS</td>
+        <td>Sofortige Untersuchung, ggf. Restart</td>
+    </tr>
+    <tr>
+        <td>Edge Service Down</td>
+        <td><code>systemctl is-active cribl-edge</code> != active</td>
+        <td>Sev2</td>
+        <td>E-Mail</td>
+        <td>Service neustarten, Logs pruefen</td>
+    </tr>
+    <tr>
+        <td>Splunk nicht erreichbar</td>
+        <td>HEC oder S2S Port nicht erreichbar fuer &gt; 5 Min.</td>
+        <td>Sev1</td>
+        <td>E-Mail + SMS</td>
+        <td>Netzwerk/Splunk pruefen, Queue monitoren</td>
+    </tr>
+    <tr>
+        <td>Keine eingehenden Events</td>
+        <td>Events/sec (In) = 0 fuer &gt; 5 Min.</td>
+        <td>Sev2</td>
+        <td>E-Mail</td>
+        <td>Sources und Edge-Agenten pruefen</td>
+    </tr>
+    <tr>
+        <td>Persistent Queue waechst</td>
+        <td>Queue Depth &gt; 10.000 Events</td>
+        <td>Sev2</td>
+        <td>E-Mail</td>
+        <td>Destination-Konnektivitaet pruefen</td>
+    </tr>
+    <tr>
+        <td>Queue kritisch voll</td>
+        <td>Queue Disk &gt; 2 GB oder &gt; 80% des Limits</td>
+        <td>Sev1</td>
+        <td>E-Mail + SMS</td>
+        <td>Sofortige Untersuchung, Datenverlust droht</td>
+    </tr>
+    <tr>
+        <td>Hohe CPU-Auslastung</td>
+        <td>CPU &gt; 90% fuer &gt; 10 Min.</td>
+        <td>Sev3</td>
+        <td>E-Mail</td>
+        <td>Worker-Tuning, Pipeline-Optimierung</td>
+    </tr>
+    <tr>
+        <td>Hoher RAM-Verbrauch</td>
+        <td>RSS &gt; 6 GB</td>
+        <td>Sev3</td>
+        <td>E-Mail</td>
+        <td>Memory-Leak pruefen, Restart erwaegen</td>
+    </tr>
+    <tr>
+        <td>Event Drop Rate erhoet</td>
+        <td>Drop Rate &gt; 0 fuer &gt; 5 Min.</td>
+        <td>Sev2</td>
+        <td>E-Mail</td>
+        <td>Routes/Pipelines pruefen, Kapazitaet erhoehen</td>
+    </tr>
+    <tr>
+        <td>Hohe Latenz</td>
+        <td>E2E-Latenz &gt; 60 Sekunden</td>
+        <td>Sev3</td>
+        <td>E-Mail</td>
+        <td>Pipeline-Performance analysieren</td>
+    </tr>
+    <tr>
+        <td>Disk Space niedrig</td>
+        <td>Freier Speicher &lt; 2 GB auf /opt</td>
+        <td>Sev2</td>
+        <td>E-Mail</td>
+        <td>Queue bereinigen, alte Logs loeschen</td>
+    </tr>
+    <tr>
+        <td>Zertifikat laeuft ab</td>
+        <td>TLS-Zertifikat laeuft in &lt; 14 Tagen ab</td>
+        <td>Sev3</td>
+        <td>E-Mail</td>
+        <td>Zertifikat erneuern</td>
+    </tr>
+</table>
+
+<h3>5.2 Benachrichtigungskanaele</h3>
+
+<table>
+    <tr><th>Kanal</th><th>Verwendung</th><th>Konfiguration</th></tr>
+    <tr><td>E-Mail</td><td>Alle Alerts (Sev1-Sev4)</td><td>SMTP-Relay der Bank, Verteiler: <code>cribl-alerts@bank.example</code></td></tr>
+    <tr><td>SMS/Pager</td><td>Sev1 und ausgewaehlte Sev2</td><td>Ueber Alerting-Gateway der Bank</td></tr>
+    <tr><td>Ticketsystem</td><td>Automatische Ticket-Erstellung bei Sev1-Sev3</td><td>API-Integration mit ITSM-Tool</td></tr>
+    <tr><td>Chat (Teams/Slack)</td><td>Informationell fuer Sev2-Sev4</td><td>Webhook-Integration</td></tr>
+</table>
+
+<!-- 6. Dashboard-Empfehlungen -->
+<h2 id="dashboards">6. Dashboard-Empfehlungen</h2>
+
+<h3>6.1 Operations Dashboard (Hauptansicht)</h3>
+
+<p>Das Operations Dashboard bietet eine Gesamtuebersicht ueber den Zustand der Log-Pipeline:</p>
+
+<table>
+    <tr><th>Panel</th><th>Visualisierung</th><th>Datenquelle</th></tr>
+    <tr><td>Pipeline Health Status</td><td>Ampel (Gruen/Gelb/Rot)</td><td>Health-API + Service-Status</td></tr>
+    <tr><td>Events/sec (In vs. Out)</td><td>Liniendiagramm (zeitbasiert)</td><td>Cribl Metrics API</td></tr>
+    <tr><td>Bytes/sec (In vs. Out)</td><td>Liniendiagramm (zeitbasiert)</td><td>Cribl Metrics API</td></tr>
+    <tr><td>Datenreduktionsrate</td><td>Gauge (Prozent)</td><td>Berechnet aus In/Out</td></tr>
+    <tr><td>Queue Depth</td><td>Balkendiagramm</td><td>Queue Metrics</td></tr>
+    <tr><td>CPU / RAM Auslastung</td><td>Gauge + Verlauf</td><td>System Metrics</td></tr>
+    <tr><td>Active Sources</td><td>Zaehler + Liste</td><td>Inputs API</td></tr>
+    <tr><td>Error Rate</td><td>Liniendiagramm</td><td>Cribl Metrics API</td></tr>
+    <tr><td>Letzte Alerts</td><td>Tabelle</td><td>Alert-Log</td></tr>
+</table>
+
+<h3>6.2 Source-Detail Dashboard</h3>
+
+<table>
+    <tr><th>Panel</th><th>Beschreibung</th></tr>
+    <tr><td>Events/sec pro Source</td><td>Aufgeschluesselt nach den 12 konfigurierten Quellen</td></tr>
+    <tr><td>Source Health</td><td>Status je Quelle (Active/Inactive/Error)</td></tr>
+    <tr><td>Top Sources by Volume</td><td>Rangfolge nach Datenvolumen</td></tr>
+    <tr><td>Source Error Log</td><td>Letzte Fehler pro Quelle</td></tr>
+</table>
+
+<h3>6.3 Destination-Detail Dashboard</h3>
+
+<table>
+    <tr><th>Panel</th><th>Beschreibung</th></tr>
+    <tr><td>Destination Health</td><td>HEC und S2S Status (Connected/Disconnected/Error)</td></tr>
+    <tr><td>Events/sec pro Destination</td><td>Aufgeschluesselt nach HEC und S2S</td></tr>
+    <tr><td>Queue Status pro Destination</td><td>Queue Depth und Disk Usage</td></tr>
+    <tr><td>Delivery Latenz</td><td>Zeitverzoegerung bis zur Zustellung</td></tr>
+</table>
+
+<!-- 7. Cron-basiertes Monitoring -->
+<h2 id="cron">7. Cron-basiertes Monitoring Setup</h2>
+
+<h3>7.1 Monitoring-Skript</h3>
+
+<pre><code>#!/usr/bin/env bash
+# /opt/IceDataEmphasise/scripts/monitoring/health-check.sh
+# Cron-basierter Health Check fuer IceDataEmphasise
+# Ausfuehrung: alle 5 Minuten via Cron
+
+LOG_FILE="/var/log/cribl-health-check.log"
+ALERT_EMAIL="cribl-alerts@bank.example"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+STATUS="OK"
+MESSAGES=()
+
+# 1. Cribl Stream Health
+stream_http=$(curl -s -o /dev/null -w "%{http_code}" \
+    http://localhost:9000/api/v1/health 2>/dev/null || echo "000")
+if [[ "${stream_http}" != "200" ]]; then
+    STATUS="CRITICAL"
+    MESSAGES+=("Cribl Stream Health Check fehlgeschlagen (HTTP ${stream_http})")
+fi
+
+# 2. Cribl Edge Service
+if ! systemctl is-active cribl-edge &>/dev/null; then
+    [[ "${STATUS}" != "CRITICAL" ]] && STATUS="WARNING"
+    MESSAGES+=("Cribl Edge Service nicht aktiv")
+fi
+
+# 3. Splunk HEC Erreichbarkeit
+splunk_http=$(curl -sk -o /dev/null -w "%{http_code}" \
+    https://10.10.0.66:8088/services/collector/health 2>/dev/null || echo "000")
+if [[ "${splunk_http}" != "200" ]]; then
+    STATUS="CRITICAL"
+    MESSAGES+=("Splunk HEC nicht erreichbar (HTTP ${splunk_http})")
+fi
+
+# 4. Festplattenplatz
+free_gb=$(df -BG --output=avail /opt 2>/dev/null | tail -1 | tr -d ' G')
+if [[ "${free_gb}" -lt 2 ]]; then
+    STATUS="CRITICAL"
+    MESSAGES+=("Festplattenspeicher kritisch niedrig: ${free_gb} GB frei")
+elif [[ "${free_gb}" -lt 5 ]]; then
+    [[ "${STATUS}" != "CRITICAL" ]] && STATUS="WARNING"
+    MESSAGES+=("Festplattenspeicher niedrig: ${free_gb} GB frei")
+fi
+
+# 5. Persistent Queue Groesse
+if [[ -d /opt/cribl/state/queues ]]; then
+    queue_mb=$(du -sm /opt/cribl/state/queues 2>/dev/null | cut -f1)
+    if [[ "${queue_mb}" -gt 2048 ]]; then
+        STATUS="CRITICAL"
+        MESSAGES+=("Persistent Queue kritisch gross: ${queue_mb} MB")
+    elif [[ "${queue_mb}" -gt 512 ]]; then
+        [[ "${STATUS}" != "CRITICAL" ]] && STATUS="WARNING"
+        MESSAGES+=("Persistent Queue waechst: ${queue_mb} MB")
+    fi
+fi
+
+# Ergebnis loggen
+if [[ ${#MESSAGES[@]} -eq 0 ]]; then
+    echo "${TIMESTAMP} [${STATUS}] Alle Checks bestanden" >> "${LOG_FILE}"
+else
+    for msg in "${MESSAGES[@]}"; do
+        echo "${TIMESTAMP} [${STATUS}] ${msg}" >> "${LOG_FILE}"
+    done
+fi
+
+# Bei WARNING oder CRITICAL: E-Mail senden
+if [[ "${STATUS}" != "OK" ]]; then
+    {
+        echo "IceDataEmphasise Health Check - ${STATUS}"
+        echo "Zeitpunkt: ${TIMESTAMP}"
+        echo ""
+        for msg in "${MESSAGES[@]}"; do
+            echo "- ${msg}"
+        done
+    } | mail -s "[${STATUS}] IceDataEmphasise Health Check" "${ALERT_EMAIL}"
+fi
+
+exit 0</code></pre>
+
+<h3>7.2 Cron-Konfiguration</h3>
+
+<pre><code># Crontab-Eintraege (sudo crontab -e)
+
+# Health Check alle 5 Minuten
+*/5 * * * * /opt/IceDataEmphasise/scripts/monitoring/health-check.sh
+
+# Vollstaendige Verifikation taeglich um 06:00
+0 6 * * * /opt/IceDataEmphasise/scripts/07-verify-deployment.sh \
+    >> /var/log/cribl-verify.log 2>&1
+
+# Log-Rotation woechentlich
+0 0 * * 0 find /var/log/cribl-health-check.log -size +10M \
+    -exec mv {} {}.old \; 2>/dev/null</code></pre>
+
+<h3>7.3 Log-Rotation</h3>
+
+<pre><code># /etc/logrotate.d/cribl-monitoring
+/var/log/cribl-health-check.log
+/var/log/cribl-verify.log {
+    weekly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}</code></pre>
+
+<div class="success">
+    <strong>Empfehlung:</strong> Im PoC-Betrieb sollte das Cron-basierte Monitoring als Minimum eingerichtet werden. Fuer den Produktivbetrieb wird zusaetzlich eine Prometheus/Grafana-Integration empfohlen.
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="11-notfallhandbuch.html">&larr; 11 &ndash; Notfallhandbuch</a>
+    <a href="13-compliance.html">13 &ndash; Compliance und Regulatorik &rarr;</a>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    ITSO-konforme Dokumentation &ndash; Version 1.0 &ndash; 2026-02-10
+</div>
+
+</body>
+</html>

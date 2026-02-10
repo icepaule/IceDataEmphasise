@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:cups",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "CUPS print server - access log",
+  "fileFilter": "access_log",
+  "path": "/var/log/cups/access_log",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IceDataEmphasise - Notfallhandbuch</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>11 &ndash; Notfallhandbuch</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion des Notfallhandbuchs</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#definitionen">Notfall-Definitionen und Severity-Level</a></li>
+    <li><a href="#eskalation">Eskalationsmatrix</a></li>
+    <li><a href="#dr-szenarien">Disaster Recovery Szenarien</a></li>
+    <li><a href="#backup-restore">Backup und Restore Verfahren</a></li>
+    <li><a href="#wiederanlauf">Wiederanlauf-Prozedur nach Notfall</a></li>
+    <li><a href="#kommunikation">Kommunikationsplan</a></li>
+    <li><a href="#post-incident">Post-Incident Review Template</a></li>
+</ol>
+
+<!-- 1. Notfall-Definitionen -->
+<h2 id="definitionen">1. Notfall-Definitionen und Severity-Level</h2>
+
+<p>Die folgenden Severity-Level definieren die Dringlichkeit und den Eskalationspfad bei Betriebsstoerungen der Cribl-Infrastruktur innerhalb des IceDataEmphasise-PoC.</p>
+
+<table>
+    <tr>
+        <th>Severity</th>
+        <th>Bezeichnung</th>
+        <th>Definition</th>
+        <th>Reaktionszeit</th>
+        <th>Loesungszeit (Ziel)</th>
+    </tr>
+    <tr>
+        <td><strong>Sev1</strong></td>
+        <td>Kritisch</td>
+        <td>Kompletter Ausfall der Log-Pipeline. Keine Events erreichen Splunk. Compliance-relevante Daten gehen verloren oder drohen verloren zu gehen.</td>
+        <td>&le; 15 Minuten</td>
+        <td>&le; 1 Stunde</td>
+    </tr>
+    <tr>
+        <td><strong>Sev2</strong></td>
+        <td>Hoch</td>
+        <td>Teilausfall: Einzelne Quellen oder Destinations sind betroffen. Persistent Queue puffert, aber Kapazitaet ist begrenzt. Datenverlust droht mittelfristig.</td>
+        <td>&le; 30 Minuten</td>
+        <td>&le; 4 Stunden</td>
+    </tr>
+    <tr>
+        <td><strong>Sev3</strong></td>
+        <td>Mittel</td>
+        <td>Leistungsdegradation: Erhoehte Latenz, einzelne Worker ueberlastet, vereinzelte Event-Drops. Pipeline funktioniert grundsaetzlich.</td>
+        <td>&le; 2 Stunden</td>
+        <td>&le; 1 Arbeitstag</td>
+    </tr>
+    <tr>
+        <td><strong>Sev4</strong></td>
+        <td>Niedrig</td>
+        <td>Kosmetische oder nicht-kritische Probleme: Dashboard-Anomalien, einzelne Warnungen ohne Auswirkung auf den Datenfluss.</td>
+        <td>Naechster Arbeitstag</td>
+        <td>&le; 5 Arbeitstage</td>
+    </tr>
+</table>
+
+<div class="warning">
+    <strong>Hinweis:</strong> Im regulierten Bankumfeld gilt: Jeder Sev1- oder Sev2-Vorfall, bei dem Compliance-relevante Logs betroffen sind, muss zusaetzlich an den Informationssicherheitsbeauftragten (ISB) gemeldet werden.
+</div>
+
+<!-- 2. Eskalationsmatrix -->
+<h2 id="eskalation">2. Eskalationsmatrix</h2>
+
+<table class="raci">
+    <tr>
+        <th>Severity</th>
+        <th>Erstreaktion</th>
+        <th>Eskalation Level 1</th>
+        <th>Eskalation Level 2</th>
+        <th>Eskalation Level 3</th>
+    </tr>
+    <tr>
+        <td><strong>Sev1</strong></td>
+        <td>On-Call-Engineer (sofort)</td>
+        <td>Teamleitung IT-Betrieb (nach 15 Min.)</td>
+        <td>Abteilungsleitung IT / ISB (nach 30 Min.)</td>
+        <td>Geschaeftsleitung / BaFin-Meldepflicht pruefen (nach 1 Std.)</td>
+    </tr>
+    <tr>
+        <td><strong>Sev2</strong></td>
+        <td>On-Call-Engineer (sofort)</td>
+        <td>Teamleitung IT-Betrieb (nach 30 Min.)</td>
+        <td>Abteilungsleitung IT (nach 2 Std.)</td>
+        <td>&ndash;</td>
+    </tr>
+    <tr>
+        <td><strong>Sev3</strong></td>
+        <td>Zustaendiger Administrator</td>
+        <td>Teamleitung IT-Betrieb (nach 4 Std.)</td>
+        <td>&ndash;</td>
+        <td>&ndash;</td>
+    </tr>
+    <tr>
+        <td><strong>Sev4</strong></td>
+        <td>Zustaendiger Administrator</td>
+        <td>Im naechsten Jour Fixe besprechen</td>
+        <td>&ndash;</td>
+        <td>&ndash;</td>
+    </tr>
+</table>
+
+<h3>RACI-Matrix fuer Notfallbehandlung</h3>
+
+<table class="raci">
+    <tr>
+        <th>Aktivitaet</th>
+        <th>On-Call-Engineer</th>
+        <th>Teamleitung</th>
+        <th>ISB</th>
+        <th>Geschaeftsleitung</th>
+    </tr>
+    <tr><td>Ersterkennung / Triage</td><td>R/A</td><td>I</td><td>I (bei Sev1)</td><td>&ndash;</td></tr>
+    <tr><td>Technische Fehleranalyse</td><td>R</td><td>A</td><td>C</td><td>&ndash;</td></tr>
+    <tr><td>Wiederherstellung</td><td>R</td><td>A</td><td>I</td><td>&ndash;</td></tr>
+    <tr><td>Kommunikation intern</td><td>C</td><td>R/A</td><td>I</td><td>I (bei Sev1)</td></tr>
+    <tr><td>Regulatorische Meldung</td><td>I</td><td>C</td><td>R/A</td><td>A</td></tr>
+    <tr><td>Post-Incident Review</td><td>R</td><td>A</td><td>C</td><td>I (bei Sev1)</td></tr>
+</table>
+
+<p><em>R = Responsible, A = Accountable, C = Consulted, I = Informed</em></p>
+
+<!-- 3. Disaster Recovery Szenarien -->
+<h2 id="dr-szenarien">3. Disaster Recovery Szenarien</h2>
+
+<h3>3.1 Szenario: Cribl Stream Ausfall</h3>
+
+<div class="warning">
+    <strong>Auswirkung:</strong> Keine Verarbeitung und kein Routing von Log-Events. Edge-Nodes puffern lokal, Persistent Queues laufen voll.
+</div>
+
+<p><strong>Stufe 1 &ndash; Restart:</strong></p>
+<pre><code># Cribl Stream Service neustarten
+sudo systemctl restart cribl
+
+# Status pruefen
+sudo systemctl status cribl
+curl -s http://localhost:9000/api/v1/health | jq .
+
+# Logs auf Fehler pruefen
+sudo journalctl -u cribl --since "10 minutes ago" --no-pager | tail -50</code></pre>
+
+<p><strong>Stufe 2 &ndash; Failover (falls Restart fehlschlaegt):</strong></p>
+<pre><code># Worker-Prozesse pruefen und ggf. beenden
+ps aux | grep cribl
+sudo kill -9 $(pgrep -f "cribl server")
+
+# Cribl Home bereinigen und neustarten
+sudo rm -f /opt/cribl/data/cribl.pid
+sudo systemctl start cribl
+
+# Port-Belegung pruefen
+sudo ss -tlnp | grep 9000</code></pre>
+
+<p><strong>Stufe 3 &ndash; Neuinstallation:</strong></p>
+<pre><code># Konfiguration sichern (falls noch moeglich)
+sudo cp -r /opt/cribl/local /tmp/cribl-backup-local
+sudo cp -r /opt/cribl/data /tmp/cribl-backup-data
+
+# Neuinstallation ausfuehren
+sudo ./scripts/02-install-cribl-stream.sh
+
+# Konfiguration wiederherstellen
+sudo cp -r /tmp/cribl-backup-local/* /opt/cribl/local/
+sudo chown -R cribl:cribl /opt/cribl
+
+# Service starten und verifizieren
+sudo systemctl start cribl
+sudo ./scripts/07-verify-deployment.sh</code></pre>
+
+<h3>3.2 Szenario: Cribl Edge Ausfall</h3>
+
+<div class="warning">
+    <strong>Auswirkung:</strong> Logs der betroffenen Edge-Quelle werden nicht mehr gesammelt. Lokale Logs werden auf dem Host weiterhin geschrieben.
+</div>
+
+<p><strong>Sofortmassnahmen:</strong></p>
+<pre><code># Edge Service neustarten
+sudo systemctl restart cribl-edge
+
+# Status pruefen
+sudo systemctl status cribl-edge
+
+# Falls der Service nicht startet: Logs pruefen
+sudo journalctl -u cribl-edge --since "10 minutes ago" --no-pager</code></pre>
+
+<p><strong>Edge neu deployen:</strong></p>
+<pre><code># Edge neu installieren
+sudo ./scripts/03-install-cribl-edge-linux.sh
+
+# Registrierung bei Stream Leader pruefen
+curl -s http://localhost:9000/api/v1/master/groups | jq '.items[] | .id'
+
+# Verifizierung
+sudo ./scripts/07-verify-deployment.sh</code></pre>
+
+<div class="info">
+    <strong>Hinweis:</strong> Waehrend des Edge-Ausfalls werden Logs auf dem Host weiterhin in systemd-journal und lokale Dateien geschrieben. Nach dem Wiederherstellen des Edge-Agenten koennen diese nachtraeglich erfasst werden, sofern die Retention-Policies der lokalen Logs dies erlauben.
+</div>
+
+<h3>3.3 Szenario: Splunk nicht erreichbar</h3>
+
+<div class="warning">
+    <strong>Auswirkung:</strong> Events werden in der Persistent Queue gepuffert. Bei Erschoepfung der Queue droht Datenverlust.
+</div>
+
+<p><strong>Diagnose:</strong></p>
+<pre><code># Splunk HEC erreichbar?
+curl -sk https://10.10.0.66:8088/services/collector/health
+
+# Splunk S2S Port erreichbar?
+nc -zv 10.10.0.66 9997
+
+# Netzwerk-Konnektivitaet pruefen
+ping -c 3 10.10.0.66
+traceroute 10.10.0.66
+
+# Persistent Queue Status pruefen
+ls -lh /opt/cribl/state/queues/
+du -sh /opt/cribl/state/queues/*</code></pre>
+
+<p><strong>Massnahmen bei voller Queue:</strong></p>
+<ol>
+    <li>Disk-Kapazitaet fuer Queue-Erweiterung pruefen: <code>df -h /opt/cribl</code></li>
+    <li>Queue-Limit temporaer erhoehen (Cribl UI &rarr; Destinations &rarr; Queue Settings)</li>
+    <li>Backpressure aktivieren: Source-Rate drosseln, um Queue-Ueberlauf zu verhindern</li>
+    <li>Alternative Destination konfigurieren (z.B. lokales Dateisystem als Fallback)</li>
+    <li>Nach Splunk-Wiederherstellung: Queue-Drain ueberwachen</li>
+</ol>
+
+<h3>3.4 Szenario: NUC Hardware-Ausfall</h3>
+
+<div class="warning">
+    <strong>Auswirkung:</strong> Kompletter Ausfall aller Cribl-Komponenten auf dem Host. Kein Log-Routing moeglich.
+</div>
+
+<p><strong>Wiederherstellungsschritte auf neuem Host:</strong></p>
+<ol>
+    <li>Neuen NUC oder Ersatzserver bereitstellen (Mindestanforderungen: 4 CPU, 8 GB RAM, 100 GB SSD)</li>
+    <li>Betriebssystem installieren (Ubuntu 22.04 LTS empfohlen)</li>
+    <li>Repository klonen:
+        <pre><code>git clone &lt;repository-url&gt; /opt/IceDataEmphasise
+cd /opt/IceDataEmphasise</code></pre>
+    </li>
+    <li>Backup wiederherstellen (siehe <a href="#backup-restore">Abschnitt 4</a>)</li>
+    <li>Installationsskripte ausfuehren:
+        <pre><code>sudo ./scripts/00-preflight-check.sh
+sudo ./scripts/01-install-tailscale.sh
+sudo ./scripts/02-install-cribl-stream.sh
+sudo ./scripts/03-install-cribl-edge-linux.sh
+sudo ./scripts/04-configure-sources.sh</code></pre>
+    </li>
+    <li>Konfiguration aus Backup uebernehmen</li>
+    <li>Deployment verifizieren: <code>sudo ./scripts/07-verify-deployment.sh</code></li>
+</ol>
+
+<!-- 4. Backup und Restore -->
+<h2 id="backup-restore">4. Backup und Restore Verfahren</h2>
+
+<h3>4.1 Backup-Strategie</h3>
+
+<table>
+    <tr>
+        <th>Komponente</th>
+        <th>Pfad</th>
+        <th>Backup-Methode</th>
+        <th>Haeufigkeit</th>
+        <th>Aufbewahrung</th>
+    </tr>
+    <tr>
+        <td>Cribl Stream Konfiguration</td>
+        <td><code>/opt/cribl/local/</code></td>
+        <td>tar + rsync auf Backup-Server</td>
+        <td>Taeglich + nach jeder Aenderung</td>
+        <td>90 Tage</td>
+    </tr>
+    <tr>
+        <td>Cribl Edge Konfiguration</td>
+        <td><code>/opt/cribl-edge/local/</code></td>
+        <td>tar + rsync auf Backup-Server</td>
+        <td>Taeglich</td>
+        <td>90 Tage</td>
+    </tr>
+    <tr>
+        <td>Projekt-Repository</td>
+        <td><code>/opt/IceDataEmphasise/</code></td>
+        <td>Git (Remote-Repository)</td>
+        <td>Bei jedem Commit</td>
+        <td>Unbegrenzt</td>
+    </tr>
+    <tr>
+        <td>Persistent Queue Daten</td>
+        <td><code>/opt/cribl/state/queues/</code></td>
+        <td>Kein regulaeres Backup (transient)</td>
+        <td>&ndash;</td>
+        <td>&ndash;</td>
+    </tr>
+    <tr>
+        <td>Umgebungsvariablen</td>
+        <td><code>.env</code></td>
+        <td>Verschluesselt auf Backup-Server</td>
+        <td>Nach jeder Aenderung</td>
+        <td>90 Tage</td>
+    </tr>
+</table>
+
+<h3>4.2 Backup erstellen (Schritt-fuer-Schritt)</h3>
+
+<pre><code>#!/usr/bin/env bash
+# Backup-Skript fuer IceDataEmphasise Cribl-Konfiguration
+
+BACKUP_DIR="/backup/cribl/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "${BACKUP_DIR}"
+
+# 1. Cribl Stream Konfiguration sichern
+echo "Sichere Cribl Stream Konfiguration..."
+sudo tar czf "${BACKUP_DIR}/cribl-stream-local.tar.gz" -C /opt/cribl local/
+
+# 2. Cribl Edge Konfiguration sichern
+echo "Sichere Cribl Edge Konfiguration..."
+sudo tar czf "${BACKUP_DIR}/cribl-edge-local.tar.gz" -C /opt/cribl-edge local/
+
+# 3. Cribl Stream State (ohne Queue-Daten)
+echo "Sichere Cribl Stream State..."
+sudo tar czf "${BACKUP_DIR}/cribl-stream-state.tar.gz" \
+    --exclude='queues' -C /opt/cribl state/
+
+# 4. Projekt-Konfigurationsdateien
+echo "Sichere Projekt-Konfiguration..."
+tar czf "${BACKUP_DIR}/project-configs.tar.gz" -C /opt/IceDataEmphasise \
+    configs/ .env scripts/
+
+# 5. Pruefsumme erstellen
+cd "${BACKUP_DIR}" && sha256sum *.tar.gz > checksums.sha256
+
+echo "Backup abgeschlossen: ${BACKUP_DIR}"
+ls -lh "${BACKUP_DIR}"</code></pre>
+
+<h3>4.3 Restore durchfuehren (Schritt-fuer-Schritt)</h3>
+
+<pre><code>#!/usr/bin/env bash
+# Restore-Skript fuer IceDataEmphasise Cribl-Konfiguration
+
+BACKUP_DIR="$1"  # Pfad zum Backup-Verzeichnis als Parameter
+
+if [[ -z "${BACKUP_DIR}" || ! -d "${BACKUP_DIR}" ]]; then
+    echo "Verwendung: $0 /backup/cribl/20260210_120000"
+    exit 1
+fi
+
+# 1. Pruefsummen verifizieren
+echo "Verifiziere Backup-Integritaet..."
+cd "${BACKUP_DIR}" && sha256sum -c checksums.sha256 || {
+    echo "FEHLER: Pruefsummen stimmen nicht ueberein! Abbruch."
+    exit 1
+}
+
+# 2. Services stoppen
+echo "Stoppe Cribl Services..."
+sudo systemctl stop cribl
+sudo systemctl stop cribl-edge
+
+# 3. Aktuelle Konfiguration sichern (Rollback-Moeglichkeit)
+echo "Sichere aktuelle Konfiguration als Rollback..."
+sudo cp -r /opt/cribl/local /opt/cribl/local.pre-restore
+sudo cp -r /opt/cribl-edge/local /opt/cribl-edge/local.pre-restore
+
+# 4. Cribl Stream Konfiguration wiederherstellen
+echo "Stelle Cribl Stream Konfiguration wieder her..."
+sudo tar xzf "${BACKUP_DIR}/cribl-stream-local.tar.gz" -C /opt/cribl/
+sudo chown -R cribl:cribl /opt/cribl/local
+
+# 5. Cribl Edge Konfiguration wiederherstellen
+echo "Stelle Cribl Edge Konfiguration wieder her..."
+sudo tar xzf "${BACKUP_DIR}/cribl-edge-local.tar.gz" -C /opt/cribl-edge/
+sudo chown -R cribl:cribl /opt/cribl-edge/local
+
+# 6. Services starten
+echo "Starte Cribl Services..."
+sudo systemctl start cribl
+sleep 5
+sudo systemctl start cribl-edge
+sleep 3
+
+# 7. Verifizierung
+echo "Verifiziere Wiederherstellung..."
+sudo ./scripts/07-verify-deployment.sh
+
+echo "Restore abgeschlossen."</code></pre>
+
+<div class="warning">
+    <strong>Wichtig:</strong> Nach einem Restore muessen Credentials (API-Token, HEC-Token, Passwoerter) ggf. erneut konfiguriert werden, da diese nicht im Klartext gesichert werden.
+</div>
+
+<!-- 5. Wiederanlauf-Prozedur -->
+<h2 id="wiederanlauf">5. Wiederanlauf-Prozedur nach Notfall</h2>
+
+<p>Die folgende Prozedur beschreibt den geordneten Wiederanlauf nach einem Notfall:</p>
+
+<h3>5.1 Checkliste Wiederanlauf</h3>
+
+<ol>
+    <li><strong>Ursache behoben:</strong> Sicherstellen, dass die Grundursache des Ausfalls behoben ist</li>
+    <li><strong>Hardware/Infrastruktur:</strong>
+        <ul class="checklist">
+            <li>NUC/Host-System laeuft und ist erreichbar</li>
+            <li>Netzwerkverbindung (Tailscale) steht</li>
+            <li>Ausreichend Festplattenspeicher vorhanden (&ge; 2 GB frei)</li>
+        </ul>
+    </li>
+    <li><strong>Cribl Stream starten:</strong>
+        <pre><code>sudo systemctl start cribl
+sleep 10
+curl -s http://localhost:9000/api/v1/health | jq .</code></pre>
+    </li>
+    <li><strong>Cribl Edge starten:</strong>
+        <pre><code>sudo systemctl start cribl-edge
+sleep 5
+sudo systemctl status cribl-edge</code></pre>
+    </li>
+    <li><strong>Destinations pruefen:</strong>
+        <ul class="checklist">
+            <li>Splunk HEC erreichbar (<code>curl -sk https://10.10.0.66:8088/services/collector/health</code>)</li>
+            <li>Splunk S2S erreichbar (<code>nc -zv 10.10.0.66 9997</code>)</li>
+        </ul>
+    </li>
+    <li><strong>Persistent Queue abarbeiten:</strong>
+        <ul class="checklist">
+            <li>Queue-Status pruefen (Cribl UI &rarr; Monitoring &rarr; Destinations)</li>
+            <li>Drain-Fortschritt ueberwachen</li>
+            <li>Warten, bis Queue leer ist</li>
+        </ul>
+    </li>
+    <li><strong>End-to-End Verifikation:</strong>
+        <pre><code>sudo ./scripts/07-verify-deployment.sh</code></pre>
+    </li>
+    <li><strong>Monitoring pruefen:</strong>
+        <ul class="checklist">
+            <li>Events/sec-Rate wieder auf Normalniveau</li>
+            <li>Keine Fehler in Cribl-Logs</li>
+            <li>Splunk empfaengt Daten</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>5.2 Wiederanlaufreihenfolge</h3>
+
+<table>
+    <tr><th>Schritt</th><th>Komponente</th><th>Aktion</th><th>Erfolgskriterium</th></tr>
+    <tr><td>1</td><td>Netzwerk</td><td>Tailscale-Verbindung pruefen</td><td><code>tailscale status</code> zeigt "Running"</td></tr>
+    <tr><td>2</td><td>Cribl Stream</td><td>Service starten</td><td>API Health Check HTTP 200</td></tr>
+    <tr><td>3</td><td>Destinations</td><td>Splunk-Konnektivitaet pruefen</td><td>HEC + S2S Ports erreichbar</td></tr>
+    <tr><td>4</td><td>Cribl Edge</td><td>Service starten</td><td>Edge bei Stream registriert</td></tr>
+    <tr><td>5</td><td>Quellen</td><td>Log-Eingang pruefen</td><td>Events/sec &gt; 0 im Dashboard</td></tr>
+    <tr><td>6</td><td>Pipeline</td><td>Gesamte Pipeline pruefen</td><td><code>07-verify-deployment.sh</code> alle Tests bestanden</td></tr>
+</table>
+
+<!-- 6. Kommunikationsplan -->
+<h2 id="kommunikation">6. Kommunikationsplan</h2>
+
+<h3>6.1 Kommunikationsmatrix</h3>
+
+<table>
+    <tr>
+        <th>Severity</th>
+        <th>Empfaenger</th>
+        <th>Kanal</th>
+        <th>Zeitrahmen</th>
+        <th>Inhalt</th>
+    </tr>
+    <tr>
+        <td>Sev1</td>
+        <td>Teamleitung, ISB, Abteilungsleitung</td>
+        <td>Telefon + E-Mail</td>
+        <td>Sofort (innerhalb 15 Min.)</td>
+        <td>Art des Ausfalls, Auswirkung, geschaetzte Wiederherstellungszeit</td>
+    </tr>
+    <tr>
+        <td>Sev1</td>
+        <td>Geschaeftsleitung</td>
+        <td>E-Mail</td>
+        <td>Innerhalb 30 Min.</td>
+        <td>Kurzuebersicht, Compliance-Relevanz, Massnahmen</td>
+    </tr>
+    <tr>
+        <td>Sev2</td>
+        <td>Teamleitung</td>
+        <td>E-Mail + Chat</td>
+        <td>Innerhalb 30 Min.</td>
+        <td>Art der Stoerung, betroffene Komponenten, Massnahmen</td>
+    </tr>
+    <tr>
+        <td>Sev3</td>
+        <td>Teamleitung</td>
+        <td>Chat / Ticketsystem</td>
+        <td>Innerhalb 4 Std.</td>
+        <td>Problembeschreibung, geplante Massnahmen</td>
+    </tr>
+    <tr>
+        <td>Sev4</td>
+        <td>Team</td>
+        <td>Ticketsystem</td>
+        <td>Naechster Arbeitstag</td>
+        <td>Problembeschreibung, Prioritaet</td>
+    </tr>
+</table>
+
+<h3>6.2 Kommunikationsvorlage (Sev1/Sev2)</h3>
+
+<pre><code>Betreff: [SEV{X}] IceDataEmphasise - {Kurzbeschreibung}
+
+Zeitpunkt der Erkennung: {YYYY-MM-DD HH:MM}
+Betroffene Komponente(n): {Cribl Stream / Edge / Splunk / NUC}
+Auswirkung: {Beschreibung der Auswirkung auf Log-Pipeline}
+
+Aktuelle Massnahmen:
+- {Massnahme 1}
+- {Massnahme 2}
+
+Geschaetzte Wiederherstellungszeit: {HH:MM oder "wird ermittelt"}
+Compliance-Relevanz: {Ja/Nein - Begruendung}
+
+Naechstes Update: {Zeitpunkt}
+
+Verantwortlicher Engineer: {Name}
+Telefon: {Nummer}</code></pre>
+
+<!-- 7. Post-Incident Review Template -->
+<h2 id="post-incident">7. Post-Incident Review Template</h2>
+
+<div class="info">
+    <strong>Hinweis:</strong> Ein Post-Incident Review (PIR) ist fuer alle Sev1- und Sev2-Vorfaelle innerhalb von 5 Arbeitstagen nach Behebung durchzufuehren. Fuer Sev3 nach Ermessen der Teamleitung.
+</div>
+
+<h3>Post-Incident Review &ndash; Vorlage</h3>
+
+<table>
+    <tr><th style="width: 30%">Feld</th><th>Inhalt</th></tr>
+    <tr><td><strong>Incident-ID</strong></td><td>{INC-YYYY-NNN}</td></tr>
+    <tr><td><strong>Severity</strong></td><td>{Sev1 / Sev2 / Sev3}</td></tr>
+    <tr><td><strong>Datum/Uhrzeit Erkennung</strong></td><td>{YYYY-MM-DD HH:MM}</td></tr>
+    <tr><td><strong>Datum/Uhrzeit Behebung</strong></td><td>{YYYY-MM-DD HH:MM}</td></tr>
+    <tr><td><strong>Dauer</strong></td><td>{X Stunden Y Minuten}</td></tr>
+    <tr><td><strong>Betroffene Komponenten</strong></td><td>{Cribl Stream / Edge / Splunk / Netzwerk / Hardware}</td></tr>
+    <tr><td><strong>Auswirkung</strong></td><td>{Beschreibung: Datenverlust? Welche Quellen betroffen? Dauer?}</td></tr>
+    <tr><td><strong>Ursache (Root Cause)</strong></td><td>{Detaillierte Beschreibung der Grundursache}</td></tr>
+    <tr><td><strong>Zeitleiste</strong></td><td>
+        <ul>
+            <li>HH:MM &ndash; Vorfall erkannt durch {Quelle}</li>
+            <li>HH:MM &ndash; Erstreaktion: {Massnahme}</li>
+            <li>HH:MM &ndash; Eskalation an {Person/Rolle}</li>
+            <li>HH:MM &ndash; Ursache identifiziert</li>
+            <li>HH:MM &ndash; Behebung durchgefuehrt</li>
+            <li>HH:MM &ndash; Normalbetrieb wiederhergestellt</li>
+        </ul>
+    </td></tr>
+    <tr><td><strong>Sofortmassnahmen</strong></td><td>{Was wurde zur Behebung getan?}</td></tr>
+    <tr><td><strong>Datenverlust</strong></td><td>{Ja/Nein &ndash; Details: Welche Events, Zeitraum}</td></tr>
+    <tr><td><strong>Compliance-Auswirkung</strong></td><td>{Ja/Nein &ndash; Regulatorische Meldepflicht ausgeloest?}</td></tr>
+</table>
+
+<h3>Lessons Learned und Massnahmen</h3>
+
+<table>
+    <tr><th>#</th><th>Erkenntnis / Massnahme</th><th>Verantwortlich</th><th>Frist</th><th>Status</th></tr>
+    <tr><td>1</td><td>{Beschreibung}</td><td>{Name}</td><td>{Datum}</td><td>Offen</td></tr>
+    <tr><td>2</td><td>{Beschreibung}</td><td>{Name}</td><td>{Datum}</td><td>Offen</td></tr>
+    <tr><td>3</td><td>{Beschreibung}</td><td>{Name}</td><td>{Datum}</td><td>Offen</td></tr>
+</table>
+
+<h3>Verbesserungsfragen</h3>
+<ul>
+    <li>Haette der Vorfall frueher erkannt werden koennen? Wie?</li>
+    <li>War die Eskalation angemessen und rechtzeitig?</li>
+    <li>Waren Runbooks/Dokumentation hilfreich und aktuell?</li>
+    <li>Welche Monitoring-Luecken bestehen?</li>
+    <li>Kann die Wiederherstellungszeit (RTO) verbessert werden?</li>
+    <li>Sind Backup-Verfahren ausreichend getestet?</li>
+</ul>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="10-schulung.html">&larr; 10 &ndash; Schulung und Wissenstransfer</a>
+    <a href="12-monitoring.html">12 &ndash; Monitoring und Alerting &rarr;</a>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    ITSO-konforme Dokumentation &ndash; Version 1.0 &ndash; 2026-02-10
+</div>
+
+</body>
+</html>

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cribl Stream Konfiguration - IceDataEmphasise ITSO-Dokumentation</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Cribl Stream Konfiguration</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Autor: IceDataEmphasise Team</span>
+        <span>Klassifikation: INTERN</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr>
+        <th>Version</th>
+        <th>Datum</th>
+        <th>Autor</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>1.0</td>
+        <td>2026-02-10</td>
+        <td>IceDataEmphasise Team</td>
+        <td>Initiale Erstellung der Stream-Konfigurationsdokumentation</td>
+    </tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#initial">Initiale Konfiguration nach Installation</a></li>
+    <li><a href="#worker">Worker Processes und Threading</a></li>
+    <li><a href="#auth">Authentication und Benutzer-Management</a></li>
+    <li><a href="#system">Systemeinstellungen</a></li>
+    <li><a href="#api">API-Zugang und Token-Management</a></li>
+    <li><a href="#tls">TLS-Konfiguration</a></li>
+    <li><a href="#fleet">Fleet Management Konzept</a></li>
+</ol>
+
+<!-- 1. Initiale Konfiguration -->
+<h2 id="initial">1. Initiale Konfiguration nach Installation</h2>
+
+<h3>1.1 Erster Zugriff auf die Web-UI</h3>
+<p>
+    Nach der Installation von Cribl Stream ist die Web-UI unter <code>http://&lt;host&gt;:9000</code>
+    erreichbar. Beim ersten Zugriff muss das Admin-Passwort gesetzt werden.
+</p>
+
+<pre><code># Stream-UI aufrufen (ueber Tailscale-IP)
+http://&lt;tailscale-ip&gt;:9000
+
+# Alternativ lokal:
+http://localhost:9000</code></pre>
+
+<h3>1.2 Initiale Login-Daten</h3>
+<table>
+    <tr>
+        <th>Parameter</th>
+        <th>Standardwert</th>
+        <th>Empfehlung</th>
+    </tr>
+    <tr>
+        <td>Benutzername</td>
+        <td><code>admin</code></td>
+        <td>Beibehalten; zusaetzliche Benutzer anlegen</td>
+    </tr>
+    <tr>
+        <td>Passwort</td>
+        <td><code>admin</code> (erster Start)</td>
+        <td>Sofort aendern auf sicheres Passwort</td>
+    </tr>
+</table>
+
+<div class="warning">
+    <strong>Sicherheitshinweis:</strong> Das Standard-Admin-Passwort muss sofort nach dem ersten Login
+    geaendert werden. Fuer den PoC wird das Passwort in der <code>.env</code>-Datei als
+    <code>CRIBL_ADMIN_PASSWORD</code> hinterlegt, um automatisierte Konfiguration ueber die API zu
+    ermoeglichen.
+</div>
+
+<h3>1.3 Konfigurationsverzeichnis-Struktur</h3>
+<pre><code>/opt/cribl/
+  bin/                     # Cribl-Binaries
+  default/                 # Standard-Konfiguration (nicht editieren)
+  local/                   # Lokale Anpassungen (ueberschreibt default)
+    cribl/
+      cribl.yml            # Hauptkonfiguration
+      auth/                # Authentifizierung
+      inputs/              # Quellen-Definitionen
+      outputs/             # Destinations
+      pipelines/           # Verarbeitungs-Pipelines
+      routes/              # Route-Tabellen
+  log/                     # Log-Dateien
+  pid/                     # PID-Dateien
+  state/                   # Laufzeitstatus</code></pre>
+
+<div class="info">
+    <strong>Konfigurationsprinzip:</strong> Cribl verwendet ein Schichtensystem. Dateien unter <code>default/</code>
+    werden nie direkt editiert. Alle Anpassungen erfolgen unter <code>local/</code>, das die Standardwerte
+    ueberschreibt. Dies ermoeglicht saubere Upgrades.
+</div>
+
+<!-- 2. Worker Processes -->
+<h2 id="worker">2. Worker Processes und Threading</h2>
+
+<h3>2.1 Worker-Konfiguration</h3>
+<p>
+    Cribl Stream nutzt Node.js und kann mehrere Worker-Prozesse starten, um CPU-Kerne effizient zu nutzen.
+    Im Free Tier ist nur ein einzelner Worker-Prozess erlaubt.
+</p>
+
+<table>
+    <tr>
+        <th>Einstellung</th>
+        <th>Beschreibung</th>
+        <th>PoC-Wert</th>
+    </tr>
+    <tr>
+        <td>Worker Processes</td>
+        <td>Anzahl der parallel arbeitenden Prozesse</td>
+        <td>1 (Free Tier Limit)</td>
+    </tr>
+    <tr>
+        <td>Memory Limit</td>
+        <td>Max. Speicher pro Worker</td>
+        <td>2048 MB (Standard)</td>
+    </tr>
+    <tr>
+        <td>CPU Affinity</td>
+        <td>Bindung an bestimmte CPU-Kerne</td>
+        <td>Nicht konfiguriert</td>
+    </tr>
+</table>
+
+<h3>2.2 Konfiguration via cribl.yml</h3>
+<pre><code># /opt/cribl/local/cribl/cribl.yml (Auszug)
+api:
+  host: 0.0.0.0
+  port: 9000
+  disabled: false
+  ssl:
+    disabled: true    # TLS fuer API -- siehe Abschnitt 6
+
+distributed:
+  mode: master        # Stream Leader-Modus
+  port: 4200          # Edge Management Port</code></pre>
+
+<h3>2.3 Performance-Tuning</h3>
+<div class="info">
+    <strong>PoC-Hinweis:</strong> Im PoC-Betrieb mit geringem Datenvolumen ist kein spezielles Performance-Tuning
+    erforderlich. Bei hoeherem Durchsatz koennen folgende Parameter angepasst werden:
+</div>
+<ul>
+    <li><code>LimitNOFILE=65536</code> -- File-Descriptor-Limit im systemd-Service (bereits gesetzt)</li>
+    <li><code>staleChannelFlushMs: 10000</code> -- Flush-Intervall fuer inaktive Quellen-Kanaele</li>
+    <li>Persistent Queue Groesse pro Destination: <code>pqMaxSize: 1GB</code></li>
+</ul>
+
+<!-- 3. Authentication -->
+<h2 id="auth">3. Authentication und Benutzer-Management</h2>
+
+<h3>3.1 Lokale Benutzer</h3>
+<p>
+    Cribl Stream verwaltet Benutzer in einer lokalen Datenbank. Fuer den PoC wird ausschliesslich
+    der <code>admin</code>-Benutzer verwendet.
+</p>
+
+<table>
+    <tr>
+        <th>Benutzername</th>
+        <th>Rolle</th>
+        <th>Berechtigungen</th>
+    </tr>
+    <tr>
+        <td><code>admin</code></td>
+        <td>Admin</td>
+        <td>Vollzugriff auf alle Funktionen</td>
+    </tr>
+</table>
+
+<h3>3.2 Rollen und Berechtigungen</h3>
+<p>Cribl Stream unterstuetzt folgende vordefinierte Rollen:</p>
+<table>
+    <tr>
+        <th>Rolle</th>
+        <th>Beschreibung</th>
+        <th>Typischer Einsatz</th>
+    </tr>
+    <tr>
+        <td>Admin</td>
+        <td>Vollzugriff, inkl. Benutzerverwaltung und Systemkonfiguration</td>
+        <td>Plattform-Administratoren</td>
+    </tr>
+    <tr>
+        <td>Editor</td>
+        <td>Kann Pipelines, Routes und Quellen bearbeiten</td>
+        <td>Data Engineers</td>
+    </tr>
+    <tr>
+        <td>Read-Only</td>
+        <td>Kann Konfiguration und Monitoring einsehen, aber nicht aendern</td>
+        <td>Auditoren, Monitoring-Teams</td>
+    </tr>
+</table>
+
+<h3>3.3 Benutzer anlegen (API)</h3>
+<pre><code># Neuen Benutzer ueber die REST API anlegen
+curl -s -X POST http://localhost:9000/api/v1/auth/users \
+  -H "Authorization: Bearer &lt;TOKEN&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "auditor",
+    "password": "&lt;sicheres_passwort&gt;",
+    "first": "Audit",
+    "last": "User",
+    "roles": ["read_only"]
+  }'</code></pre>
+
+<h3>3.4 Empfehlungen fuer den Produktivbetrieb</h3>
+<div class="info">
+    <strong>Produktions-Empfehlung:</strong> Im Produktivbetrieb sollte die lokale Authentifizierung
+    durch SSO/SAML-Integration ersetzt werden:
+    <ul>
+        <li>SAML 2.0 Integration mit dem zentralen Identity Provider der Bank</li>
+        <li>Rollenbasierte Zugriffssteuerung (RBAC) abgeleitet aus LDAP/AD-Gruppen</li>
+        <li>Deaktivierung des lokalen <code>admin</code>-Accounts nach SSO-Migration</li>
+    </ul>
+</div>
+
+<!-- 4. Systemeinstellungen -->
+<h2 id="system">4. Systemeinstellungen</h2>
+
+<h3>4.1 Logging</h3>
+<table>
+    <tr>
+        <th>Einstellung</th>
+        <th>Pfad / Wert</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>Log-Verzeichnis</td>
+        <td><code>/opt/cribl/log/</code></td>
+        <td>Alle Cribl Stream Logdateien</td>
+    </tr>
+    <tr>
+        <td>cribl.log</td>
+        <td><code>/opt/cribl/log/cribl.log</code></td>
+        <td>Haupt-Logdatei des Stream-Prozesses</td>
+    </tr>
+    <tr>
+        <td>Log-Level</td>
+        <td><code>info</code> (Standard)</td>
+        <td>Optionen: error, warn, info, debug, silly</td>
+    </tr>
+    <tr>
+        <td>Rotation</td>
+        <td>Automatisch</td>
+        <td>Cribl rotiert Logs intern</td>
+    </tr>
+</table>
+
+<pre><code># Log-Level temporaer auf debug aendern (ueber API)
+curl -s -X PATCH http://localhost:9000/api/v1/system/settings \
+  -H "Authorization: Bearer &lt;TOKEN&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"logLevel": "debug"}'</code></pre>
+
+<div class="warning">
+    <strong>Achtung:</strong> Das Log-Level <code>debug</code> erzeugt erheblich mehr Log-Volumen und
+    sollte nur temporaer fuer die Fehleranalyse aktiviert werden.
+</div>
+
+<h3>4.2 Metriken (Internal Metrics)</h3>
+<p>
+    Cribl Stream stellt interne Metriken ueber den Endpunkt <code>/api/v1/system/metrics</code> bereit.
+    Diese koennen fuer Monitoring und Alerting genutzt werden.
+</p>
+
+<table>
+    <tr>
+        <th>Metrik</th>
+        <th>Beschreibung</th>
+        <th>Einheit</th>
+    </tr>
+    <tr>
+        <td><code>total.in_events</code></td>
+        <td>Eingehende Events gesamt</td>
+        <td>Anzahl</td>
+    </tr>
+    <tr>
+        <td><code>total.out_events</code></td>
+        <td>Ausgehende Events gesamt</td>
+        <td>Anzahl</td>
+    </tr>
+    <tr>
+        <td><code>total.in_bytes</code></td>
+        <td>Eingehendes Datenvolumen</td>
+        <td>Bytes</td>
+    </tr>
+    <tr>
+        <td><code>total.out_bytes</code></td>
+        <td>Ausgehendes Datenvolumen</td>
+        <td>Bytes</td>
+    </tr>
+    <tr>
+        <td><code>health.inputs</code></td>
+        <td>Zustand der Quellen</td>
+        <td>Status</td>
+    </tr>
+    <tr>
+        <td><code>health.outputs</code></td>
+        <td>Zustand der Destinations</td>
+        <td>Status</td>
+    </tr>
+    <tr>
+        <td><code>system.cpu_perc</code></td>
+        <td>CPU-Auslastung des Workers</td>
+        <td>Prozent</td>
+    </tr>
+    <tr>
+        <td><code>system.mem_rss</code></td>
+        <td>Speicherverbrauch (RSS)</td>
+        <td>Bytes</td>
+    </tr>
+</table>
+
+<h3>4.3 Diagnostics</h3>
+<pre><code># Diagnostics-Bundle erstellen (ueber CLI)
+/opt/cribl/bin/cribl diag
+
+# Diagnostics-Bundle ueber die API erstellen
+curl -s -X POST http://localhost:9000/api/v1/system/diag \
+  -H "Authorization: Bearer &lt;TOKEN&gt;" \
+  --output diag-bundle.tar.gz</code></pre>
+
+<p>
+    Das Diagnostics-Bundle enthaelt Konfiguration, Logs, Metriken und Systeminformationen und kann
+    fuer den Support oder die Fehleranalyse verwendet werden.
+</p>
+
+<!-- 5. API-Zugang -->
+<h2 id="api">5. API-Zugang und Token-Management</h2>
+
+<h3>5.1 REST API Uebersicht</h3>
+<p>
+    Die Cribl Stream REST API ist unter <code>http://&lt;host&gt;:9000/api/v1/</code> erreichbar und
+    bietet programmgesteuerten Zugriff auf alle Konfigurationsbereiche.
+</p>
+
+<table>
+    <tr>
+        <th>Endpunkt</th>
+        <th>Methode</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td><code>/api/v1/auth/login</code></td>
+        <td>POST</td>
+        <td>Authentifizierung, liefert Bearer Token</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/health</code></td>
+        <td>GET</td>
+        <td>Health-Check</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/m/default/system/inputs</code></td>
+        <td>GET/POST</td>
+        <td>Quellen auflisten/erstellen</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/m/default/system/outputs</code></td>
+        <td>GET/POST</td>
+        <td>Destinations auflisten/erstellen</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/m/default/pipelines</code></td>
+        <td>GET/POST</td>
+        <td>Pipelines auflisten/erstellen</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/m/default/routes</code></td>
+        <td>GET/PUT</td>
+        <td>Routes auflisten/konfigurieren</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/edge/nodes</code></td>
+        <td>GET</td>
+        <td>Edge Nodes auflisten</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/master/groups</code></td>
+        <td>GET/POST</td>
+        <td>Fleet-Gruppen verwalten</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/version/commit</code></td>
+        <td>POST</td>
+        <td>Konfiguration committen</td>
+    </tr>
+    <tr>
+        <td><code>/api/v1/master/groups/default/deploy</code></td>
+        <td>POST</td>
+        <td>Konfiguration deployen</td>
+    </tr>
+</table>
+
+<h3>5.2 Authentifizierung (Bearer Token)</h3>
+<p>
+    Die API verwendet Bearer-Token-Authentifizierung. Das Token wird ueber den Login-Endpunkt bezogen.
+    Die Hilfsbibliothek <code>scripts/lib/api-helpers.sh</code> kapselt diesen Vorgang in der Funktion
+    <code>cribl_auth()</code>.
+</p>
+
+<pre><code># Token beziehen
+TOKEN=$(curl -s -X POST http://localhost:9000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"&lt;passwort&gt;"}' | jq -r '.token')
+
+# Token verwenden
+curl -s http://localhost:9000/api/v1/health \
+  -H "Authorization: Bearer $TOKEN"</code></pre>
+
+<h3>5.3 API-Wrapper-Funktionen</h3>
+<p>
+    Das Projekt stellt in <code>scripts/lib/api-helpers.sh</code> komfortable Wrapper bereit:
+</p>
+<table>
+    <tr>
+        <th>Funktion</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td><code>cribl_auth</code></td>
+        <td>Authentifiziert und speichert Token in <code>CRIBL_AUTH_TOKEN</code></td>
+    </tr>
+    <tr>
+        <td><code>cribl_get / cribl_post / cribl_put / cribl_patch / cribl_delete</code></td>
+        <td>Generische HTTP-Methoden mit automatischer Auth</td>
+    </tr>
+    <tr>
+        <td><code>cribl_create_source</code></td>
+        <td>Erstellt eine Quelle aus JSON-Konfigurationsdatei</td>
+    </tr>
+    <tr>
+        <td><code>cribl_create_destination</code></td>
+        <td>Erstellt eine Destination aus JSON-Konfigurationsdatei</td>
+    </tr>
+    <tr>
+        <td><code>cribl_create_pipeline</code></td>
+        <td>Erstellt eine Pipeline aus JSON-Konfigurationsdatei</td>
+    </tr>
+    <tr>
+        <td><code>cribl_create_route</code></td>
+        <td>Konfiguriert Routes aus JSON-Konfigurationsdatei</td>
+    </tr>
+    <tr>
+        <td><code>cribl_create_fleet</code></td>
+        <td>Erstellt eine Fleet-Gruppe mit ID und Beschreibung</td>
+    </tr>
+    <tr>
+        <td><code>cribl_commit_deploy</code></td>
+        <td>Committet und deployt die aktuelle Konfiguration</td>
+    </tr>
+    <tr>
+        <td><code>cribl_health_check</code></td>
+        <td>Prueft den Health-Endpunkt</td>
+    </tr>
+</table>
+
+<!-- 6. TLS-Konfiguration -->
+<h2 id="tls">6. TLS-Konfiguration</h2>
+
+<h3>6.1 PoC-Status</h3>
+<div class="info">
+    <strong>PoC-Konfiguration:</strong> Im aktuellen PoC ist TLS fuer die Cribl Stream API deaktiviert
+    (<code>ssl.disabled: true</code>). Der Zugriff wird stattdessen ueber das verschluesselte
+    Tailscale-VPN-Overlay gesichert.
+</div>
+
+<h3>6.2 TLS fuer die Web-UI/API aktivieren</h3>
+<pre><code># /opt/cribl/local/cribl/cribl.yml
+api:
+  host: 0.0.0.0
+  port: 9000
+  ssl:
+    disabled: false
+    privKeyPath: /opt/cribl/local/certs/server.key
+    certPath: /opt/cribl/local/certs/server.crt
+    # Optional: CA-Zertifikat fuer Client-Zertifikats-Validierung
+    # caPath: /opt/cribl/local/certs/ca.crt</code></pre>
+
+<h3>6.3 TLS fuer Destinations</h3>
+<p>Die Splunk-Destinations sind wie folgt konfiguriert:</p>
+<table>
+    <tr>
+        <th>Destination</th>
+        <th>TLS-Status</th>
+        <th>Port</th>
+        <th>Begruendung</th>
+    </tr>
+    <tr>
+        <td>Splunk HEC</td>
+        <td>Aktiviert (<code>tls.disabled: false</code>)</td>
+        <td>8088</td>
+        <td>HEC erfordert standardmaessig TLS</td>
+    </tr>
+    <tr>
+        <td>Splunk S2S</td>
+        <td>Deaktiviert (<code>tls.disabled: true</code>)</td>
+        <td>9997</td>
+        <td>S2S-Protokoll nutzt eigene Verschluesselung (PoC)</td>
+    </tr>
+</table>
+
+<h3>6.4 Zertifikatsverwaltung fuer den Produktivbetrieb</h3>
+<div class="warning">
+    <strong>Produktionsanforderung:</strong> Fuer den Produktivbetrieb in einer regulierten Bankumgebung
+    muessen folgende TLS-Anforderungen erfuellt werden:
+    <ul>
+        <li>Zertifikate von der internen PKI (Public Key Infrastructure) der Bank ausstellen lassen</li>
+        <li>TLS 1.2 als Minimum, TLS 1.3 empfohlen</li>
+        <li>Automatische Zertifikatsrotation einrichten</li>
+        <li>Gegenseitige TLS-Authentifizierung (mTLS) fuer Edge-zu-Stream-Kommunikation</li>
+    </ul>
+</div>
+
+<!-- 7. Fleet Management -->
+<h2 id="fleet">7. Fleet Management Konzept</h2>
+
+<h3>7.1 Architektur</h3>
+<p>
+    Cribl Fleet Management ermoeglicht die zentrale Verwaltung von Edge Nodes ueber den Stream Leader.
+    Edge Nodes werden in Fleets (Gruppen) organisiert, die jeweils eine eigene Konfiguration erhalten koennen.
+</p>
+
+<pre><code>
+  +---------------------------+
+  |    Cribl Stream Leader    |
+  |    (Fleet Manager)        |
+  |    Port 4200 (Mgmt)       |
+  +------+----------+---------+
+         |          |
+         v          v
+  +-----------+  +-----------+
+  | Fleet:    |  | Fleet:    |
+  | nuc-linux |  | windows-  |
+  |           |  | workstns  |
+  | - Edge 1  |  | - Edge 3  |
+  | - Edge 2  |  | - Edge 4  |
+  +-----------+  +-----------+
+</code></pre>
+
+<h3>7.2 Geplante Fleet-Struktur</h3>
+<table>
+    <tr>
+        <th>Fleet-ID</th>
+        <th>Beschreibung</th>
+        <th>Betriebssystem</th>
+        <th>Quellen</th>
+    </tr>
+    <tr>
+        <td><code>nuc-linux</code></td>
+        <td>Linux Edge Nodes auf Intel NUC</td>
+        <td>Debian/Ubuntu</td>
+        <td>File Monitor, Journald</td>
+    </tr>
+    <tr>
+        <td><code>windows-workstations</code></td>
+        <td>Windows Edge Nodes auf Arbeitsplaetzen</td>
+        <td>Windows 10/11</td>
+        <td>Windows Event Log, File Monitor</td>
+    </tr>
+</table>
+
+<h3>7.3 Fleet erstellen (API)</h3>
+<pre><code># Fleet ueber die API erstellen (api-helpers.sh)
+cribl_create_fleet "nuc-linux" "Linux Edge Nodes auf Intel NUC Systemen"
+
+# Oder direkt per curl:
+curl -s -X POST http://localhost:9000/api/v1/master/groups \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id": "nuc-linux", "description": "Linux Edge Nodes auf Intel NUC Systemen"}'</code></pre>
+
+<h3>7.4 Konfiguration deployen</h3>
+<p>
+    Aenderungen an der Stream-Konfiguration muessen committed und anschliessend auf die Fleets deployed werden.
+    Dies erfolgt ueber die API-Wrapper-Funktion <code>cribl_commit_deploy()</code>:
+</p>
+
+<pre><code># Konfiguration committen und deployen
+cribl_commit_deploy "Quellen-Konfiguration fuer NUC-Fleet erstellt"
+
+# Oder manuell per API:
+# 1. Commit
+curl -s -X POST http://localhost:9000/api/v1/version/commit \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Quellen-Konfiguration aktualisiert", "effective": true}'
+
+# 2. Deploy
+curl -s -X POST http://localhost:9000/api/v1/master/groups/default/deploy \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'</code></pre>
+
+<h3>7.5 Versionierung</h3>
+<p>
+    Cribl Stream verfuegt ueber ein integriertes Git-basiertes Versionierungssystem. Jeder Commit
+    erzeugt einen Versionseintrag, der ueber die UI oder API eingesehen und bei Bedarf
+    zurueckgesetzt werden kann.
+</p>
+<div class="success">
+    <strong>Best Practice:</strong> Jeder Konfigurationsaenderung sollte eine aussagekraeftige
+    Commit-Nachricht mitgegeben werden. Die automatisierten Skripte nutzen dafuer den Parameter
+    der Funktion <code>cribl_commit_deploy("Beschreibung")</code>.
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="02-installation.html">&larr; Zurueck: Installationshandbuch</a>
+    <a href="04-edge-konfiguration.html">Weiter: Edge Konfiguration &rarr;</a>
+</div>
+
+<div class="footer">
+    IceDataEmphasise - ITSO-Dokumentation
+</div>
+
+</body>
+</html>

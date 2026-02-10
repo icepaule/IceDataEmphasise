@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:apache_error",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Apache HTTP Server - error logs",
+  "fileFilter": "error.log*",
+  "path": "/var/log/apache2/error.log*",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

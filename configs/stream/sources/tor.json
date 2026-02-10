@@ -1,0 +1,11 @@
+{
+  "id": "file_monitor:tor_logs",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Tor anonymity service - all log files",
+  "fileFilter": "*",
+  "path": "/var/log/tor/*",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false
+}

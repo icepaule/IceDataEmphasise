@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quellen-Konfiguration - IceDataEmphasise ITSO-Dokumentation</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .raci { margin: 1em 0; }
+        .raci th { font-size: 0.85em; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Quellen-Konfiguration</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-10</span>
+        <span>Autor: IceDataEmphasise Team</span>
+        <span>Klassifikation: INTERN</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2>Revisionshistorie</h2>
+<table>
+    <tr>
+        <th>Version</th>
+        <th>Datum</th>
+        <th>Autor</th>
+        <th>Beschreibung</th>
+    </tr>
+    <tr>
+        <td>1.0</td>
+        <td>2026-02-10</td>
+        <td>IceDataEmphasise Team</td>
+        <td>Initiale Erstellung der Quellen-Dokumentation (12 Quellen)</td>
+    </tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2>Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#uebersicht">Uebersichtstabelle aller Quellen</a></li>
+    <li><a href="#detail">Detailbeschreibung pro Quelle</a></li>
+    <li><a href="#berechtigungen">Berechtigungskonzept</a></li>
+    <li><a href="#api">Konfiguration via REST API</a></li>
+    <li><a href="#monitoring">Monitoring der Quellen</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+</ol>
+
+<!-- 1. Uebersichtstabelle -->
+<h2 id="uebersicht">1. Uebersichtstabelle aller Quellen</h2>
+
+<p>
+    Das Projekt konfiguriert insgesamt <strong>12 Log-Quellen</strong>, die ueber Cribl Edge gesammelt
+    und an Cribl Stream zur Verarbeitung weitergeleitet werden. Alle Quellen-Konfigurationen befinden
+    sich als JSON-Dateien unter <code>configs/stream/sources/</code>.
+</p>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Quellen-ID</th>
+        <th>Typ</th>
+        <th>Pfad / Quelle</th>
+        <th>Dateifilter</th>
+        <th>Konfigurationsdatei</th>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td><code>journald:systemd_journal</code></td>
+        <td>Journald</td>
+        <td><code>/run/log/journal</code></td>
+        <td>--</td>
+        <td><code>systemd-journal.json</code></td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td><code>file_monitor:apache_access</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/apache2/access.log*</code></td>
+        <td><code>access.log*</code></td>
+        <td><code>apache-access.json</code></td>
+    </tr>
+    <tr>
+        <td>3</td>
+        <td><code>file_monitor:apache_error</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/apache2/error.log*</code></td>
+        <td><code>error.log*</code></td>
+        <td><code>apache-error.json</code></td>
+    </tr>
+    <tr>
+        <td>4</td>
+        <td><code>file_monitor:samba</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/samba/log.*</code></td>
+        <td><code>log.*</code></td>
+        <td><code>samba.json</code></td>
+    </tr>
+    <tr>
+        <td>5</td>
+        <td><code>file_monitor:docker_ha</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/lib/docker/containers/*/*.log</code></td>
+        <td><code>*.log</code></td>
+        <td><code>docker-ha.json</code></td>
+    </tr>
+    <tr>
+        <td>6</td>
+        <td><code>file_monitor:mosquitto</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/lib/docker/containers/*/*.log</code></td>
+        <td><code>*.log</code> (gefiltert)</td>
+        <td><code>mosquitto.json</code></td>
+    </tr>
+    <tr>
+        <td>7</td>
+        <td><code>file_monitor:ssh_auth</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/auth.log</code></td>
+        <td><code>auth.log</code></td>
+        <td><code>ssh-auth.json</code></td>
+    </tr>
+    <tr>
+        <td>8</td>
+        <td><code>file_monitor:tor_logs</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/tor/*</code></td>
+        <td><code>*</code></td>
+        <td><code>tor.json</code></td>
+    </tr>
+    <tr>
+        <td>9</td>
+        <td><code>file_monitor:dnsmasq</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/dnsmasq-tor.log</code></td>
+        <td><code>dnsmasq-tor.log</code></td>
+        <td><code>dnsmasq.json</code></td>
+    </tr>
+    <tr>
+        <td>10</td>
+        <td><code>file_monitor:cups</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/cups/access_log</code></td>
+        <td><code>access_log</code></td>
+        <td><code>cups.json</code></td>
+    </tr>
+    <tr>
+        <td>11</td>
+        <td><code>file_monitor:boot_logs</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/boot.log*</code></td>
+        <td><code>boot.log*</code></td>
+        <td><code>boot.json</code></td>
+    </tr>
+    <tr>
+        <td>12</td>
+        <td><code>file_monitor:dpkg</code></td>
+        <td>File Monitor</td>
+        <td><code>/var/log/dpkg.log*</code></td>
+        <td><code>dpkg.log*</code></td>
+        <td><code>dpkg.json</code></td>
+    </tr>
+</table>
+
+<div class="info">
+    <strong>Gemeinsame Einstellungen:</strong> Alle Quellen teilen folgende Standardwerte:
+    <code>disabled: false</code>, <code>sendToRoutes: true</code>,
+    <code>staleChannelFlushMs: 10000</code>, <code>pqEnabled: false</code>.
+</div>
+
+<!-- 2. Detailbeschreibung -->
+<h2 id="detail">2. Detailbeschreibung pro Quelle</h2>
+
+<h3>2.1 Systemd Journal</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>journald:systemd_journal</code></td></tr>
+    <tr><td>Typ</td><td>Journald</td></tr>
+    <tr><td>Journal-Pfad</td><td><code>/run/log/journal</code></td></tr>
+    <tr><td>Unit-Filter</td><td>Alle Units (kein Filter)</td></tr>
+    <tr><td>Beschreibung</td><td>Erfasst alle systemd Journal-Eintraege, inkl. Kernel, Init, Services</td></tr>
+    <tr><td>Relevanz</td><td>Zentrale Quelle fuer System-Events, Service-Starts/-Stops, Kernel-Meldungen</td></tr>
+</table>
+<div class="info">
+    <strong>Voraussetzung:</strong> Der Service-User <code>cribl</code> muss Mitglied der Gruppe
+    <code>systemd-journal</code> sein.
+</div>
+
+<h3>2.2 Apache Access Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:apache_access</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/apache2/access.log*</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>access.log*</code></td></tr>
+    <tr><td>Format</td><td>Apache Combined Log Format (CLF)</td></tr>
+    <tr><td>Pipeline</td><td><code>pipeline_apache_clf</code></td></tr>
+    <tr><td>Extrahierte Felder</td><td>client_ip, method, uri, status, bytes, referrer, user_agent</td></tr>
+</table>
+
+<h3>2.3 Apache Error Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:apache_error</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/apache2/error.log*</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>error.log*</code></td></tr>
+    <tr><td>Beschreibung</td><td>Apache-Fehlermeldungen, Modul-Warnungen, PHP-Fehler</td></tr>
+</table>
+
+<h3>2.4 Samba Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:samba</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/samba/log.*</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>log.*</code></td></tr>
+    <tr><td>Beschreibung</td><td>Samba-Dateiserver-Logs: Zugriffsprotokolle, Authentifizierungsereignisse, Verbindungsfehler</td></tr>
+</table>
+
+<h3>2.5 Docker / Home Assistant Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:docker_ha</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/lib/docker/containers/*/*.log</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>*.log</code></td></tr>
+    <tr><td>Format</td><td>Docker JSON Log Format</td></tr>
+    <tr><td>Beschreibung</td><td>Container-Logs aller Docker-Container, inkl. Home Assistant</td></tr>
+</table>
+<div class="warning">
+    <strong>Hinweis:</strong> Der Pfad <code>/var/lib/docker/containers/</code> erfordert die
+    Gruppenzugehoerigkeit <code>docker</code> fuer den Service-User.
+</div>
+
+<h3>2.6 Mosquitto MQTT Broker Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:mosquitto</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/lib/docker/containers/*/*.log</code></td></tr>
+    <tr><td>Filterausdruck</td><td><code>_raw.includes('mosquitto') || source.includes('mosquitto')</code></td></tr>
+    <tr><td>Beschreibung</td><td>MQTT-Broker-Logs, gefiltert aus den Docker-JSON-Logs. Erfasst Verbindungen, Subscriptions und Publish-Events.</td></tr>
+</table>
+<div class="info">
+    <strong>Besonderheit:</strong> Diese Quelle nutzt einen <code>filterExpr</code>, um aus allen
+    Docker-Container-Logs nur die Mosquitto-relevanten Events zu extrahieren.
+</div>
+
+<h3>2.7 SSH Authentication Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:ssh_auth</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/auth.log</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>auth.log</code></td></tr>
+    <tr><td>Pipeline</td><td><code>pipeline_syslog_enrichment</code></td></tr>
+    <tr><td>Beschreibung</td><td>SSH-Anmeldeversuche, PAM-Events, sudo-Nutzung. Sicherheitsrelevante Quelle.</td></tr>
+</table>
+<div class="warning">
+    <strong>Sicherheitsrelevanz:</strong> Diese Quelle ist fuer die Erkennung von Brute-Force-Angriffen und
+    unbefugten Zugriffsversuchen essenziell. Ein Ausfall der Erfassung muss sofort bemerkt werden.
+</div>
+
+<h3>2.8 Tor Service Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:tor_logs</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/tor/*</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>*</code> (alle Dateien)</td></tr>
+    <tr><td>Beschreibung</td><td>Tor-Dienst-Logs: Circuit-Aufbau, Verbindungsereignisse, Fehlermeldungen</td></tr>
+</table>
+
+<h3>2.9 dnsmasq (Tor DNS Resolver)</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:dnsmasq</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/dnsmasq-tor.log</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>dnsmasq-tor.log</code></td></tr>
+    <tr><td>Beschreibung</td><td>DNS-Aufloesung ueber den Tor-spezifischen dnsmasq-Resolver. Protokolliert DNS-Anfragen und -Antworten.</td></tr>
+</table>
+
+<h3>2.10 CUPS Print Server</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:cups</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/cups/access_log</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>access_log</code></td></tr>
+    <tr><td>Beschreibung</td><td>CUPS-Druckserver-Zugriffsprotokolle: Druckauftraege, Druckeraktionen, IPP-Anfragen</td></tr>
+</table>
+
+<h3>2.11 Boot Logs</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:boot_logs</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/boot.log*</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>boot.log*</code></td></tr>
+    <tr><td>Beschreibung</td><td>System-Boot-Protokolle: Service-Initialisierung, Kernel-Meldungen waehrend des Startvorgangs</td></tr>
+</table>
+
+<h3>2.12 dpkg (Paketverwaltung)</h3>
+<table>
+    <tr><th>Eigenschaft</th><th>Wert</th></tr>
+    <tr><td>ID</td><td><code>file_monitor:dpkg</code></td></tr>
+    <tr><td>Typ</td><td>File Monitor</td></tr>
+    <tr><td>Pfad</td><td><code>/var/log/dpkg.log*</code></td></tr>
+    <tr><td>Dateifilter</td><td><code>dpkg.log*</code></td></tr>
+    <tr><td>Beschreibung</td><td>Debian-Paketverwaltungs-Log: Installationen, Upgrades, Deinstallationen. Wichtig fuer Change-Management und Compliance-Nachverfolgung.</td></tr>
+</table>
+
+<!-- 3. Berechtigungskonzept -->
+<h2 id="berechtigungen">3. Berechtigungskonzept</h2>
+
+<h3>3.1 Service-User: cribl</h3>
+<p>
+    Der Cribl Edge Prozess laeuft unter einem dedizierten, nicht-privilegierten Service-User <code>cribl</code>.
+    Der Zugriff auf Log-Dateien wird ueber Gruppenmitgliedschaften und Linux Capabilities gesteuert.
+</p>
+
+<table>
+    <tr>
+        <th>Konfiguration</th>
+        <th>Wert</th>
+        <th>Zweck</th>
+    </tr>
+    <tr>
+        <td>Primaere Gruppe</td>
+        <td><code>cribl</code></td>
+        <td>Eigene Gruppe fuer Cribl-Dateien</td>
+    </tr>
+    <tr>
+        <td>Supplementaer: <code>adm</code></td>
+        <td>Mitglied</td>
+        <td>Lesen von <code>/var/log/</code> Dateien (syslog, auth, dpkg, boot, cups)</td>
+    </tr>
+    <tr>
+        <td>Supplementaer: <code>systemd-journal</code></td>
+        <td>Mitglied</td>
+        <td>Lesen von systemd Journal unter <code>/run/log/journal/</code></td>
+    </tr>
+    <tr>
+        <td>Supplementaer: <code>docker</code></td>
+        <td>Mitglied</td>
+        <td>Lesen von Docker Container-Logs unter <code>/var/lib/docker/</code></td>
+    </tr>
+</table>
+
+<h3>3.2 Capabilities (systemd)</h3>
+<pre><code># Aus cribl-edge.service:
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_SYSLOG
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_SYSLOG CAP_NET_BIND_SERVICE</code></pre>
+
+<table>
+    <tr>
+        <th>Capability</th>
+        <th>Beschreibung</th>
+        <th>Benoetigt fuer</th>
+    </tr>
+    <tr>
+        <td><code>CAP_DAC_READ_SEARCH</code></td>
+        <td>Umgeht Datei-Leseberechtigungspruefungen</td>
+        <td>Lesen von Log-Dateien, auf die der cribl-User keinen direkten Zugriff hat</td>
+    </tr>
+    <tr>
+        <td><code>CAP_SYSLOG</code></td>
+        <td>Zugriff auf Kernel-Log-Puffer</td>
+        <td>Lesen von Syslog-/Kernel-Nachrichten</td>
+    </tr>
+    <tr>
+        <td><code>CAP_NET_BIND_SERVICE</code></td>
+        <td>Binden an Ports &lt; 1024</td>
+        <td>Optionaler Syslog-Empfang auf Port 514</td>
+    </tr>
+</table>
+
+<h3>3.3 Sicherheits-Hardening</h3>
+<pre><code># Aus cribl-edge.service:
+NoNewPrivileges=false          # Fuer Capabilities erforderlich
+ProtectSystem=full             # /usr und /boot read-only
+ReadWritePaths=/opt/cribl-edge # Nur Edge-Verzeichnis beschreibbar
+ProtectHome=true               # /home nicht zugreifbar
+LimitNOFILE=65536              # File-Descriptor-Limit
+LimitNPROC=8192                # Prozess-Limit</code></pre>
+
+<h3>3.4 ACL-Konfiguration (erweitert)</h3>
+<p>
+    Fuer Dateien, auf die weder ueber Gruppenzugehoerigkeit noch Capabilities zugegriffen werden kann,
+    koennen POSIX ACLs (Access Control Lists) eingesetzt werden:
+</p>
+<pre><code># ACL fuer Tor-Logs setzen (falls Standard-Berechtigungen nicht ausreichen)
+sudo setfacl -R -m u:cribl:rX /var/log/tor/
+sudo setfacl -R -d -m u:cribl:rX /var/log/tor/
+
+# ACL fuer Samba-Logs
+sudo setfacl -R -m u:cribl:rX /var/log/samba/
+sudo setfacl -R -d -m u:cribl:rX /var/log/samba/
+
+# ACLs pruefen
+getfacl /var/log/tor/
+getfacl /var/log/samba/</code></pre>
+
+<!-- 4. Konfiguration via REST API -->
+<h2 id="api">4. Konfiguration via REST API</h2>
+
+<h3>4.1 Automatisierte Quellen-Konfiguration</h3>
+<p>
+    Die Quellen werden ueber das Konfigurationsskript <code>04-configure-sources.sh</code> (geplant) automatisiert
+    erstellt. Die Konfigurationsdateien liegen unter <code>configs/stream/sources/</code>.
+</p>
+
+<h3>4.2 Einzelne Quelle erstellen (Beispiel)</h3>
+<pre><code># Authentifizierung
+source scripts/lib/common.sh
+source scripts/lib/api-helpers.sh
+cribl_auth
+
+# File-Monitor-Quelle erstellen
+cribl_create_source "file_monitor" "configs/stream/sources/ssh-auth.json"
+
+# Journald-Quelle erstellen
+cribl_create_source "journald" "configs/stream/sources/systemd-journal.json"
+
+# Konfiguration committen und deployen
+cribl_commit_deploy "Log-Quellen konfiguriert"</code></pre>
+
+<h3>4.3 Alle 12 Quellen erstellen (Batch)</h3>
+<pre><code># Geplanter Ablauf in 04-configure-sources.sh:
+
+# File-Monitor-Quellen (11 Stueck)
+for config in configs/stream/sources/*.json; do
+    source_type=$(jq -r '.type' "$config")
+    cribl_create_source "$source_type" "$config"
+done
+
+# Destinations erstellen
+cribl_create_destination "splunk_hec" "configs/stream/destinations/splunk-hec.json"
+cribl_create_destination "splunk_s2s" "configs/stream/destinations/splunk-s2s.json"
+
+# Pipelines erstellen
+cribl_create_pipeline "configs/stream/pipelines/pipeline-syslog-enrichment.json"
+cribl_create_pipeline "configs/stream/pipelines/pipeline-apache-clf.json"
+
+# Committen und deployen
+cribl_commit_deploy "Vollstaendige Quellen-, Pipeline- und Destination-Konfiguration"</code></pre>
+
+<h3>4.4 Quellen auflisten</h3>
+<pre><code># Alle konfigurierten Quellen abfragen
+curl -s http://localhost:9000/api/v1/m/default/system/inputs \
+  -H "Authorization: Bearer $TOKEN" | jq '.items[] | {id: .id, type: .type, disabled: .disabled}'
+
+# Oder ueber api-helpers.sh:
+cribl_list_sources</code></pre>
+
+<h3>4.5 Quelle aktualisieren</h3>
+<pre><code># Bestehende Quelle aktualisieren (PATCH)
+curl -s -X PATCH "http://localhost:9000/api/v1/m/default/system/inputs/file_monitor/file_monitor:ssh_auth" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"disabled": false, "staleChannelFlushMs": 5000}'</code></pre>
+
+<!-- 5. Monitoring -->
+<h2 id="monitoring">5. Monitoring der Quellen</h2>
+
+<h3>5.1 Input-Metriken in der Stream-UI</h3>
+<p>
+    Fuer jede konfigurierte Quelle stellt Cribl Stream Echtzeit-Metriken bereit.
+    Diese sind im Dashboard unter <em>Monitoring &gt; Sources</em> einsehbar.
+</p>
+
+<table>
+    <tr>
+        <th>Metrik</th>
+        <th>Beschreibung</th>
+        <th>Einheit</th>
+    </tr>
+    <tr>
+        <td>Events In</td>
+        <td>Anzahl eingehender Events pro Zeiteinheit</td>
+        <td>Events/s</td>
+    </tr>
+    <tr>
+        <td>Bytes In</td>
+        <td>Eingehendes Datenvolumen pro Zeiteinheit</td>
+        <td>Bytes/s</td>
+    </tr>
+    <tr>
+        <td>Total Events</td>
+        <td>Gesamtzahl verarbeiteter Events</td>
+        <td>Anzahl</td>
+    </tr>
+    <tr>
+        <td>Errors</td>
+        <td>Fehler beim Lesen/Verarbeiten</td>
+        <td>Anzahl</td>
+    </tr>
+    <tr>
+        <td>Health Status</td>
+        <td>Gesamtzustand der Quelle</td>
+        <td>Gruen / Gelb / Rot</td>
+    </tr>
+</table>
+
+<h3>5.2 Metriken ueber die API abfragen</h3>
+<pre><code># Input-Metriken fuer eine bestimmte Quelle
+curl -s http://localhost:9000/api/v1/system/metrics \
+  -H "Authorization: Bearer $TOKEN" | jq '.inputs'
+
+# Spezifische Quelle filtern
+curl -s http://localhost:9000/api/v1/system/metrics \
+  -H "Authorization: Bearer $TOKEN" | jq '.inputs | to_entries[] | select(.key | contains("ssh_auth"))'</code></pre>
+
+<h3>5.3 Erwartete Volumen-Richtwerte (PoC)</h3>
+<table>
+    <tr>
+        <th>Quelle</th>
+        <th>Erwartetes Volumen</th>
+        <th>Anmerkung</th>
+    </tr>
+    <tr>
+        <td>Systemd Journal</td>
+        <td>Hoch (100+ Events/Min.)</td>
+        <td>Umfasst alle System-Services</td>
+    </tr>
+    <tr>
+        <td>Apache Access</td>
+        <td>Mittel (abhaengig von Traffic)</td>
+        <td>Jeder HTTP-Request ein Event</td>
+    </tr>
+    <tr>
+        <td>SSH Auth</td>
+        <td>Niedrig bis Mittel</td>
+        <td>Steigt bei Anmeldeversuchen</td>
+    </tr>
+    <tr>
+        <td>Docker HA</td>
+        <td>Mittel</td>
+        <td>Abhaengig von Home-Assistant-Aktivitaet</td>
+    </tr>
+    <tr>
+        <td>dpkg</td>
+        <td>Sehr niedrig</td>
+        <td>Nur bei Paketinstallationen/Updates</td>
+    </tr>
+    <tr>
+        <td>Boot Logs</td>
+        <td>Sehr niedrig</td>
+        <td>Nur bei Systemstart</td>
+    </tr>
+</table>
+
+<!-- 6. Troubleshooting -->
+<h2 id="troubleshooting">6. Troubleshooting</h2>
+
+<h3>6.1 Berechtigungsfehler</h3>
+
+<table>
+    <tr>
+        <th>Fehler</th>
+        <th>Ursache</th>
+        <th>Loesung</th>
+    </tr>
+    <tr>
+        <td><code>EACCES: permission denied</code> fuer <code>/var/log/auth.log</code></td>
+        <td>cribl-User nicht in Gruppe <code>adm</code></td>
+        <td><code>sudo usermod -aG adm cribl</code> + Edge-Neustart</td>
+    </tr>
+    <tr>
+        <td><code>EACCES</code> fuer <code>/run/log/journal</code></td>
+        <td>cribl-User nicht in Gruppe <code>systemd-journal</code></td>
+        <td><code>sudo usermod -aG systemd-journal cribl</code> + Edge-Neustart</td>
+    </tr>
+    <tr>
+        <td><code>EACCES</code> fuer <code>/var/lib/docker/containers/</code></td>
+        <td>cribl-User nicht in Gruppe <code>docker</code></td>
+        <td><code>sudo usermod -aG docker cribl</code> + Edge-Neustart</td>
+    </tr>
+    <tr>
+        <td><code>ENOENT: no such file</code></td>
+        <td>Log-Datei existiert (noch) nicht</td>
+        <td>Pruefen ob der entsprechende Dienst laeuft und Logs schreibt</td>
+    </tr>
+</table>
+
+<h3>6.2 Fehlende Logs</h3>
+<pre><code># 1. Pruefen, ob die Log-Datei existiert und beschrieben wird
+ls -la /var/log/auth.log
+tail -5 /var/log/auth.log
+
+# 2. Pruefen, ob der cribl-User die Datei lesen kann
+sudo -u cribl cat /var/log/auth.log | head -1
+
+# 3. Pruefen, ob die Quelle in Cribl aktiviert ist
+curl -s http://localhost:9000/api/v1/m/default/system/inputs/file_monitor \
+  -H "Authorization: Bearer $TOKEN" | jq '.items[] | select(.id | contains("ssh_auth")) | {id, disabled}'
+
+# 4. Edge-Logs auf Fehlermeldungen pruefen
+journalctl -u cribl-edge --no-pager | grep -i "error\|permission\|denied" | tail -20</code></pre>
+
+<h3>6.3 Haeufige Probleme</h3>
+
+<table>
+    <tr>
+        <th>Problem</th>
+        <th>Diagnose</th>
+        <th>Loesung</th>
+    </tr>
+    <tr>
+        <td>Quelle zeigt "Events In = 0"</td>
+        <td>Log-Datei leer oder nicht vorhanden; Dienst schreibt keine Logs</td>
+        <td>Dienst pruefen/starten; Pfad in der Quellen-Konfiguration pruefen</td>
+    </tr>
+    <tr>
+        <td>Doppelte Events</td>
+        <td>Mosquitto-Quelle und Docker-HA-Quelle lesen gleiche Dateien</td>
+        <td>Mosquitto-Quelle verwendet <code>filterExpr</code> zur Filterung -- Route-Konfiguration pruefen</td>
+    </tr>
+    <tr>
+        <td>Hohe Latenz</td>
+        <td><code>staleChannelFlushMs</code> zu hoch</td>
+        <td>Wert reduzieren (z.B. auf 5000ms) fuer schnellere Event-Weiterleitung</td>
+    </tr>
+    <tr>
+        <td>Rotierte Dateien nicht gelesen</td>
+        <td>Glob-Pattern erfasst rotierte Dateien nicht</td>
+        <td>Wildcard im Pfad verwenden: <code>/var/log/dpkg.log*</code></td>
+    </tr>
+    <tr>
+        <td>Quellen-Konfiguration nicht angewendet</td>
+        <td>Aenderung nicht committed/deployed</td>
+        <td><code>cribl_commit_deploy("Beschreibung")</code> ausfuehren</td>
+    </tr>
+</table>
+
+<h3>6.4 Schnelltest: Alle Quellen pruefen</h3>
+<pre><code># Schnelltest: Pruefen, ob alle 12 Quell-Pfade lesbar sind
+PATHS=(
+    "/run/log/journal"
+    "/var/log/apache2/access.log"
+    "/var/log/apache2/error.log"
+    "/var/log/samba/"
+    "/var/lib/docker/containers/"
+    "/var/log/auth.log"
+    "/var/log/tor/"
+    "/var/log/dnsmasq-tor.log"
+    "/var/log/cups/access_log"
+    "/var/log/boot.log"
+    "/var/log/dpkg.log"
+)
+
+for path in "${PATHS[@]}"; do
+    if sudo -u cribl test -r "$path" 2>/dev/null; then
+        printf "%-45s: LESBAR\n" "$path"
+    else
+        printf "%-45s: NICHT LESBAR\n" "$path"
+    fi
+done</code></pre>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="04-edge-konfiguration.html">&larr; Zurueck: Edge Konfiguration</a>
+    <span></span>
+</div>
+
+<div class="footer">
+    IceDataEmphasise - ITSO-Dokumentation
+</div>
+
+</body>
+</html>
