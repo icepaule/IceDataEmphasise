@@ -91,7 +91,7 @@ cribl_create_source() {
     log_info "Creating source: $source_id (type: $source_type)"
 
     local result
-    result=$(cribl_post "/m/default/system/inputs/${source_type}" "$(cat "$config_file")")
+    result=$(cribl_post "/system/inputs/${source_type}" "$(cat "$config_file")")
 
     if echo "$result" | jq -e '.items' &>/dev/null; then
         log_ok "Source created: $source_id"
@@ -114,7 +114,7 @@ cribl_create_destination() {
     log_info "Creating destination: $dest_id (type: $dest_type)"
 
     local result
-    result=$(cribl_post "/m/default/system/outputs/${dest_type}" "$(cat "$config_file")")
+    result=$(cribl_post "/system/outputs/${dest_type}" "$(cat "$config_file")")
 
     if echo "$result" | jq -e '.items' &>/dev/null; then
         log_ok "Destination created: $dest_id"
@@ -136,7 +136,7 @@ cribl_create_pipeline() {
     log_info "Creating pipeline: $pipeline_id"
 
     local result
-    result=$(cribl_post "/m/default/pipelines" "$(cat "$config_file")")
+    result=$(cribl_post "/pipelines" "$(cat "$config_file")")
 
     if echo "$result" | jq -e '.items' &>/dev/null; then
         log_ok "Pipeline created: $pipeline_id"
@@ -156,7 +156,7 @@ cribl_create_route() {
     log_info "Configuring routes..."
 
     local result
-    result=$(cribl_put "/m/default/routes" "$(cat "$config_file")")
+    result=$(cribl_put "/routes" "$(cat "$config_file")")
 
     if echo "$result" | jq -e '.items' &>/dev/null; then
         log_ok "Routes configured"
@@ -186,12 +186,26 @@ cribl_commit_deploy() {
 
     log_info "Committing configuration..."
     local commit_data
-    commit_data=$(jq -n --arg msg "$message" '{message: $msg, effective: true}')
+    commit_data=$(jq -n --arg msg "$message" '{message: $msg}')
 
     cribl_post "/version/commit" "$commit_data"
-    log_info "Deploying configuration..."
-    cribl_post "/master/groups/default/deploy" '{}'
-    log_ok "Configuration committed and deployed"
+    log_ok "Configuration committed"
+}
+
+# --- Enable existing input ---
+cribl_enable_input() {
+    local input_id="$1"
+    local config_json="$2"
+
+    log_info "Enabling input: $input_id"
+    local result
+    result=$(cribl_patch "/system/inputs/${input_id}" "$config_json")
+
+    if echo "$result" | jq -e '.items' &>/dev/null; then
+        log_ok "Input enabled: $input_id"
+    else
+        log_warn "Input enable response: $result"
+    fi
 }
 
 # --- Health Check ---
@@ -212,13 +226,13 @@ cribl_health_check() {
 
 # --- Utility ---
 cribl_list_sources() {
-    cribl_get "/m/default/system/inputs" | jq -r '.items[] | "\(.id) (\(.type))"'
+    cribl_get "/system/inputs" | jq -r '.items[] | "\(.id) (\(.type))"'
 }
 
 cribl_list_destinations() {
-    cribl_get "/m/default/system/outputs" | jq -r '.items[] | "\(.id) (\(.type))"'
+    cribl_get "/system/outputs" | jq -r '.items[] | "\(.id) (\(.type))"'
 }
 
 cribl_list_pipelines() {
-    cribl_get "/m/default/pipelines" | jq -r '.items[] | .id'
+    cribl_get "/pipelines" | jq -r '.items[] | .id'
 }

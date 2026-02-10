@@ -89,7 +89,6 @@ check_existing_installation() {
 download_cribl_tarball() {
     log_step "Downloading Cribl ${CRIBL_VERSION} tarball"
 
-    local url="${CRIBL_TGZ_URL_TEMPLATE//CRIBL_VERSION/${CRIBL_VERSION}}"
     local tmp_dir
     tmp_dir="$(mktemp -d)"
     local tgz_path="${tmp_dir}/cribl-${CRIBL_VERSION}-linux-x64.tgz"
@@ -100,6 +99,14 @@ download_cribl_tarball() {
         log_info "Using cached tarball: ${cached_tgz}"
         tgz_path="$cached_tgz"
     else
+        # Resolve actual download URL (CDN URLs include a build hash)
+        log_info "Resolving download URL from cdn.cribl.io..."
+        local url
+        url="$(curl -fsSL "https://cdn.cribl.io/dl/latest-x64" 2>/dev/null || true)"
+        if [[ -z "$url" ]]; then
+            die "Failed to resolve download URL from cdn.cribl.io"
+        fi
+
         log_info "Downloading from ${url}"
         if ! curl -fSL --retry 3 --retry-delay 5 -o "$tgz_path" "$url"; then
             rm -rf "$tmp_dir"
@@ -117,7 +124,8 @@ download_cribl_tarball() {
         die "Downloaded tarball is corrupt or not a valid gzip archive"
     fi
 
-    echo "$tgz_path"
+    # Return path via global variable (stdout is used by log functions)
+    DOWNLOADED_TGZ_PATH="$tgz_path"
 }
 
 extract_and_install() {
@@ -216,7 +224,7 @@ create_systemd_service() {
     done
 
     if [[ ${#found_groups[@]} -gt 0 ]]; then
-        supplementary_groups=$(IFS=,; echo "${found_groups[*]}")
+        supplementary_groups="${found_groups[*]}"  # Space-separated for systemd
     fi
 
     # Backup existing unit file if present
@@ -427,9 +435,8 @@ main() {
     check_existing_installation
 
     # Download and extract
-    local tgz_path
-    tgz_path=$(download_cribl_tarball)
-    extract_and_install "$tgz_path"
+    download_cribl_tarball
+    extract_and_install "$DOWNLOADED_TGZ_PATH"
 
     # Configure and start
     configure_managed_edge

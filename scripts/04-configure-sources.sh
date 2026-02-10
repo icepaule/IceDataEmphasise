@@ -31,9 +31,9 @@ cribl_health_check || die "Cribl Stream is not healthy. Start it before running 
 cribl_auth
 
 # ============================================================================
-# Step 1: Create sources from JSON configs
+# Step 1: Enable sources via PATCH (built-in inputs in single mode)
 # ============================================================================
-log_step "Creating sources from JSON config files"
+log_step "Enabling sources via Cribl API (PATCH on existing inputs)"
 
 SOURCES_DIR="$PROJECT_DIR/configs/stream/sources"
 
@@ -45,20 +45,19 @@ source_count=0
 for config_file in "$SOURCES_DIR"/*.json; do
     [[ -f "$config_file" ]] || continue
 
-    source_type=$(jq -r '.type' "$config_file")
     source_id=$(jq -r '.id' "$config_file")
 
-    if [[ -z "$source_type" || "$source_type" == "null" ]]; then
-        log_warn "Skipping $config_file - no 'type' field found"
+    if [[ -z "$source_id" || "$source_id" == "null" ]]; then
+        log_warn "Skipping $config_file - no 'id' field found"
         continue
     fi
 
-    log_info "Processing source: $source_id (type: $source_type)"
-    cribl_create_source "$source_type" "$config_file"
+    log_info "Enabling input: $source_id"
+    cribl_enable_input "$source_id" "$(cat "$config_file")"
     source_count=$((source_count + 1))
 done
 
-log_ok "Created $source_count sources"
+log_ok "Enabled $source_count sources"
 
 # ============================================================================
 # Step 2: Set file permissions for cribl service user

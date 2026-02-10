@@ -1,0 +1,13 @@
+{
+  "id": "in_syslog",
+  "type": "syslog",
+  "disabled": false,
+  "description": "Syslog input - receives syslog messages over TCP/UDP (Stream single mode)",
+  "host": "0.0.0.0",
+  "port": 514,
+  "protocol": "tcp",
+  "sendToRoutes": true,
+  "staleChannelFlushMs": 10000,
+  "pqEnabled": false,
+  "_comment": "Enable via PATCH /api/v1/system/inputs/in_syslog. __inputId format: syslog:in_syslog:tcp"
+}

@@ -1,11 +1,12 @@
 {
-  "id": "journald:systemd_journal",
-  "type": "journald",
+  "id": "in_journal_local",
+  "type": "journal_files",
   "disabled": false,
-  "description": "Systemd journal - all system journal entries via journald",
-  "journalDPath": "/run/log/journal",
-  "unitFilter": [],
+  "description": "Systemd journal - all system journal entries via journal_files (Stream single mode)",
+  "journalDir": "/run/log/journal",
+  "filter": "",
   "sendToRoutes": true,
   "staleChannelFlushMs": 10000,
-  "pqEnabled": false
+  "pqEnabled": false,
+  "_comment": "Enable via PATCH /api/v1/system/inputs/in_journal_local. __inputId format: journal_files:in_journal_local"
 }

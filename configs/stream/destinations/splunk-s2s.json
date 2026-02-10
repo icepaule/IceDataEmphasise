@@ -1,12 +1,13 @@
 {
   "id": "splunk_s2s",
-  "type": "splunk_s2s",
+  "type": "splunk",
   "host": "${SPLUNK_HOST}",
-  "port": 9997,
+  "port": ${SPLUNK_S2S_PORT},
   "tls": { "disabled": true },
   "pqEnabled": true,
   "pqMaxSize": "1GB",
   "pqMaxFiles": 100,
   "nestedFields": "none",
-  "description": "Splunk S2S - Native Splunk Protocol"
+  "description": "Splunk S2S - Native Splunk Protocol",
+  "_comment": "PATCH requires full object with type field. Uses host/port (not url)."
 }

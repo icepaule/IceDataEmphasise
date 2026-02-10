@@ -174,8 +174,8 @@ check_ports() {
 check_network() {
     log_step "Checking network connectivity"
 
-    # Check outbound HTTPS to cdn.cribl.io
-    if curl -sf --connect-timeout 10 --max-time 15 -o /dev/null "https://${CDN_HOST}/" 2>/dev/null; then
+    # Check outbound HTTPS to cdn.cribl.io (root returns 404; use latest-x64 endpoint)
+    if curl -sf --connect-timeout 10 --max-time 15 -o /dev/null "https://${CDN_HOST}/dl/latest-x64" 2>/dev/null; then
         record_check "Network (${CDN_HOST})" "PASS" "HTTPS connectivity OK"
     else
         record_check "Network (${CDN_HOST})" "FAIL" "Cannot reach https://${CDN_HOST}/ -- check firewall/DNS"

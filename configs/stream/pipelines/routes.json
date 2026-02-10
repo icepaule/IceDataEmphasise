@@ -2,60 +2,31 @@
   "id": "default",
   "routes": [
     {
-      "id": "route_apache_access",
-      "name": "Apache Access",
-      "filter": "source=='file_monitor:apache_access'",
-      "pipeline": "pipeline_apache_clf",
-      "output": "splunk_hec",
-      "final": true
-    },
-    {
-      "id": "route_apache_error",
-      "name": "Apache Error",
-      "filter": "source=='file_monitor:apache_error'",
-      "pipeline": "pipeline_syslog_enrichment",
-      "output": "splunk_hec",
-      "final": true
-    },
-    {
-      "id": "route_ssh_auth",
-      "name": "SSH Auth",
-      "filter": "source=='file_monitor:ssh_auth'",
-      "pipeline": "pipeline_security_auth",
-      "output": "splunk_s2s",
-      "final": true
-    },
-    {
-      "id": "route_docker",
-      "name": "Docker/HA",
-      "filter": "source=='file_monitor:docker_ha' || source=='file_monitor:mosquitto'",
-      "pipeline": "pipeline_docker_json",
-      "output": "splunk_hec",
-      "final": true
-    },
-    {
       "id": "route_journal",
       "name": "Systemd Journal",
-      "filter": "source=='journald:systemd_journal'",
-      "pipeline": "pipeline_syslog_enrichment",
-      "output": "splunk_s2s",
-      "final": true
+      "filter": "__inputId.startsWith('journal_files:')",
+      "pipeline": "syslog_enrichment",
+      "output": "splunk_hec",
+      "final": true,
+      "description": "Routes journal_files input through syslog enrichment to Splunk HEC"
     },
     {
-      "id": "route_samba",
-      "name": "Samba",
-      "filter": "source=='file_monitor:samba'",
-      "pipeline": "pipeline_generic_passthrough",
+      "id": "route_syslog",
+      "name": "Syslog",
+      "filter": "__inputId.startsWith('syslog:')",
+      "pipeline": "passthrough",
       "output": "splunk_s2s",
-      "final": true
+      "final": true,
+      "description": "Routes syslog input through passthrough to Splunk S2S"
     },
     {
       "id": "route_default",
       "name": "Default",
       "filter": "true",
-      "pipeline": "pipeline_generic_passthrough",
+      "pipeline": "passthrough",
       "output": "splunk_hec",
-      "final": true
+      "final": true,
+      "description": "Catch-all route for any unmatched events"
     }
   ]
 }

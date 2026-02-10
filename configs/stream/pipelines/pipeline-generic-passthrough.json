@@ -1,5 +1,5 @@
 {
-  "id": "pipeline_generic_passthrough",
+  "id": "passthrough",
   "conf": {
     "asyncFuncTimeout": 1000,
     "functions": [
@@ -7,7 +7,7 @@
         "id": "comment",
         "filter": "true",
         "conf": {
-          "comment": "Generic Passthrough Pipeline - Minimal processing, adds cribl_host and cribl_pipeline metadata for traceability"
+          "comment": "Passthrough Pipeline - Sets index/sourcetype/source for syslog events with minimal processing"
         }
       },
       {
@@ -15,8 +15,11 @@
         "filter": "true",
         "conf": {
           "add": [
+            { "name": "index", "value": "'os_journal'" },
+            { "name": "sourcetype", "value": "'syslog'" },
+            { "name": "source", "value": "'cribl:syslog'" },
             { "name": "cribl_host", "value": "C.os.hostname()" },
-            { "name": "cribl_pipeline", "value": "'pipeline_generic_passthrough'" }
+            { "name": "cribl_pipeline", "value": "'passthrough'" }
           ]
         }
       }

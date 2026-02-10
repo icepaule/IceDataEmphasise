@@ -1,5 +1,5 @@
 {
-  "id": "pipeline_syslog_enrichment",
+  "id": "syslog_enrichment",
   "conf": {
     "asyncFuncTimeout": 1000,
     "functions": [
@@ -7,7 +7,7 @@
         "id": "comment",
         "filter": "true",
         "conf": {
-          "comment": "Syslog Enrichment Pipeline - Adds metadata fields and extracts timestamp from syslog-formatted events"
+          "comment": "Syslog Enrichment Pipeline - Sets index/sourcetype/source for journal events and extracts syslog fields"
         }
       },
       {
@@ -15,9 +15,12 @@
         "filter": "true",
         "conf": {
           "add": [
+            { "name": "index", "value": "'os_journal'" },
+            { "name": "sourcetype", "value": "'syslog'" },
+            { "name": "source", "value": "'cribl:journal'" },
             { "name": "cribl_host", "value": "C.os.hostname()" },
             { "name": "cribl_environment", "value": "'production'" },
-            { "name": "cribl_pipeline", "value": "'pipeline_syslog_enrichment'" }
+            { "name": "cribl_pipeline", "value": "'syslog_enrichment'" }
           ]
         }
       },

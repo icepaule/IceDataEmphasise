@@ -44,7 +44,7 @@ CRIBL_INSTALL_DIR="${CRIBL_INSTALL_DIR:-/opt/cribl}"
 CRIBL_SERVICE_USER="${CRIBL_SERVICE_USER:-cribl}"
 CRIBL_SERVICE_GROUP="${CRIBL_SERVICE_GROUP:-cribl}"
 CRIBL_ADMIN_USER="${CRIBL_ADMIN_USER:-admin}"
-CRIBL_DOWNLOAD_URL="https://cdn.cribl.io/dl/${CRIBL_VERSION}/cribl-${CRIBL_VERSION}-linux-x64.tgz"
+CRIBL_DOWNLOAD_URL=""  # Resolved dynamically from cdn.cribl.io/dl/latest-x64
 CRIBL_TARBALL="/tmp/cribl-${CRIBL_VERSION}-linux-x64.tgz"
 
 # =============================================================================
@@ -106,6 +106,15 @@ download_cribl() {
         else
             log_info "Using existing tarball"
             return 0
+        fi
+    fi
+
+    # Resolve actual download URL (CDN URLs include a build hash)
+    if [[ -z "$CRIBL_DOWNLOAD_URL" ]]; then
+        log_info "Resolving latest download URL from cdn.cribl.io..."
+        CRIBL_DOWNLOAD_URL="$(curl -fsSL "https://cdn.cribl.io/dl/latest-x64" 2>/dev/null || true)"
+        if [[ -z "$CRIBL_DOWNLOAD_URL" ]]; then
+            die "Failed to resolve download URL from cdn.cribl.io"
         fi
     fi
 
@@ -393,7 +402,7 @@ main() {
     CRIBL_SERVICE_USER="${CRIBL_SERVICE_USER:-cribl}"
     CRIBL_SERVICE_GROUP="${CRIBL_SERVICE_GROUP:-cribl}"
     CRIBL_ADMIN_USER="${CRIBL_ADMIN_USER:-admin}"
-    CRIBL_DOWNLOAD_URL="https://cdn.cribl.io/dl/${CRIBL_VERSION}/cribl-${CRIBL_VERSION}-linux-x64.tgz"
+    CRIBL_DOWNLOAD_URL=""  # Resolved dynamically in download_cribl()
     CRIBL_TARBALL="/tmp/cribl-${CRIBL_VERSION}-linux-x64.tgz"
 
     log_info "Version:       ${CRIBL_VERSION}"
