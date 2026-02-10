@@ -440,6 +440,19 @@ curl -s -X POST http://localhost:9000/api/v1/system/diag \
     </tr>
 </table>
 
+<div class="warning">
+    <strong>Single-Mode vs. Leader-Mode API-Pfade:</strong> Die oben gezeigten API-Pfade mit <code>/m/default/</code>
+    gelten fuer den Leader-Mode (verteilte Konfiguration). Im <strong>Single-Mode</strong> (Standard bei Einzelinstallation)
+    muessen die Pfade ohne dieses Praefix verwendet werden:
+    <ul>
+        <li><code>/api/v1/system/inputs</code> statt <code>/api/v1/m/default/system/inputs</code></li>
+        <li><code>/api/v1/system/outputs</code> statt <code>/api/v1/m/default/system/outputs</code></li>
+        <li><code>/api/v1/pipelines</code> statt <code>/api/v1/m/default/pipelines</code></li>
+        <li><code>/api/v1/routes</code> statt <code>/api/v1/m/default/routes</code></li>
+    </ul>
+    Der aktuelle Modus kann ueber <code>/api/v1/system/info</code> abgefragt werden.
+</div>
+
 <h3>5.2 Authentifizierung (Bearer Token)</h3>
 <p>
     Die API verwendet Bearer-Token-Authentifizierung. Das Token wird ueber den Login-Endpunkt bezogen.
@@ -632,9 +645,14 @@ cribl_commit_deploy "Quellen-Konfiguration fuer NUC-Fleet erstellt"
 curl -s -X POST http://localhost:9000/api/v1/version/commit \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Quellen-Konfiguration aktualisiert", "effective": true}'
+  -d '{"message": "Quellen-Konfiguration aktualisiert", "effective": true}'</code></pre>
 
-# 2. Deploy
+<div class="info">
+    <strong>Hinweis:</strong> Der Parameter <code>effective: true</code> beim Commit erfordert einen <code>group</code>-Parameter
+    und funktioniert nur im Leader-Mode. Im Single-Mode reicht ein einfacher Commit ohne <code>effective</code>.
+</div>
+
+<pre><code># 2. Deploy
 curl -s -X POST http://localhost:9000/api/v1/master/groups/default/deploy \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \

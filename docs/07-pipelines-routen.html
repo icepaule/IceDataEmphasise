@@ -110,6 +110,9 @@
     <tr><td>2</td><td><code>eval</code></td><td><code>true</code></td><td>Fuegt Metadaten hinzu: <code>cribl_host</code>, <code>cribl_environment</code>, <code>cribl_pipeline</code></td></tr>
     <tr><td>3</td><td><code>regex_extract</code></td><td><code>true</code></td><td>Extrahiert aus <code>_raw</code>: <code>syslog_timestamp</code>, <code>syslog_host</code>, <code>syslog_program</code>, <code>syslog_pid</code>, <code>message</code></td></tr>
     <tr><td>4</td><td><code>auto_timestamp</code></td><td><code>syslog_timestamp</code></td><td>Automatische Timestamp-Erkennung und -Normalisierung</td></tr>
+    <tr><td>+</td><td><code>eval</code></td><td><code>true</code></td>
+    <td>Setzt Splunk-Routing-Felder: <code>index='os_journal'</code>, <code>sourcetype='syslog'</code>,
+    <code>source='cribl:journal'</code></td></tr>
 </table>
 
 <p><strong>Regex-Pattern:</strong></p>
@@ -282,7 +285,16 @@
     <tr><th>#</th><th>Function</th><th>Filter</th><th>Beschreibung</th></tr>
     <tr><td>1</td><td><code>comment</code></td><td><code>true</code></td><td>Dokumentation: Minimale Verarbeitung</td></tr>
     <tr><td>2</td><td><code>eval</code></td><td><code>true</code></td><td>Fuegt hinzu: <code>cribl_host</code>, <code>cribl_pipeline</code></td></tr>
+    <tr><td>+</td><td><code>eval</code></td><td><code>true</code></td>
+    <td>Setzt Splunk-Routing-Felder: <code>index='os_journal'</code>, <code>sourcetype='syslog'</code>,
+    <code>source='cribl:syslog'</code></td></tr>
 </table>
+
+<div class="warning">
+    <strong>Pflichtfelder fuer Splunk-Routing:</strong> Jede Pipeline muss die Felder <code>index</code>,
+    <code>sourcetype</code> und <code>source</code> setzen, damit Events im korrekten Splunk-Index landen.
+    Ohne diese Felder landen Events im Default-Index <code>main</code> mit <code>sourcetype=httpevent</code>.
+</div>
 
 <p>
     Diese Pipeline wird fuer Quellen verwendet, die entweder bereits in einem gut strukturierten Format
@@ -315,78 +327,45 @@
     </tr>
     <tr>
         <td>1</td>
-        <td><code>route_apache_access</code></td>
-        <td>Apache Access</td>
-        <td><code>source=='file_monitor:apache_access'</code></td>
-        <td><code>pipeline_apache_clf</code></td>
+        <td><code>route_journal</code></td>
+        <td>Systemd Journal</td>
+        <td><code>__inputId.startsWith('journal_files:')</code></td>
+        <td><code>syslog_enrichment</code></td>
         <td><code>splunk_hec</code></td>
     </tr>
     <tr>
         <td>2</td>
-        <td><code>route_apache_error</code></td>
-        <td>Apache Error</td>
-        <td><code>source=='file_monitor:apache_error'</code></td>
-        <td><code>pipeline_syslog_enrichment</code></td>
-        <td><code>splunk_hec</code></td>
+        <td><code>route_syslog</code></td>
+        <td>Syslog</td>
+        <td><code>__inputId.startsWith('syslog:')</code></td>
+        <td><code>passthrough</code></td>
+        <td><code>splunk_s2s</code></td>
     </tr>
     <tr>
         <td>3</td>
-        <td><code>route_ssh_auth</code></td>
-        <td>SSH Auth</td>
-        <td><code>source=='file_monitor:ssh_auth'</code></td>
-        <td><code>pipeline_security_auth</code></td>
-        <td><code>splunk_s2s</code></td>
-    </tr>
-    <tr>
-        <td>4</td>
-        <td><code>route_docker</code></td>
-        <td>Docker/HA</td>
-        <td><code>source=='file_monitor:docker_ha' || source=='file_monitor:mosquitto'</code></td>
-        <td><code>pipeline_docker_json</code></td>
-        <td><code>splunk_hec</code></td>
-    </tr>
-    <tr>
-        <td>5</td>
-        <td><code>route_journal</code></td>
-        <td>Systemd Journal</td>
-        <td><code>source=='journald:systemd_journal'</code></td>
-        <td><code>pipeline_syslog_enrichment</code></td>
-        <td><code>splunk_s2s</code></td>
-    </tr>
-    <tr>
-        <td>6</td>
-        <td><code>route_samba</code></td>
-        <td>Samba</td>
-        <td><code>source=='file_monitor:samba'</code></td>
-        <td><code>pipeline_generic_passthrough</code></td>
-        <td><code>splunk_s2s</code></td>
-    </tr>
-    <tr>
-        <td>7</td>
         <td><code>route_default</code></td>
         <td>Default</td>
         <td><code>true</code></td>
-        <td><code>pipeline_generic_passthrough</code></td>
+        <td><code>passthrough</code></td>
         <td><code>splunk_hec</code></td>
     </tr>
 </table>
 
-<h3>Filter-Logik</h3>
+<h3>Filter-Logik: __inputId</h3>
 <p>
-    Die Filter basieren auf dem <code>source</code>-Feld, das von Cribl Edge bzw. den konfigurierten
-    Quellen gesetzt wird. Das Format ist <code>Quellentyp:Quellen-ID</code>:
+    Die Filter basieren auf dem internen Feld <code>__inputId</code>, das Cribl automatisch fuer jedes Event setzt.
+    Das Format ist <code>Quellentyp:Quellen-ID:Protokoll</code>:
 </p>
 <ul>
-    <li><code>file_monitor:apache_access</code> &ndash; File-Monitor-Quelle fuer Apache Access Logs</li>
-    <li><code>file_monitor:ssh_auth</code> &ndash; File-Monitor-Quelle fuer <code>/var/log/auth.log</code></li>
-    <li><code>journald:systemd_journal</code> &ndash; Journald-Quelle fuer Systemd-Journal</li>
-    <li><code>true</code> &ndash; Fangt alle nicht zuvor gematchten Events auf (Default-Route)</li>
+    <li><code>journal_files:in_journal_local</code> &ndash; Systemd-Journal-Quelle</li>
+    <li><code>syslog:in_syslog:tcp</code> &ndash; Syslog via TCP</li>
+    <li><code>syslog:in_syslog:udp</code> &ndash; Syslog via UDP</li>
 </ul>
-
 <div class="warning">
-    <strong>Wichtig:</strong> Die Route-Reihenfolge ist entscheidend. Da alle Routen <code>"final": true</code>
-    gesetzt haben, wird ein Event nur von der <strong>ersten</strong> passenden Route verarbeitet. Die
-    Default-Route (<code>filter: "true"</code>) muss daher immer die <strong>letzte</strong> Route sein.
+    <strong>Wichtig:</strong> Verwenden Sie <code>__inputId.startsWith()</code> statt exakter Vergleiche (<code>==</code>),
+    da das Protokoll-Suffix (z.B. <code>:tcp</code>) variabel ist. Ein Filter wie
+    <code>__inputId == "syslog:in_syslog"</code> wuerde <strong>nicht</strong> matchen, da der tatsaechliche
+    Wert <code>syslog:in_syslog:tcp</code> lautet.
 </div>
 
 <!-- 4. Design-Entscheidung -->

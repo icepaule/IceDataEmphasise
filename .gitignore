@@ -1,5 +1,6 @@
 # Environment & Secrets
 .env
+INTERNAL-DOKU.md
 *.pem
 *.key
 *.crt

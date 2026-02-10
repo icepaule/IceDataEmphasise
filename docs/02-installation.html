@@ -161,7 +161,7 @@
     Eine Vorlage befindet sich in <code>.env.example</code>.
 </p>
 <pre><code># Beispiel .env Konfiguration
-CRIBL_VERSION=4.16.0
+CRIBL_VERSION=4.16.1
 CRIBL_EDGE_HOME=/opt/cribl-edge
 CRIBL_SERVICE_USER=cribl
 CRIBL_SERVICE_GROUP=cribl
@@ -176,6 +176,14 @@ HEADSCALE_AUTH_KEY=&lt;pre-auth-key&gt;
 SPLUNK_HOST=&lt;splunk-host&gt;
 SPLUNK_HEC_PORT=8088
 SPLUNK_HEC_TOKEN=&lt;hec-token&gt;</code></pre>
+
+<div class="warning">
+    <strong>Zeilenenden (CRLF):</strong> Alle Shell-Skripte und die <code>.env</code>-Datei muessen Unix-Zeilenenden (LF) verwenden.
+    Windows-Zeilenenden (CRLF) fuehren zu Ausfuehrungsfehlern. Nach dem Klonen des Repositories auf einem Windows-System
+    oder nach Bearbeitung mit einem Windows-Editor muessen die Zeilenenden konvertiert werden:
+    <pre><code># Alle Skripte auf Unix-Zeilenenden konvertieren
+sed -i 's/\r$//' scripts/*.sh scripts/lib/*.sh splunk/*.sh .env</code></pre>
+</div>
 
 <!-- 2. Installationsuebersicht -->
 <h2 id="uebersicht">2. Installationsuebersicht</h2>
@@ -360,7 +368,9 @@ sudo ./scripts/02-install-cribl-stream.sh</code></pre>
 
 <h3>5.4 Erwarteter Ablauf</h3>
 <ol>
-    <li><strong>Download:</strong> Tarball von <code>cdn.cribl.io</code> herunterladen (Cribl Version aus <code>.env</code>)</li>
+    <li><strong>Download:</strong> Die Download-URL wird dynamisch von <code>https://cdn.cribl.io/dl/latest-x64</code> aufgeloest.
+    Ein statisches URL-Muster funktioniert nicht, da die CDN-URLs einen Build-Hash enthalten
+    (z.B. <code>cribl-4.16.1-20904e45-linux-x64.tgz</code>).</li>
     <li><strong>Extraktion:</strong> Entpacken nach <code>/opt/cribl</code></li>
     <li><strong>Service-User:</strong> Benutzer <code>cribl</code> mit passender Gruppenzugehoerigkeit erstellen</li>
     <li><strong>Eigentuemer setzen:</strong> <code>/opt/cribl</code> dem <code>cribl</code>-Benutzer zuweisen</li>
@@ -368,6 +378,13 @@ sudo ./scripts/02-install-cribl-stream.sh</code></pre>
     <li><strong>Warten auf Port 9000:</strong> Sicherstellen, dass die Web-UI erreichbar ist</li>
     <li><strong>Initiale Konfiguration:</strong> Admin-Passwort setzen, API-Token generieren</li>
 </ol>
+
+<div class="warning">
+    <strong>Standard-Passwort:</strong> Cribl Stream startet mit dem Standard-Passwort <code>admin</code>.
+    Ein Bootstrap ueber <code>users.json</code> funktioniert in Version 4.16.x nicht zuverlaessig.
+    Das Passwort muss nach dem ersten Login ueber die Web-UI geaendert werden.
+    Anforderungen: Mindestens 8 Zeichen, 3 verschiedene Zeichenklassen (Gross-/Kleinbuchstaben, Zahlen, Sonderzeichen).
+</div>
 
 <h3>5.5 Verifikation</h3>
 <pre><code># Service-Status pruefen
@@ -405,7 +422,13 @@ sudo ./scripts/03-install-cribl-edge-linux.sh</code></pre>
     <li><strong>Systemd-Service erstellen:</strong> <code>cribl-edge.service</code> mit:
         <ul>
             <li>Service-User/Group: <code>cribl</code></li>
-            <li>Supplementaere Gruppen: <code>systemd-journal</code>, <code>adm</code>, <code>docker</code> (falls vorhanden)</li>
+            <li>Supplementaere Gruppen: <code>systemd-journal</code>, <code>adm</code>, <code>docker</code> (falls vorhanden)
+<div class="info">
+    <strong>Systemd-Hinweis:</strong> Die <code>SupplementaryGroups</code>-Direktive in der systemd-Unit
+    erwartet <strong>leerzeichen-getrennte</strong> Werte, nicht komma-getrennt:
+    <code>SupplementaryGroups=systemd-journal adm docker</code>
+</div>
+            </li>
             <li>Capabilities: <code>CAP_DAC_READ_SEARCH</code>, <code>CAP_SYSLOG</code></li>
             <li>Sicherheits-Hardening: <code>ProtectSystem=full</code>, <code>ProtectHome=true</code></li>
             <li>Limits: <code>LimitNOFILE=65536</code>, <code>LimitNPROC=8192</code></li>
@@ -425,6 +448,13 @@ sudo ./scripts/03-install-cribl-edge-linux.sh</code></pre>
     tls:
       disabled: true
     authToken: ""</code></pre>
+
+<div class="warning">
+    <strong>Bekanntes Problem (Stand 4.16.1):</strong> Die Managed-Edge-Authentifizierung mit dem Stream Leader
+    ueber Port 4200 kann fehlschlagen. Symptome: "Unauthorized" oder "Other party ended the socket connection" im Edge-Log.
+    Als Workaround kann Cribl Stream im Single-Mode betrieben werden, wobei der Syslog-Input und das Systemd-Journal
+    direkt in Stream konfiguriert werden. File-Monitor-Quellen sind in diesem Modus nicht verfuegbar (nur ueber Edge).
+</div>
 
 <h3>6.4 Verifikation</h3>
 <pre><code># Service-Status

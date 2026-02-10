@@ -84,7 +84,9 @@
             <li><strong>All Tokens:</strong> Enabled</li>
             <li><strong>Default Source Type:</strong> (leer lassen)</li>
             <li><strong>Default Index:</strong> main</li>
-            <li><strong>Enable SSL:</strong> Aktiviert</li>
+            <li><strong>Enable SSL:</strong> Pruefen! Im PoC ist SSL <strong>deaktiviert</strong> (HTTP only).
+    Bei aktiviertem SSL muss die Cribl HEC-URL <code>https://</code> verwenden,
+    bei deaktiviertem SSL <code>http://</code>.</li>
             <li><strong>HTTP Port Number:</strong> 8088</li>
         </ul>
     </li>
@@ -142,6 +144,14 @@ ss -tlnp | grep 9997</code></pre>
     <strong>Hinweis:</strong> Die Aufbewahrungsdauer fuer den Security-Index betraegt 365 Tage, um den
     regulatorischen Anforderungen (MaRisk AT 7.2, BAIT II.7) an die Aufbewahrung sicherheitsrelevanter
     Protokolldaten zu entsprechen.
+</div>
+
+<div class="info">
+    <strong>Aktuelle Index-Namen (PoC-Deployment):</strong> Im aktuellen Deployment werden folgende Index-Namen verwendet:
+    <code>os_journal</code>, <code>web_apache</code>, <code>infra_samba</code>, <code>iot_homeassistant</code>,
+    <code>iot_mqtt</code>, <code>sec_auth</code>, <code>sec_tor</code>, <code>infra_dns</code>,
+    <code>infra_cups</code>, <code>os_boot</code>, <code>os_packages</code>.
+    Die Namenskonvention folgt dem Schema <code>bereich_anwendung</code>.
 </div>
 
 <pre><code># CLI-Alternative: Indexes ueber Splunk REST API anlegen
@@ -218,6 +228,22 @@ curl -k -u admin:password https://localhost:8089/services/data/indexes \
     <li><strong>Feld-Extraktion pruefen:</strong> In Splunk pruefen, ob die von Cribl extrahierten
         Felder korrekt als indizierte Felder verfuegbar sind.</li>
 </ol>
+
+<h3>Schnelltest: End-to-End Verifikation</h3>
+<pre><code># 1. Syslog-Testevent senden (→ S2S → Splunk)
+logger -n 127.0.0.1 -P 514 --tcp "E2E_TEST: $(date)"
+
+# 2. In Splunk suchen (nach 10-15 Sekunden)
+curl -sk -u admin:&lt;password&gt; "https://&lt;splunk&gt;:8089/services/search/jobs/export" \
+  -d search="search index=os_journal E2E_TEST earliest=-5m" \
+  -d output_mode=json
+
+# 3. Cribl Output-Metriken pruefen
+TOKEN=$(curl -s -X POST "http://localhost:9000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' | jq -r '.token')
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:9000/api/v1/system/outputs" | jq '.items[] | {id, health: .status.health}'</code></pre>
 
 <h3>4.2 Verifikations-Checkliste</h3>
 <ul class="checklist">

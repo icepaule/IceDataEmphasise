@@ -394,6 +394,34 @@ curl -s -H "Authorization: Bearer ${TOKEN}" \
     </tr>
 </table>
 
+<h3>Haeufiger Fehler: ssl3_get_record:wrong version number</h3>
+<div class="warning">
+    <strong>Ursache:</strong> Die Cribl-Destination verwendet <code>https://</code> in der URL,
+    aber der Splunk-HEC-Endpoint akzeptiert nur HTTP (kein TLS aktiviert).
+</div>
+<p><strong>Fehlermeldung im Cribl-Log:</strong></p>
+<pre><code>{"channel":"output:splunk_hec","level":"warn","message":"protocol error",
+ "hint":"Check your configured Minimum and Maximum TLS versions",
+ "error":"write EPROTO...ssl3_get_record:wrong version number"}</code></pre>
+<p><strong>Loesung:</strong></p>
+<ol>
+    <li>Pruefen, ob Splunk HEC TLS aktiviert hat:
+        <pre><code>curl -s "http://&lt;splunk&gt;:8088/services/collector/health"   # HTTP
+curl -sk "https://&lt;splunk&gt;:8088/services/collector/health"  # HTTPS</code></pre>
+    </li>
+    <li>Cribl HEC-Destination-URL entsprechend anpassen:
+        <pre><code># Via API
+TOKEN=$(curl -s -X POST "http://localhost:9000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' | jq -r '.token')
+curl -s -X PATCH "http://localhost:9000/api/v1/system/outputs/splunk_hec" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"splunk_hec","type":"splunk_hec","url":"http://&lt;splunk&gt;:8088/services/collector"}'</code></pre>
+    </li>
+    <li>Config committen und Cribl neu starten</li>
+</ol>
+
 <h3>2.2 Weitere haeufige Probleme</h3>
 
 <table>
@@ -438,6 +466,45 @@ curl -s -H "Authorization: Bearer ${TOKEN}" \
         <td>Backup-Integritaet mit <code>sha256sum -c</code> pruefen; Berechtigungen nach Restore korrigieren; siehe <a href="11-notfallhandbuch.html#backup-restore">Notfallhandbuch</a></td>
     </tr>
 </table>
+
+<h3>Script-Fehler: \\r: command not found</h3>
+<p><strong>Symptom:</strong> Shell-Skripte brechen mit kryptischen Fehlern ab:</p>
+<pre><code>/bin/bash^M: bad interpreter: No such file or directory
+# oder
+$'\r': command not found</code></pre>
+<p><strong>Ursache:</strong> Windows-Zeilenenden (CRLF) in den Skript-Dateien.</p>
+<p><strong>Loesung:</strong></p>
+<pre><code># Alle Skripte und .env auf Unix-Zeilenenden konvertieren
+sed -i 's/\r$//' scripts/*.sh scripts/lib/*.sh splunk/*.sh .env .env.example</code></pre>
+
+<h3>Edge meldet "Unauthorized" beim Verbinden mit Leader</h3>
+<p><strong>Symptom:</strong> Cribl Edge startet, kann sich aber nicht mit dem Stream Leader auf Port 4200 verbinden.
+Im Edge-Log erscheint wiederholt "Unauthorized" oder "Other party ended the socket connection".</p>
+<p><strong>Bekanntes Problem:</strong> Die Managed-Edge-Authentifizierung ueber das <code>authToken</code>
+in <code>cribl.yml</code> und <code>cribl.secret</code> funktioniert in bestimmten Konstellationen nicht zuverlaessig.</p>
+<p><strong>Workaround:</strong></p>
+<ul>
+    <li>Cribl Stream im <strong>Single-Mode</strong> betreiben (statt Leader-Mode)</li>
+    <li>Syslog-Input und Systemd-Journal direkt in Stream konfigurieren</li>
+    <li>Einschraenkung: File-Monitor-Quellen sind nur ueber Edge verfuegbar</li>
+</ul>
+
+<h3>API-Authentifizierung schlaegt fehl (HTTP 401)</h3>
+<p><strong>Symptom:</strong> API-Aufrufe mit <code>-u admin:password</code> geben HTTP 401 zurueck.</p>
+<p><strong>Moegliche Ursachen:</strong></p>
+<ol>
+    <li><strong>Basic Auth funktioniert nicht:</strong> Die Cribl API erwartet Bearer-Token-Authentifizierung,
+    nicht HTTP Basic Auth. Token zuerst holen:
+    <pre><code>TOKEN=$(curl -s -X POST "http://localhost:9000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' | jq -r '.token')
+curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:9000/api/v1/system/inputs"</code></pre>
+    </li>
+    <li><strong>Standard-Passwort:</strong> Nach Neuinstallation ist das Passwort <code>admin</code>.
+    Ein Bootstrap ueber <code>users.json</code> funktioniert in 4.16.x nicht zuverlaessig.</li>
+    <li><strong>Token abgelaufen:</strong> Bearer-Tokens haben eine begrenzte Gueltigkeit (1 Stunde).
+    Bei Ablauf neuen Token anfordern.</li>
+</ol>
 
 <!-- 3. Log-Dateien und ihre Bedeutung -->
 <h2 id="logdateien">3. Log-Dateien und ihre Bedeutung</h2>
@@ -694,7 +761,7 @@ echo "Groesse: $(ls -lh "${DIAG_DIR}.tar.gz" | awk '{print $5}')"</code></pre>
 <p>A: <strong>Cribl Stream</strong> ist die zentrale Verarbeitungskomponente. Sie empfaengt Daten, verarbeitet sie in Pipelines und leitet sie an Destinations weiter. <strong>Cribl Edge</strong> ist ein leichtgewichtiger Agent, der auf den Quell-Systemen installiert wird und Daten sammelt (z.B. aus Systemd Journal, Log-Dateien). Im IceDataEmphasise-PoC laeuft Stream als zentraler Server und Edge als Agent auf dem gleichen NUC-Host.</p>
 
 <p><strong>F: Welche Cribl-Version wird im PoC eingesetzt?</strong></p>
-<p>A: Cribl Stream Version 4.16.0. Die genaue Version kann mit <code>/opt/cribl/bin/cribl version</code> geprueft werden.</p>
+<p>A: Cribl Stream Version 4.16.1. Die genaue Version kann mit <code>/opt/cribl/bin/cribl version</code> geprueft werden.</p>
 
 <p><strong>F: Wie viele Log-Quellen sind konfiguriert?</strong></p>
 <p>A: 12 Log-Quellen sind konfiguriert, darunter Systemd Journal, SSH Auth, Apache Access/Error, Samba, Docker und weitere. Die Verifikationssuite (<code>07-verify-deployment.sh</code>) prueft, ob alle 12 Quellen aktiv sind.</p>

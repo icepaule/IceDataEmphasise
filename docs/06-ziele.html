@@ -109,16 +109,26 @@
 <pre><code>{
   "id": "splunk_hec",
   "type": "splunk_hec",
-  "host": "${SPLUNK_HOST}",
-  "port": 8088,
+  "url": "http://${SPLUNK_HOST}:${SPLUNK_HEC_PORT}/services/collector",
   "token": "${SPLUNK_HEC_TOKEN}",
-  "tls": { "disabled": false },
+  "nestedFields": "none",
+  "concurrency": 5,
+  "maxPayloadSizeKB": 4096,
   "compress": true,
-  "pqEnabled": true,
-  "pqMaxSize": "1GB",
-  "pqMaxFiles": 100,
+  "rejectUnauthorized": false,
+  "onBackpressure": "block",
   "description": "Splunk HEC - HTTP Event Collector"
 }</code></pre>
+
+<div class="warning">
+    <strong>HTTP vs. HTTPS:</strong> Die HEC-URL muss dem tatsaechlichen Protokoll des Splunk-Servers entsprechen.
+    Wird <code>https://</code> verwendet obwohl Splunk HEC nur HTTP akzeptiert, erscheint der Fehler:
+    <code>ssl3_get_record:wrong version number</code>. Pruefen Sie vor der Konfiguration:
+    <pre><code># HTTP testen
+curl -s "http://${SPLUNK_HOST}:8088/services/collector/health"
+# HTTPS testen
+curl -sk "https://${SPLUNK_HOST}:8088/services/collector/health"</code></pre>
+</div>
 
 <table>
     <tr><th>Parameter</th><th>Wert</th><th>Beschreibung</th></tr>
@@ -185,16 +195,18 @@
 <p>Die S2S-Destination ist in <code>configs/stream/destinations/splunk-s2s.json</code> definiert:</p>
 <pre><code>{
   "id": "splunk_s2s",
-  "type": "splunk_s2s",
+  "type": "splunk",
   "host": "${SPLUNK_HOST}",
-  "port": 9997,
-  "tls": { "disabled": true },
-  "pqEnabled": true,
-  "pqMaxSize": "1GB",
-  "pqMaxFiles": 100,
+  "port": ${SPLUNK_S2S_PORT},
   "nestedFields": "none",
-  "description": "Splunk S2S - Native Splunk Protocol"
+  "onBackpressure": "block",
+  "description": "Splunk S2S - Natives Splunk-Protokoll"
 }</code></pre>
+
+<div class="info">
+    <strong>API-Typ-Bezeichnung:</strong> Der S2S-Destination-Typ heisst in der Cribl API <code>"splunk"</code>
+    (nicht <code>"splunk_s2s"</code>). Bei PATCH-Aufrufen muss das <code>type</code>-Feld immer mitgesendet werden.
+</div>
 
 <table>
     <tr><th>Parameter</th><th>Wert</th><th>Beschreibung</th></tr>
