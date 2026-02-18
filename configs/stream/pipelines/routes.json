@@ -2,31 +2,49 @@
   "id": "default",
   "routes": [
     {
-      "id": "route_journal",
-      "name": "Systemd Journal",
-      "filter": "__inputId.startsWith('journal_files:')",
-      "pipeline": "syslog_enrichment",
-      "output": "splunk_hec",
-      "final": true,
-      "description": "Routes journal_files input through syslog enrichment to Splunk HEC"
+      "id": "route_classify_all",
+      "name": "Universal Classifier",
+      "filter": "true",
+      "pipeline": "universal_classifier",
+      "output": "devnull",
+      "final": false,
+      "description": "Classifies ALL events (Docker, Edge, Journal, Syslog) via universal_classifier pipeline. Sets classification field. Non-final: events continue to routing below."
     },
     {
-      "id": "route_syslog",
-      "name": "Syslog",
-      "filter": "__inputId.startsWith('syslog:')",
+      "id": "route_siem_splunk",
+      "name": "SIEM to Splunk",
+      "filter": "classification=='siem'",
       "pipeline": "passthrough",
-      "output": "splunk_s2s",
+      "output": "splunk_hec",
       "final": true,
-      "description": "Routes syslog input through passthrough to Splunk S2S"
+      "description": "Routes security-classified events to Splunk HEC for SIEM analysis (10.10.0.66:8088)"
+    },
+    {
+      "id": "route_ops_s3",
+      "name": "Ops to S3",
+      "filter": "classification=='operational'",
+      "pipeline": "passthrough",
+      "output": "minio_s3",
+      "final": false,
+      "description": "Routes operational events to MinIO S3 for long-term archival. Non-final: continues to ES."
+    },
+    {
+      "id": "route_ops_es",
+      "name": "Ops to Elasticsearch",
+      "filter": "classification=='operational'",
+      "pipeline": "passthrough",
+      "output": "elasticsearch_ops",
+      "final": true,
+      "description": "Routes operational events to Elasticsearch for Kibana dashboards"
     },
     {
       "id": "route_default",
-      "name": "Default",
+      "name": "Default Catch-All",
       "filter": "true",
       "pipeline": "passthrough",
       "output": "splunk_hec",
       "final": true,
-      "description": "Catch-all route for any unmatched events"
+      "description": "Safety net: any unrouted events go to Splunk HEC for investigation"
     }
   ]
 }

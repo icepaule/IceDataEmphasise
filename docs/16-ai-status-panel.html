@@ -1,0 +1,2668 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>16 - AI Status &amp; Control Panel | IceDataEmphasise</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7fafc; color: #333; line-height: 1.6; }
+
+        /* Header */
+        .page-header { background: #1a365d; color: white; padding: 20px 30px; }
+        .page-header h1 { font-size: 1.5em; margin-bottom: 4px; }
+        .page-header .meta { display: flex; gap: 2em; font-size: 0.85em; opacity: 0.85; flex-wrap: wrap; }
+
+        /* Layout */
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        /* Section panels */
+        .panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
+        .panel-header { background: #2b6cb0; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .panel-header h2 { font-size: 1.1em; font-weight: 600; }
+        .panel-body { padding: 20px; }
+
+        /* Service tiles */
+        .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .service-tile { border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; text-decoration: none; color: #2d3748; transition: box-shadow 0.2s, border-color 0.2s; cursor: pointer; }
+        .service-tile:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); border-color: #2b6cb0; }
+        .service-tile .name { font-weight: 600; font-size: 0.9em; }
+        .service-tile .url { font-size: 0.75em; color: #718096; word-break: break-all; }
+
+        /* Status dots */
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .status-dot.green { background: #38a169; box-shadow: 0 0 6px rgba(56,161,105,0.5); }
+        .status-dot.red { background: #e53e3e; box-shadow: 0 0 6px rgba(229,62,62,0.4); }
+        .status-dot.grey { background: #a0aec0; }
+        .status-dot.checking { background: #d69e2e; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* Stats cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: #ebf8ff; border-radius: 8px; padding: 16px; text-align: center; }
+        .stat-card .value { font-size: 2em; font-weight: 700; color: #1a365d; }
+        .stat-card .label { font-size: 0.85em; color: #4a5568; margin-top: 2px; }
+        .stat-card.siem { background: #fff5f5; }
+        .stat-card.siem .value { color: #c53030; }
+        .stat-card.operational { background: #f0fff4; }
+        .stat-card.operational .value { color: #276749; }
+
+        /* Progress bars */
+        .method-bar { margin-bottom: 10px; }
+        .method-bar .bar-label { display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 3px; }
+        .method-bar .bar-track { background: #e2e8f0; border-radius: 4px; height: 22px; overflow: hidden; }
+        .method-bar .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.75em; color: white; font-weight: 600; min-width: 30px; transition: width 0.5s; }
+        .bar-rule { background: #2b6cb0; }
+        .bar-ollama { background: #805ad5; }
+        .bar-fallback { background: #a0aec0; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f7fafc; color: #2d3748; font-weight: 600; position: sticky; top: 0; }
+        tr:hover { background: #f7fafc; }
+        .table-scroll { max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.78em; font-weight: 600; }
+        .badge-siem { background: #fed7d7; color: #c53030; }
+        .badge-operational { background: #c6f6d5; color: #276749; }
+        .badge-unknown { background: #e2e8f0; color: #4a5568; }
+
+        /* Buttons */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 6px; font-size: 0.88em; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: #2b6cb0; color: white; }
+        .btn-primary:hover { background: #2c5282; }
+        .btn-success { background: #38a169; color: white; }
+        .btn-success:hover { background: #2f855a; }
+        .btn-danger { background: #e53e3e; color: white; }
+        .btn-danger:hover { background: #c53030; }
+        .btn-outline { background: transparent; border: 1px solid #2b6cb0; color: #2b6cb0; }
+        .btn-outline:hover { background: #ebf8ff; }
+        .btn-sm { padding: 4px 10px; font-size: 0.8em; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Suggestion cards */
+        .suggestion-card { border: 2px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+        .suggestion-card:hover { border-color: #2b6cb0; }
+        .suggestion-card h4 { color: #2c5282; margin-bottom: 8px; }
+        .suggestion-card .desc { font-size: 0.9em; color: #4a5568; margin-bottom: 10px; }
+        .suggestion-card pre { font-size: 0.82em; margin: 8px 0; }
+        .suggestion-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+        /* Code blocks */
+        pre { background: #1a202c; color: #e2e8f0; padding: 14px; border-radius: 6px; overflow-x: auto; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85em; line-height: 1.5; position: relative; }
+        pre code { background: none; color: inherit; padding: 0; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        .copy-btn { position: absolute; top: 6px; right: 6px; background: #4a5568; color: #e2e8f0; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.75em; cursor: pointer; opacity: 0.7; }
+        .copy-btn:hover { opacity: 1; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 10px; max-width: 750px; width: 95%; max-height: 85vh; overflow-y: auto; padding: 24px; }
+        .modal h3 { color: #1a365d; margin-bottom: 16px; }
+        .modal-step { margin: 12px 0; padding: 10px; background: #f7fafc; border-radius: 6px; border-left: 3px solid #2b6cb0; }
+        .modal-step.done { border-left-color: #38a169; }
+        .modal-step.error { border-left-color: #e53e3e; }
+        .modal-step .step-label { font-weight: 600; font-size: 0.9em; }
+        .modal-step .step-detail { font-size: 0.82em; color: #718096; margin-top: 4px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
+
+        /* API Log */
+        .api-log { max-height: 500px; overflow-y: auto; }
+        .log-entry { border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+        .log-entry-header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f7fafc; cursor: pointer; font-size: 0.85em; }
+        .log-entry-header .method { font-weight: 700; min-width: 50px; }
+        .log-entry-header .method.GET { color: #2b6cb0; }
+        .log-entry-header .method.POST { color: #38a169; }
+        .log-entry-header .method.PUT { color: #d69e2e; }
+        .log-entry-header .method.DELETE { color: #e53e3e; }
+        .log-entry-header .url { flex: 1; color: #4a5568; word-break: break-all; }
+        .log-entry-header .status { font-weight: 600; }
+        .log-entry-header .status.ok { color: #38a169; }
+        .log-entry-header .status.err { color: #e53e3e; }
+        .log-entry-body { display: none; padding: 10px 12px; border-top: 1px solid #e2e8f0; }
+        .log-entry.expanded .log-entry-body { display: block; }
+        .log-entry-header .time { color: #a0aec0; font-size: 0.85em; min-width: 70px; }
+
+        /* Settings */
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .settings-grid label { font-size: 0.88em; font-weight: 600; color: #2d3748; display: block; margin-bottom: 3px; }
+        .settings-grid input { width: 100%; padding: 7px 10px; border: 1px solid #cbd5e0; border-radius: 5px; font-size: 0.88em; }
+        .settings-grid input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 2px rgba(43,108,176,0.2); }
+        .settings-toggle { float: right; }
+
+        /* Filter bar */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+        .filter-bar select, .filter-bar input[type="text"] { padding: 6px 10px; border: 1px solid #cbd5e0; border-radius: 5px; font-size: 0.88em; }
+
+        /* Refresh indicator */
+        .refresh-info { display: flex; align-items: center; gap: 8px; font-size: 0.82em; color: rgba(255,255,255,0.8); }
+        .countdown { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .service-grid { grid-template-columns: 1fr 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .settings-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Misc */
+        .text-muted { color: #a0aec0; font-size: 0.85em; }
+        .mt-1 { margin-top: 8px; }
+        .mt-2 { margin-top: 16px; }
+        .mb-1 { margin-bottom: 8px; }
+        .empty-state { text-align: center; padding: 40px; color: #a0aec0; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 2em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .footer { text-align: center; padding: 1em; color: #718096; font-size: 0.85em; }
+        .hidden { display: none !important; }
+
+        /* Log Analyzer */
+        .analyzer-input { width: 100%; min-height: 180px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85em; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; resize: vertical; background: #1a202c; color: #e2e8f0; }
+        .analyzer-input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 2px rgba(43,108,176,0.2); }
+        .analyzer-controls { display: flex; gap: 10px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
+        .analyzer-controls select { padding: 7px 10px; border: 1px solid #cbd5e0; border-radius: 5px; font-size: 0.88em; }
+        .analyzer-result { margin-top: 16px; }
+        .config-card { border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+        .config-card-header { background: #edf2f7; padding: 10px 16px; font-weight: 600; color: #2c5282; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .config-card-header:hover { background: #e2e8f0; }
+        .config-card-body { padding: 16px; }
+        .config-card .tag { display: inline-block; background: #2b6cb0; color: white; font-size: 0.75em; padding: 2px 8px; border-radius: 10px; margin-right: 6px; }
+        .config-card .tag.source { background: #38a169; }
+        .config-card .tag.pipeline { background: #805ad5; }
+        .config-card .tag.route { background: #d69e2e; }
+        .config-card .tag.destination { background: #e53e3e; }
+        .analyzer-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #cbd5e0; border-top-color: #2b6cb0; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- Page Header -->
+<div class="page-header">
+    <h1>16 &ndash; AI Status &amp; Control Panel</h1>
+    <div class="meta">
+        <span>Projekt: IceDataEmphasise</span>
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-17</span>
+        <span id="headerRefresh" class="refresh-info">
+            Auto-Refresh: <span class="countdown" id="countdownDisplay">30s</span>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="toggleAutoRefresh()" id="autoRefreshBtn">Pause</button>
+        </span>
+    </div>
+</div>
+
+<div class="container">
+
+<!-- ============================================================ -->
+<!-- 1. SERVICE URL BAR -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Service-Endpunkte</h2>
+        <div>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="checkAllServices()">Status pruefen</button>
+            <button class="btn btn-sm settings-toggle" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="toggleSettings()">Einstellungen</button>
+        </div>
+    </div>
+    <div class="panel-body">
+        <!-- Settings (hidden by default) -->
+        <div id="settingsPanel" class="hidden" style="margin-bottom:20px; padding:16px; background:#f7fafc; border-radius:8px; border:1px solid #e2e8f0;">
+            <h3 style="color:#2c5282; font-size:1em; margin-bottom:12px;">Host-Konfiguration</h3>
+            <div class="settings-grid">
+                <div>
+                    <label>Cribl Stream URL</label>
+                    <input type="text" id="setCriblUrl" placeholder="http://10.10.0.100:9000">
+                </div>
+                <div>
+                    <label>Elasticsearch URL</label>
+                    <input type="text" id="setEsUrl" placeholder="http://10.10.0.100:9200">
+                </div>
+                <div>
+                    <label>Kibana URL</label>
+                    <input type="text" id="setKibanaUrl" placeholder="http://10.10.0.100:5601">
+                </div>
+                <div>
+                    <label>MinIO Console URL</label>
+                    <input type="text" id="setMinioUrl" placeholder="http://10.10.0.100:9101">
+                </div>
+                <div>
+                    <label>Splunk Web URL</label>
+                    <input type="text" id="setSplunkUrl" placeholder="http://10.10.0.100:8000">
+                </div>
+                <div>
+                    <label>Ollama API URL</label>
+                    <input type="text" id="setOllamaUrl" placeholder="http://10.10.0.210:11434">
+                </div>
+                <div>
+                    <label>Cribl Benutzer</label>
+                    <input type="text" id="setCriblUser" placeholder="admin">
+                </div>
+                <div>
+                    <label>Cribl Passwort (nur Session)</label>
+                    <input type="password" id="setCriblPass" placeholder="Wird nicht gespeichert">
+                </div>
+            </div>
+            <div class="mt-2" style="display:flex; gap:8px;">
+                <button class="btn btn-primary btn-sm" onclick="saveSettings()">Speichern</button>
+                <button class="btn btn-outline btn-sm" onclick="resetSettings()">Zuruecksetzen</button>
+            </div>
+        </div>
+        <!-- Service tiles -->
+        <div class="service-grid" id="serviceGrid"></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 2. CLASSIFICATION OVERVIEW -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Klassifikations-Uebersicht</h2>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchClassificationStats()">Aktualisieren</button>
+    </div>
+    <div class="panel-body">
+        <div class="stats-grid" id="statsCards">
+            <div class="stat-card"><div class="value" id="statTotal">-</div><div class="label">Gesamt-Events</div></div>
+            <div class="stat-card siem"><div class="value" id="statSiem">-</div><div class="label">SIEM Events</div></div>
+            <div class="stat-card operational"><div class="value" id="statOps">-</div><div class="label">Operational Events</div></div>
+        </div>
+        <h3 style="color:#2c5282; font-size:0.95em; margin-bottom:8px;">Klassifikations-Methode</h3>
+        <div id="methodBars">
+            <div class="method-bar"><div class="bar-label"><span>rule_based</span><span id="pctRule">-</span></div><div class="bar-track"><div class="bar-fill bar-rule" id="barRule" style="width:0%"></div></div></div>
+            <div class="method-bar"><div class="bar-label"><span>ollama_ai</span><span id="pctOllama">-</span></div><div class="bar-track"><div class="bar-fill bar-ollama" id="barOllama" style="width:0%"></div></div></div>
+            <div class="method-bar"><div class="bar-label"><span>fallback</span><span id="pctFallback">-</span></div><div class="bar-track"><div class="bar-fill bar-fallback" id="barFallback" style="width:0%"></div></div></div>
+        </div>
+        <h3 style="color:#2c5282; font-size:0.95em; margin:16px 0 8px;">Top Classification Reasons</h3>
+        <div class="table-scroll" style="max-height:250px;">
+            <table id="reasonsTable">
+                <thead><tr><th>Reason</th><th>Anzahl</th><th>Anteil</th></tr></thead>
+                <tbody id="reasonsBody"><tr><td colspan="3" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 3. OLLAMA ANALYSIS DETAILS -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Klassifizierte Events</h2>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchOllamaEvents(0)">Aktualisieren</button>
+    </div>
+    <div class="panel-body">
+        <div class="filter-bar">
+            <label style="font-size:0.85em;font-weight:600;">Filter:</label>
+            <select id="filterContainer" onchange="fetchOllamaEvents(0)">
+                <option value="">Alle Container</option>
+            </select>
+            <select id="filterClassification" onchange="fetchOllamaEvents(0)">
+                <option value="">Alle Klassifikationen</option>
+                <option value="siem">siem</option>
+                <option value="operational">operational</option>
+            </select>
+            <select id="filterMethod" onchange="fetchOllamaEvents(0)">
+                <option value="">Alle Methoden</option>
+                <option value="rule_based">rule_based</option>
+                <option value="ollama_ai">ollama_ai</option>
+                <option value="fallback">fallback</option>
+            </select>
+            <input type="text" id="filterKeyword" placeholder="Keyword-Suche..." onkeyup="if(event.key==='Enter')fetchOllamaEvents(0)">
+            <button class="btn btn-sm btn-outline" onclick="fetchOllamaEvents(0)">Suchen</button>
+        </div>
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Zeitstempel</th><th>Container</th><th>Log-Auszug</th><th>Klassifikation</th><th>Methode</th></tr></thead>
+                <tbody id="ollamaEventsBody"><tr><td colspan="5" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="mt-1" style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="text-muted" id="ollamaPageInfo">-</span>
+            <div>
+                <button class="btn btn-sm btn-outline" id="ollamaPrev" onclick="ollamaPagePrev()" disabled>Zurueck</button>
+                <button class="btn btn-sm btn-outline" id="ollamaNext" onclick="ollamaPageNext()">Weiter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 4. AI SUGGESTIONS -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>KI-Vorschlaege</h2>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="generateSuggestions()">Neu generieren</button>
+    </div>
+    <div class="panel-body" id="suggestionsContainer">
+        <div class="empty-state">Vorschlaege werden generiert...</div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 2b. DATA FLOW MONITOR -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Datenfluss-Monitor</h2>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchDataFlowStats()">Aktualisieren</button>
+    </div>
+    <div class="panel-body">
+        <div id="dataFlowDiagram" style="margin-bottom:16px;">
+            <svg viewBox="0 0 900 200" style="width:100%;max-width:900px;height:auto;" xmlns="http://www.w3.org/2000/svg">
+                <!-- Sources -->
+                <rect x="10" y="10" width="140" height="35" rx="6" fill="#ebf8ff" stroke="#2b6cb0" stroke-width="1.5"/>
+                <text x="80" y="32" text-anchor="middle" font-size="11" fill="#2c5282" font-weight="600">Docker Logs</text>
+                <circle cx="155" cy="27" r="5" id="dotSrcDocker" fill="#a0aec0"/>
+
+                <rect x="10" y="55" width="140" height="35" rx="6" fill="#fff5f5" stroke="#e53e3e" stroke-width="1.5"/>
+                <text x="80" y="77" text-anchor="middle" font-size="11" fill="#c53030" font-weight="600">Windows Edge</text>
+                <circle cx="155" cy="72" r="5" id="dotSrcWinEdge" fill="#a0aec0"/>
+
+                <rect x="10" y="100" width="140" height="35" rx="6" fill="#f0fff4" stroke="#38a169" stroke-width="1.5"/>
+                <text x="80" y="122" text-anchor="middle" font-size="11" fill="#276749" font-weight="600">Linux Edge</text>
+                <circle cx="155" cy="117" r="5" id="dotSrcLinuxEdge" fill="#a0aec0"/>
+
+                <rect x="10" y="145" width="140" height="35" rx="6" fill="#faf5ff" stroke="#805ad5" stroke-width="1.5"/>
+                <text x="80" y="167" text-anchor="middle" font-size="11" fill="#553c9a" font-weight="600">Journal/Syslog</text>
+                <circle cx="155" cy="162" r="5" id="dotSrcJournal" fill="#a0aec0"/>
+
+                <!-- Arrows to Cribl -->
+                <line x1="160" y1="27" x2="310" y2="95" stroke="#cbd5e0" stroke-width="1.5" marker-end="url(#arrowGrey)"/>
+                <line x1="160" y1="72" x2="310" y2="95" stroke="#cbd5e0" stroke-width="1.5" marker-end="url(#arrowGrey)"/>
+                <line x1="160" y1="117" x2="310" y2="100" stroke="#cbd5e0" stroke-width="1.5" marker-end="url(#arrowGrey)"/>
+                <line x1="160" y1="162" x2="310" y2="105" stroke="#cbd5e0" stroke-width="1.5" marker-end="url(#arrowGrey)"/>
+
+                <!-- Cribl Stream -->
+                <rect x="310" y="65" width="180" height="70" rx="8" fill="#2b6cb0" stroke="#1a365d" stroke-width="2"/>
+                <text x="400" y="90" text-anchor="middle" font-size="12" fill="white" font-weight="700">Cribl Stream</text>
+                <text x="400" y="108" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.8)">universal_classifier</text>
+                <text x="400" y="124" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.6)" id="flowCriblStatus">Ollama AI + Rules</text>
+
+                <!-- Arrows to Destinations -->
+                <line x1="490" y1="85" x2="620" y2="35" stroke="#e53e3e" stroke-width="2" marker-end="url(#arrowRed)"/>
+                <line x1="490" y1="100" x2="620" y2="100" stroke="#38a169" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+                <line x1="490" y1="115" x2="620" y2="165" stroke="#805ad5" stroke-width="1.5" marker-end="url(#arrowPurple)"/>
+
+                <!-- Labels on arrows -->
+                <text x="555" y="52" text-anchor="middle" font-size="9" fill="#e53e3e">SIEM</text>
+                <text x="555" y="93" text-anchor="middle" font-size="9" fill="#38a169">Ops</text>
+                <text x="555" y="148" text-anchor="middle" font-size="9" fill="#805ad5">Ops</text>
+
+                <!-- Destinations -->
+                <rect x="620" y="15" width="140" height="40" rx="6" fill="#fff5f5" stroke="#e53e3e" stroke-width="1.5"/>
+                <text x="690" y="32" text-anchor="middle" font-size="11" fill="#c53030" font-weight="600">Splunk HEC</text>
+                <text x="690" y="46" text-anchor="middle" font-size="9" fill="#718096">10.10.0.66:8088</text>
+                <circle cx="765" cy="35" r="5" id="dotDstSplunk" fill="#a0aec0"/>
+
+                <rect x="620" y="80" width="140" height="40" rx="6" fill="#f0fff4" stroke="#38a169" stroke-width="1.5"/>
+                <text x="690" y="97" text-anchor="middle" font-size="11" fill="#276749" font-weight="600">Elasticsearch</text>
+                <text x="690" y="111" text-anchor="middle" font-size="9" fill="#718096">:9200 / Kibana</text>
+                <circle cx="765" cy="100" r="5" id="dotDstES" fill="#a0aec0"/>
+
+                <rect x="620" y="145" width="140" height="40" rx="6" fill="#faf5ff" stroke="#805ad5" stroke-width="1.5"/>
+                <text x="690" y="162" text-anchor="middle" font-size="11" fill="#553c9a" font-weight="600">MinIO S3</text>
+                <text x="690" y="176" text-anchor="middle" font-size="9" fill="#718096">:9100 Archiv</text>
+                <circle cx="765" cy="165" r="5" id="dotDstS3" fill="#a0aec0"/>
+
+                <!-- Arrow markers -->
+                <defs>
+                    <marker id="arrowGrey" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#cbd5e0"/></marker>
+                    <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#e53e3e"/></marker>
+                    <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#38a169"/></marker>
+                    <marker id="arrowPurple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#805ad5"/></marker>
+                </defs>
+            </svg>
+        </div>
+        <div class="stats-grid" id="flowStatsCards">
+            <div class="stat-card"><div class="value" id="flowTotal24h">-</div><div class="label">Events (24h)</div></div>
+            <div class="stat-card siem"><div class="value" id="flowSiem24h">-</div><div class="label">SIEM (24h)</div></div>
+            <div class="stat-card operational"><div class="value" id="flowOps24h">-</div><div class="label">Operational (24h)</div></div>
+            <div class="stat-card"><div class="value" id="flowEdgeNodes">-</div><div class="label">Edge Nodes</div></div>
+        </div>
+        <h3 style="color:#2c5282; font-size:0.95em; margin:12px 0 8px;">Quellen-Details (24h)</h3>
+        <div class="table-scroll" style="max-height:300px;">
+            <table id="flowSourceTable">
+                <thead><tr><th>Quelle</th><th>Typ</th><th>Events (24h)</th><th>SIEM</th><th>Ops</th><th>Status</th></tr></thead>
+                <tbody id="flowSourceBody"><tr><td colspan="6" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 4b. OPS->SIEM RECLASSIFICATION -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Ops&rarr;SIEM Reklassifikation</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Operational Events auf SIEM-Relevanz pruefen</span>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
+            Zieht eine Stichprobe von <code>classification=='operational'</code> Events und laesst Ollama pruefen,
+            ob darunter SIEM-relevante Events sind, die falsch klassifiziert wurden.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+            <select id="reclassSampleSize">
+                <option value="20">20 Events</option>
+                <option value="50" selected>50 Events</option>
+                <option value="100">100 Events</option>
+            </select>
+            <select id="reclassModel">
+                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                <option value="llama3.1:8b">llama3.1:8b</option>
+            </select>
+            <button class="btn btn-primary" onclick="startReclassification()" id="reclassBtn">Stichprobe analysieren</button>
+            <label style="font-size:0.85em;display:flex;align-items:center;gap:4px;">
+                <input type="checkbox" id="reclassAutoMode" onchange="toggleReclassAuto()"> Auto (30 Min)
+            </label>
+            <span id="reclassStatus" class="text-muted"></span>
+        </div>
+        <div id="reclassResult">
+            <div class="empty-state">Noch keine Reklassifikation durchgefuehrt. Klicke "Stichprobe analysieren".</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 5. SPLUNK & KIBANA CONFIG GENERATOR (Tabbed) -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Splunk &amp; Kibana Konfigurator (ki01)</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">SIEM &rarr; Splunk | Ops &rarr; Kibana</span>
+    </div>
+    <div class="panel-body">
+        <!-- Tab Navigation -->
+        <div style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:16px;">
+            <button class="btn" id="tabSplunk" onclick="switchConfigTab('splunk')" style="border-radius:6px 6px 0 0;border-bottom:3px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;">Splunk SIEM</button>
+            <button class="btn" id="tabKibana" onclick="switchConfigTab('kibana')" style="border-radius:6px 6px 0 0;border-bottom:3px solid transparent;background:transparent;color:#718096;">Kibana Ops</button>
+        </div>
+
+        <!-- Splunk Tab -->
+        <div id="tabContentSplunk">
+            <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">
+                Analysiert aktuelle SIEM-Events aus Elasticsearch, beruecksichtigt das Routing
+                (<code>classification==siem</code> &rarr; Splunk HEC) und generiert passende Splunk-Konfiguration
+                fuer <code>inputs.conf</code>, <code>props.conf</code>, <code>transforms.conf</code>, <code>eventtypes.conf</code>, <code>tags.conf</code>, <code>indexes.conf</code> und CIM-Datenmodelle.
+                Beruecksichtigt Windows Edge EventIDs, Sysmon, PowerShell, auditd und Linux Security Events.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                <select id="splunkModel">
+                    <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                    <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                    <option value="llama3.1:8b">llama3.1:8b</option>
+                    <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
+                </select>
+                <button class="btn btn-primary" onclick="generateSplunkConfig()" id="splunkGenBtn">SIEM-Events laden &amp; Splunk-Konfig generieren</button>
+                <span id="splunkGenStatus" class="text-muted"></span>
+            </div>
+            <div id="splunkConfigResult"></div>
+        </div>
+
+        <!-- Kibana Tab (hidden by default) -->
+        <div id="tabContentKibana" class="hidden">
+            <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">
+                Analysiert Operational-Events in Elasticsearch und generiert per Ollama Kibana-Konfigurationen:
+                Index Patterns, Saved Searches (KQL), Dashboard-Panels und Visualisierungen.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                <select id="kibanaModel">
+                    <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                    <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                    <option value="llama3.1:8b">llama3.1:8b</option>
+                </select>
+                <button class="btn btn-primary" onclick="generateKibanaConfig()" id="kibanaGenBtn">Ops-Events laden &amp; Kibana-Konfig generieren</button>
+                <span id="kibanaGenStatus" class="text-muted"></span>
+            </div>
+            <div id="kibanaConfigResult"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 6. LOG ANALYZER - Logdaten analysieren & Cribl-Konfig generieren (manuelle Eingabe) -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Log-Analyzer (ki01)</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Logdaten einfuegen &rarr; KI analysiert &rarr; Cribl-Konfiguration</span>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">Log-Zeilen einfuegen (mind. 3 Zeilen fuer gute Analyse). Die KI auf <strong>ki01</strong> erkennt Format, Felder und Sicherheitsrelevanz und schlaegt eine passende Cribl-Konfiguration vor.</p>
+        <textarea class="analyzer-input" id="analyzerInput" placeholder="Hier Log-Zeilen einfuegen, z.B.:&#10;Feb 17 10:23:45 webserver sshd[12345]: Failed password for root from 192.168.1.100 port 22&#10;2026-02-17T10:24:01.123Z INFO  [nginx] GET /api/health 200 12ms&#10;{&quot;timestamp&quot;:&quot;2026-02-17T10:25:00Z&quot;,&quot;level&quot;:&quot;error&quot;,&quot;msg&quot;:&quot;connection refused&quot;}"></textarea>
+        <div class="analyzer-controls">
+            <select id="analyzerModel">
+                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                <option value="llama3.1:8b">llama3.1:8b</option>
+                <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
+            </select>
+            <button class="btn" onclick="analyzeLogSamples()" id="analyzerBtn">Analysieren &amp; Konfig generieren</button>
+            <button class="btn btn-outline" onclick="clearAnalyzer()">Zuruecksetzen</button>
+            <span id="analyzerStatus" class="text-muted"></span>
+        </div>
+        <div class="analyzer-result" id="analyzerResult"></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 6. API COMMAND LOG -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>API-Befehlsprotokoll</h2>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="clearApiLog()">Leeren</button>
+    </div>
+    <div class="panel-body">
+        <div class="api-log" id="apiLog">
+            <div class="empty-state" id="apiLogEmpty">Noch keine API-Aufrufe protokolliert.</div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="container" style="padding:0;">
+    <div class="nav">
+        <a href="15-phase2-uebungen.html">&larr; 15 &ndash; Phase 2 Uebungen</a>
+        <a href="index.html">Startseite</a>
+    </div>
+    <div class="footer">IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC | AI Status Panel v2.0</div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ============================================================ -->
+<!-- ACTIVATION MODAL -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="activationModal">
+    <div class="modal">
+        <h3 id="modalTitle">Regel aktivieren</h3>
+        <div id="modalContent"></div>
+        <div class="modal-footer" id="modalFooter">
+            <button class="btn btn-outline" onclick="closeModal()">Schliessen</button>
+            <button class="btn btn-success" id="modalConfirmBtn" onclick="modalConfirmAction()">Bestaetigen &amp; Aktivieren</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG (localStorage-backed, except password)
+// ============================================================
+// Auto-detect base URL for reverse proxy mode
+const PROXY_BASE = window.location.origin;
+
+const CONFIG_VERSION = 2; // Increment to force reset of cached URLs
+const DEFAULTS = {
+    CRIBL_URL: PROXY_BASE + '/proxy/cribl',
+    ES_URL: PROXY_BASE + '/proxy/es',
+    KIBANA_URL: PROXY_BASE + '/proxy/kibana',
+    MINIO_URL: 'http://10.10.0.100:9101',
+    SPLUNK_URL: 'http://10.10.0.66:8000',
+    OLLAMA_URL: PROXY_BASE + '/proxy/ollama',
+    CRIBL_USER: 'admin'
+};
+
+// Migrate config on version change
+(function migrateConfig() {
+    const storedVersion = parseInt(localStorage.getItem('ide_CONFIG_VERSION') || '0');
+    if (storedVersion < CONFIG_VERSION) {
+        Object.keys(DEFAULTS).forEach(k => localStorage.removeItem('ide_' + k));
+        localStorage.setItem('ide_CONFIG_VERSION', String(CONFIG_VERSION));
+    }
+})();
+
+function getConfig(key) {
+    return localStorage.getItem('ide_' + key) || DEFAULTS[key];
+}
+function setConfig(key, val) {
+    localStorage.setItem('ide_' + key, val);
+}
+
+// Password: session-only
+let criblPassword = '';
+
+// State
+let autoRefreshEnabled = true;
+let countdownValue = 30;
+let countdownInterval = null;
+let ollamaPage = 0;
+const PAGE_SIZE = 20;
+let currentSuggestions = [];
+let pendingModalAction = null;
+let criblAuthToken = null;
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettingsToForm();
+    renderServiceTiles();
+    startCountdown();
+    refreshAll();
+});
+
+function refreshAll() {
+    checkAllServices();
+    fetchClassificationStats();
+    fetchOllamaEvents(0);
+    generateSuggestions();
+    fetchDataFlowStats();
+    countdownValue = 30;
+}
+
+// ============================================================
+// AUTO-REFRESH / COUNTDOWN
+// ============================================================
+function startCountdown() {
+    clearInterval(countdownInterval);
+    countdownInterval = setInterval(() => {
+        if (!autoRefreshEnabled) return;
+        countdownValue--;
+        document.getElementById('countdownDisplay').textContent = countdownValue + 's';
+        if (countdownValue <= 0) {
+            refreshAll();
+        }
+    }, 1000);
+}
+
+function toggleAutoRefresh() {
+    autoRefreshEnabled = !autoRefreshEnabled;
+    document.getElementById('autoRefreshBtn').textContent = autoRefreshEnabled ? 'Pause' : 'Fortsetzen';
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function toggleSettings() {
+    document.getElementById('settingsPanel').classList.toggle('hidden');
+}
+
+function loadSettingsToForm() {
+    document.getElementById('setCriblUrl').value = getConfig('CRIBL_URL');
+    document.getElementById('setEsUrl').value = getConfig('ES_URL');
+    document.getElementById('setKibanaUrl').value = getConfig('KIBANA_URL');
+    document.getElementById('setMinioUrl').value = getConfig('MINIO_URL');
+    document.getElementById('setSplunkUrl').value = getConfig('SPLUNK_URL');
+    document.getElementById('setOllamaUrl').value = getConfig('OLLAMA_URL');
+    document.getElementById('setCriblUser').value = getConfig('CRIBL_USER');
+}
+
+function saveSettings() {
+    setConfig('CRIBL_URL', document.getElementById('setCriblUrl').value);
+    setConfig('ES_URL', document.getElementById('setEsUrl').value);
+    setConfig('KIBANA_URL', document.getElementById('setKibanaUrl').value);
+    setConfig('MINIO_URL', document.getElementById('setMinioUrl').value);
+    setConfig('SPLUNK_URL', document.getElementById('setSplunkUrl').value);
+    setConfig('OLLAMA_URL', document.getElementById('setOllamaUrl').value);
+    setConfig('CRIBL_USER', document.getElementById('setCriblUser').value);
+    criblPassword = document.getElementById('setCriblPass').value;
+    renderServiceTiles();
+    refreshAll();
+    toggleSettings();
+}
+
+function resetSettings() {
+    Object.keys(DEFAULTS).forEach(k => localStorage.removeItem('ide_' + k));
+    loadSettingsToForm();
+    document.getElementById('setCriblPass').value = '';
+    criblPassword = '';
+}
+
+// ============================================================
+// SERVICE TILES
+// ============================================================
+function getServices() {
+    return [
+        { key: 'CRIBL', name: 'Cribl Stream', url: getConfig('CRIBL_URL'), icon: 'C' },
+        { key: 'KIBANA', name: 'Kibana', url: getConfig('KIBANA_URL'), icon: 'K' },
+        { key: 'MINIO', name: 'MinIO Console', url: getConfig('MINIO_URL'), icon: 'M' },
+        { key: 'ES', name: 'Elasticsearch', url: getConfig('ES_URL'), icon: 'E' },
+        { key: 'SPLUNK', name: 'Splunk Web', url: getConfig('SPLUNK_URL'), icon: 'S' },
+        { key: 'OLLAMA', name: 'Ollama API', url: getConfig('OLLAMA_URL'), icon: 'O' }
+    ];
+}
+
+function renderServiceTiles() {
+    const grid = document.getElementById('serviceGrid');
+    grid.innerHTML = getServices().map(s =>
+        `<a class="service-tile" href="${escHtml(s.url)}" target="_blank" rel="noopener" id="tile-${s.key}">
+            <span class="status-dot grey" id="dot-${s.key}"></span>
+            <div>
+                <div class="name">${escHtml(s.name)}</div>
+                <div class="url">${escHtml(s.url)}</div>
+            </div>
+        </a>`
+    ).join('');
+}
+
+async function checkAllServices() {
+    const services = getServices();
+    for (const s of services) {
+        const dot = document.getElementById('dot-' + s.key);
+        dot.className = 'status-dot checking';
+    }
+    await Promise.all(services.map(s => checkService(s)));
+}
+
+async function checkService(s) {
+    const dot = document.getElementById('dot-' + s.key);
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        await fetch(s.url, { mode: 'no-cors', signal: controller.signal });
+        clearTimeout(timeout);
+        dot.className = 'status-dot green';
+    } catch {
+        dot.className = 'status-dot red';
+    }
+}
+
+// ============================================================
+// CLASSIFICATION STATS (ES Aggregation)
+// ============================================================
+async function fetchClassificationStats() {
+    const esUrl = getConfig('ES_URL');
+    const query = {
+        size: 0,
+        query: { match_all: {} },
+        aggs: {
+            by_classification: { terms: { field: 'classification.keyword', size: 10 } },
+            by_method: { terms: { field: 'classification_method.keyword', size: 10 } },
+            by_reason: { terms: { field: 'classification_reason.keyword', size: 20 } }
+        }
+    };
+
+    try {
+        const resp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, query);
+        const data = await resp.json();
+        const total = data.hits?.total?.value || 0;
+
+        document.getElementById('statTotal').textContent = formatNum(total);
+
+        const classBuckets = data.aggregations?.by_classification?.buckets || [];
+        const siemCount = classBuckets.find(b => b.key === 'siem')?.doc_count || 0;
+        const opsCount = classBuckets.find(b => b.key === 'operational')?.doc_count || 0;
+        document.getElementById('statSiem').textContent = formatNum(siemCount);
+        document.getElementById('statOps').textContent = formatNum(opsCount);
+
+        // Method bars
+        const methodBuckets = data.aggregations?.by_method?.buckets || [];
+        const methodTotal = methodBuckets.reduce((a, b) => a + b.doc_count, 0) || 1;
+        for (const m of ['rule_based', 'ollama_ai', 'fallback']) {
+            const count = methodBuckets.find(b => b.key === m)?.doc_count || 0;
+            const pct = ((count / methodTotal) * 100).toFixed(1);
+            const barId = m === 'rule_based' ? 'Rule' : m === 'ollama_ai' ? 'Ollama' : 'Fallback';
+            document.getElementById('bar' + barId).style.width = pct + '%';
+            document.getElementById('bar' + barId).textContent = pct > 5 ? pct + '%' : '';
+            document.getElementById('pct' + barId).textContent = `${formatNum(count)} (${pct}%)`;
+        }
+
+        // Reasons table
+        const reasonBuckets = data.aggregations?.by_reason?.buckets || [];
+        const reasonTotal = reasonBuckets.reduce((a, b) => a + b.doc_count, 0) || 1;
+        const tbody = document.getElementById('reasonsBody');
+        if (reasonBuckets.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-muted" style="text-align:center;">Keine Daten</td></tr>';
+        } else {
+            tbody.innerHTML = reasonBuckets.map(b => {
+                const pct = ((b.doc_count / reasonTotal) * 100).toFixed(1);
+                return `<tr><td><code>${escHtml(b.key)}</code></td><td>${formatNum(b.doc_count)}</td><td>${pct}%</td></tr>`;
+            }).join('');
+        }
+    } catch (e) {
+        document.getElementById('statTotal').textContent = 'Err';
+        document.getElementById('reasonsBody').innerHTML = `<tr><td colspan="3" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</td></tr>`;
+    }
+}
+
+// ============================================================
+// OLLAMA EVENTS TABLE
+// ============================================================
+async function fetchOllamaEvents(page) {
+    ollamaPage = page;
+    const esUrl = getConfig('ES_URL');
+    const must = [{ exists: { field: 'classification' } }];
+
+    const containerFilter = document.getElementById('filterContainer').value;
+    if (containerFilter) must.push({ term: { 'CONTAINER_NAME.keyword': containerFilter } });
+
+    const classFilter = document.getElementById('filterClassification').value;
+    if (classFilter) must.push({ term: { 'classification.keyword': classFilter } });
+
+    const methodFilter = document.getElementById('filterMethod')?.value;
+    if (methodFilter) must.push({ term: { 'classification_method.keyword': methodFilter } });
+
+    const keyword = document.getElementById('filterKeyword').value.trim();
+    if (keyword) must.push({ query_string: { query: `*${keyword}*`, fields: ['message', 'log_message'] } });
+
+    const query = {
+        size: PAGE_SIZE,
+        from: page * PAGE_SIZE,
+        sort: [{ '@timestamp': 'desc' }],
+        query: { bool: { must } },
+        _source: ['@timestamp', 'CONTAINER_NAME', 'message', 'log_message', 'classification', 'classification_method', 'classification_reason']
+    };
+
+    const tbody = document.getElementById('ollamaEventsBody');
+
+    try {
+        const resp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, query);
+        const data = await resp.json();
+        const hits = data.hits?.hits || [];
+        const total = data.hits?.total?.value || 0;
+
+        await populateContainerFilter();
+
+        if (hits.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted" style="text-align:center;">Keine klassifizierten Events gefunden</td></tr>';
+        } else {
+            tbody.innerHTML = hits.map(h => {
+                const s = h._source;
+                const ts = s['@timestamp'] ? new Date(s['@timestamp']).toLocaleString('de-DE') : '-';
+                const logRaw = s.message || s.log_message || '';
+                const log = logRaw.substring(0, 120);
+                const cls = s.classification || '-';
+                const badge = cls === 'siem' ? 'badge-siem' : cls === 'operational' ? 'badge-operational' : 'badge-unknown';
+                const method = s.classification_method || '-';
+                const reason = s.classification_reason || '-';
+                return `<tr>
+                    <td style="white-space:nowrap;">${escHtml(ts)}</td>
+                    <td><code>${escHtml(s.CONTAINER_NAME || '-')}</code></td>
+                    <td title="${escHtml(logRaw)}">${escHtml(log)}${logRaw.length > 120 ? '...' : ''}</td>
+                    <td><span class="badge ${badge}">${escHtml(cls)}</span></td>
+                    <td title="${escHtml(reason)}"><code>${escHtml(method)}</code></td>
+                </tr>`;
+            }).join('');
+        }
+
+        document.getElementById('ollamaPageInfo').textContent = `Seite ${page + 1} (${total} Treffer)`;
+        document.getElementById('ollamaPrev').disabled = page === 0;
+        document.getElementById('ollamaNext').disabled = (page + 1) * PAGE_SIZE >= total;
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</td></tr>`;
+    }
+}
+
+async function populateContainerFilter() {
+    const sel = document.getElementById('filterContainer');
+    if (sel.options.length > 1) return;
+    const esUrl = getConfig('ES_URL');
+    try {
+        const resp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+            size: 0,
+            aggs: { containers: { terms: { field: 'CONTAINER_NAME.keyword', size: 50 } } }
+        }, true);
+        const data = await resp.json();
+        const buckets = data.aggregations?.containers?.buckets || [];
+        for (const b of buckets) {
+            const opt = document.createElement('option');
+            opt.value = b.key;
+            opt.textContent = `${b.key} (${b.doc_count})`;
+            sel.appendChild(opt);
+        }
+    } catch { /* ignore */ }
+}
+
+function ollamaPagePrev() { if (ollamaPage > 0) fetchOllamaEvents(ollamaPage - 1); }
+function ollamaPageNext() { fetchOllamaEvents(ollamaPage + 1); }
+
+// ============================================================
+// AI SUGGESTIONS
+// ============================================================
+async function generateSuggestions() {
+    const container = document.getElementById('suggestionsContainer');
+    container.innerHTML = '<div class="empty-state">Analysiere klassifizierte Events...</div>';
+    const esUrl = getConfig('ES_URL');
+
+    try {
+        // Two queries: fallback events (potential rule candidates) and overall stats
+        const [fallbackResp, overviewResp] = await Promise.all([
+            apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+                size: 0,
+                query: { term: { 'classification_method.keyword': 'fallback' } },
+                aggs: {
+                    by_container: {
+                        terms: { field: 'CONTAINER_NAME.keyword', size: 50 },
+                        aggs: {
+                            sample_logs: { top_hits: { size: 3, _source: ['message', 'log_message'], sort: [{ '@timestamp': 'desc' }] } }
+                        }
+                    }
+                }
+            }),
+            apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+                size: 0,
+                aggs: {
+                    by_container: {
+                        terms: { field: 'CONTAINER_NAME.keyword', size: 50 },
+                        aggs: {
+                            by_method: { terms: { field: 'classification_method.keyword', size: 5 } },
+                            by_class: { terms: { field: 'classification.keyword', size: 5 } },
+                            siem_events: { filter: { term: { 'classification.keyword': 'siem' } } }
+                        }
+                    }
+                }
+            })
+        ]);
+
+        const fallbackData = await fallbackResp.json();
+        const overviewData = await overviewResp.json();
+        const suggestions = [];
+
+        // Suggestion 1: Fallback events per container → new rule candidates
+        const fallbackBuckets = fallbackData.aggregations?.by_container?.buckets || [];
+        for (const fb of fallbackBuckets) {
+            if (fb.doc_count < 5) continue;
+            const samples = (fb.sample_logs?.hits?.hits || []).map(h => {
+                const s = h._source || {};
+                return (s.message || s.log_message || '').substring(0, 100);
+            });
+            const containerName = fb.key;
+            suggestions.push({
+                type: 'new_rule',
+                title: `${fb.doc_count} Fallback-Events von '${containerName}'`,
+                description: `Diese Events wurden nicht durch Regeln erkannt und fielen in den Fallback (= operational). Pruefe, ob eine neue Regel fuer diesen Container sinnvoll ist.`,
+                classification: 'operational',
+                filter: `CONTAINER_NAME && /^${containerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i.test(CONTAINER_NAME)`,
+                reason: `rule_container_${containerName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+                samples: samples,
+                count: fb.doc_count
+            });
+        }
+
+        // Suggestion 2: Containers with SIEM events
+        const overviewBuckets = overviewData.aggregations?.by_container?.buckets || [];
+        for (const ob of overviewBuckets) {
+            const siemCount = ob.siem_events?.doc_count || 0;
+            if (siemCount > 0) {
+                suggestions.push({
+                    type: 'siem_alert',
+                    title: `${siemCount} SIEM-Events von '${ob.key}'`,
+                    description: `Container '${ob.key}' hat ${siemCount} sicherheitsrelevante Events generiert. Diese sollten ueberprueft und ggf. in ein SIEM-System weitergeleitet werden.`,
+                    classification: 'siem',
+                    count: siemCount,
+                    samples: [],
+                    filter: ''
+                });
+            }
+        }
+
+        // Suggestion 3: Overall optimization
+        const totalEvents = overviewBuckets.reduce((a, b) => a + b.doc_count, 0);
+        const totalFallback = fallbackBuckets.reduce((a, b) => a + b.doc_count, 0);
+        if (totalFallback > 0 && totalEvents > 0) {
+            const fallbackPct = ((totalFallback / totalEvents) * 100).toFixed(1);
+            suggestions.push({
+                type: 'optimization',
+                title: `${fallbackPct}% Fallback-Rate optimierbar`,
+                description: `${formatNum(totalFallback)} von ${formatNum(totalEvents)} Events werden per Fallback klassifiziert. Durch zusaetzliche Regeln oder Aktivierung der Ollama-KI-Stufe kann die Erkennungsrate verbessert werden.`,
+                classification: 'info',
+                count: totalFallback,
+                samples: [],
+                filter: ''
+            });
+        }
+
+        currentSuggestions = suggestions;
+        renderSuggestions(suggestions);
+    } catch (e) {
+        container.innerHTML = `<div class="empty-state" style="color:#e53e3e;">Fehler beim Laden: ${escHtml(e.message)}</div>`;
+    }
+}
+
+function renderSuggestions(suggestions) {
+    const container = document.getElementById('suggestionsContainer');
+    if (suggestions.length === 0) {
+        container.innerHTML = '<div class="empty-state">Keine Vorschlaege: Alle Events werden durch bestehende Regeln abgedeckt.</div>';
+        return;
+    }
+
+    container.innerHTML = suggestions.map((s, i) => {
+        const badgeCls = s.classification === 'siem' ? 'badge-siem' : s.classification === 'info' ? 'badge-unknown' : 'badge-operational';
+        const typeIcon = s.type === 'siem_alert' ? '&#9888;' : s.type === 'optimization' ? '&#9881;' : '&#10148;';
+        const typeLabel = s.type === 'siem_alert' ? 'Sicherheit' : s.type === 'optimization' ? 'Optimierung' : 'Neue Regel';
+
+        const samplesHtml = s.samples && s.samples.length > 0
+            ? `<div class="mt-1"><strong style="font-size:0.85em;">Beispiel-Logs:</strong><ul style="font-size:0.82em;color:#4a5568;margin:4px 0 0 16px;">${s.samples.map(l => `<li><code>${escHtml(l)}</code></li>`).join('')}</ul></div>`
+            : '';
+
+        const ruleHtml = s.filter ? `
+            <div class="mt-1"><strong style="font-size:0.85em;">Vorgeschlagene Regel (Cribl eval-Filter):</strong></div>
+            <pre><code>filter: ${escHtml(s.filter)}
+classification = '${escHtml(s.classification)}'
+classification_method = 'rule_based'
+classification_reason = '${escHtml(s.reason || '')}'</code></pre>` : '';
+
+        return `<div class="suggestion-card" style="border-left:4px solid ${s.type === 'siem_alert' ? '#e53e3e' : s.type === 'optimization' ? '#d69e2e' : '#38a169'};">
+            <h4>${typeIcon} <span style="font-size:0.8em;color:#718096;">[${typeLabel}]</span> ${escHtml(s.title)}</h4>
+            <div class="desc">${escHtml(s.description)}</div>
+            ${samplesHtml}
+            ${ruleHtml}
+            <div class="suggestion-actions">
+                <span class="badge ${badgeCls}" style="align-self:center;">${escHtml(s.classification)}</span>
+                <span class="text-muted" style="align-self:center;">${formatNum(s.count)} Events</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function buildCurlPreview(suggestion) {
+    const criblUrl = getConfig('CRIBL_URL');
+    const newFunc = {
+        id: 'eval',
+        filter: suggestion.filter,
+        disabled: false,
+        conf: {
+            add: [
+                { name: 'classification', value: `'${suggestion.classification}'` },
+                { name: 'classification_method', value: "'rule_based'" },
+                { name: 'classification_reason', value: `'${suggestion.reason}'` }
+            ]
+        },
+        description: `Auto-Rule: ${suggestion.title}`
+    };
+    return `# 1. Authenticate
+curl -s -X POST ${criblUrl}/api/v1/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"username":"admin","password":"***"}'
+
+# 2. Get current pipeline
+curl -s -X GET ${criblUrl}/api/v1/pipelines/ollama_classifier \\
+  -H "Authorization: Bearer <TOKEN>"
+
+# 3. Update pipeline (insert new rule)
+curl -s -X PATCH ${criblUrl}/api/v1/pipelines/ollama_classifier \\
+  -H "Authorization: Bearer <TOKEN>" \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify({ functions: ['<existing_functions + new_rule>'] })}'
+
+# New rule to insert:
+${JSON.stringify(newFunc, null, 2)}`;
+}
+
+// ============================================================
+// RULE ACTIVATION (5-step modal)
+// ============================================================
+function previewRule(idx) {
+    const s = currentSuggestions[idx];
+    if (!s) return;
+    const modal = document.getElementById('activationModal');
+    document.getElementById('modalTitle').textContent = 'Vorschau: ' + s.title;
+    document.getElementById('modalConfirmBtn').classList.add('hidden');
+
+    const newFunc = buildNewFunction(s);
+    document.getElementById('modalContent').innerHTML = `
+        <p style="margin-bottom:12px;">Diese Regel wuerde VOR der Ollama-Stufe in die Pipeline <code>ollama_classifier</code> eingefuegt:</p>
+        <pre><code>${escHtml(JSON.stringify(newFunc, null, 2))}</code></pre>
+        <p class="mt-2 text-muted">Klicken Sie "Aktivieren" auf der Vorschlags-Karte, um diese Regel tatsaechlich zu installieren.</p>
+    `;
+    modal.classList.add('active');
+}
+
+async function activateRule(idx) {
+    const s = currentSuggestions[idx];
+    if (!s) return;
+
+    if (!criblPassword) {
+        criblPassword = prompt('Cribl-Passwort eingeben (wird nur fuer diese Sitzung gespeichert):');
+        if (!criblPassword) return;
+    }
+
+    const modal = document.getElementById('activationModal');
+    const content = document.getElementById('modalContent');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    document.getElementById('modalTitle').textContent = 'Regel aktivieren: ' + s.title;
+
+    const newFunc = buildNewFunction(s);
+    const criblUrl = getConfig('CRIBL_URL');
+    const user = getConfig('CRIBL_USER');
+
+    content.innerHTML = `
+        <p style="margin-bottom:12px;">Folgende API-Schritte werden ausgefuehrt:</p>
+        <div class="modal-step" id="step1"><span class="step-label">1. Authentifizierung bei Cribl API</span>
+            <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/auth/login</code></div></div>
+        <div class="modal-step" id="step2"><span class="step-label">2. Aktuelle Pipeline laden</span>
+            <div class="step-detail"><code>GET ${escHtml(criblUrl)}/api/v1/pipelines/ollama_classifier</code></div></div>
+        <div class="modal-step" id="step3"><span class="step-label">3. Neue Regel einfuegen (vor Ollama-Stufe)</span>
+            <div class="step-detail">Neue eval-Funktion wird eingefuegt</div></div>
+        <div class="modal-step" id="step4"><span class="step-label">4. Pipeline aktualisieren</span>
+            <div class="step-detail"><code>PUT ${escHtml(criblUrl)}/api/v1/pipelines/ollama_classifier</code></div></div>
+        <div class="modal-step" id="step5"><span class="step-label">5. Konfiguration committen</span>
+            <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/version/commit</code></div></div>
+        <div class="mt-2"><strong>Einzufuegende Regel:</strong></div>
+        <pre><code>${escHtml(JSON.stringify(newFunc, null, 2))}</code></pre>
+    `;
+    confirmBtn.classList.remove('hidden');
+    pendingModalAction = { suggestion: s, newFunc, criblUrl, user };
+    modal.classList.add('active');
+}
+
+async function modalConfirmAction() {
+    if (!pendingModalAction) return;
+    const { suggestion, newFunc, criblUrl, user } = pendingModalAction;
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Wird ausgefuehrt...';
+
+    try {
+        // Step 1: Auth
+        markStep('step1', 'running');
+        const authResp = await apiFetch('POST', `${criblUrl}/api/v1/auth/login`, {
+            username: user,
+            password: criblPassword
+        });
+        const authData = await authResp.json();
+        if (!authResp.ok) throw new Error('Auth fehlgeschlagen: ' + (authData.message || authResp.status));
+        criblAuthToken = authData.token;
+        markStep('step1', 'done');
+
+        // Step 2: Get pipeline
+        markStep('step2', 'running');
+        const pipeResp = await apiFetch('GET', `${criblUrl}/api/v1/pipelines/ollama_classifier`, null, false, {
+            'Authorization': `Bearer ${criblAuthToken}`
+        });
+        const pipeData = await pipeResp.json();
+        if (!pipeResp.ok) throw new Error('Pipeline laden fehlgeschlagen: ' + (pipeData.message || pipeResp.status));
+        const pipeline = pipeData.items ? pipeData.items[0] : pipeData;
+        markStep('step2', 'done');
+
+        // Step 3: Insert new rule before Ollama stage
+        markStep('step3', 'running');
+        const functions = pipeline.conf?.functions || [];
+        let insertIdx = functions.findIndex(f =>
+            f.description && f.description.includes('Ollama AI')
+        );
+        if (insertIdx === -1) {
+            // Fallback: insert before the comment about Stage 2
+            insertIdx = functions.findIndex(f =>
+                f.id === 'comment' && f.conf?.comment?.includes('Stage 2')
+            );
+        }
+        if (insertIdx === -1) insertIdx = functions.length - 3; // before fallback
+        functions.splice(insertIdx, 0, newFunc);
+        pipeline.conf.functions = functions;
+        markStep('step3', 'done');
+
+        // Step 4: Update pipeline
+        markStep('step4', 'running');
+        const updateResp = await apiFetch('PUT', `${criblUrl}/api/v1/pipelines/ollama_classifier`, pipeline, false, {
+            'Authorization': `Bearer ${criblAuthToken}`
+        });
+        const updateData = await updateResp.json();
+        if (!updateResp.ok) throw new Error('Pipeline-Update fehlgeschlagen: ' + (updateData.message || updateResp.status));
+        markStep('step4', 'done');
+
+        // Step 5: Commit
+        markStep('step5', 'running');
+        const commitResp = await apiFetch('POST', `${criblUrl}/api/v1/version/commit`, {
+            message: `Auto-rule: ${suggestion.title}`,
+            effective: true
+        }, false, {
+            'Authorization': `Bearer ${criblAuthToken}`
+        });
+        const commitData = await commitResp.json();
+        if (!commitResp.ok) throw new Error('Commit fehlgeschlagen: ' + (commitData.message || commitResp.status));
+        markStep('step5', 'done');
+
+        // Success
+        const content = document.getElementById('modalContent');
+        content.innerHTML += `<div style="margin-top:16px;padding:12px;background:#f0fff4;border-radius:6px;border-left:4px solid #38a169;">
+            <strong style="color:#276749;">Erfolg!</strong> Regel wurde aktiviert und committed. Die Pipeline verarbeitet nun Events von '${escHtml(suggestion.title)}' regelbasiert.
+        </div>`;
+        confirmBtn.textContent = 'Fertig';
+        confirmBtn.onclick = closeModal;
+
+    } catch (e) {
+        // Mark current step as error
+        for (let i = 1; i <= 5; i++) {
+            const el = document.getElementById('step' + i);
+            if (el && !el.classList.contains('done')) {
+                el.classList.add('error');
+                break;
+            }
+        }
+        const content = document.getElementById('modalContent');
+        content.innerHTML += `<div style="margin-top:16px;padding:12px;background:#fff5f5;border-radius:6px;border-left:4px solid #e53e3e;">
+            <strong style="color:#c53030;">Fehler:</strong> ${escHtml(e.message)}
+        </div>`;
+        confirmBtn.textContent = 'Schliessen';
+        confirmBtn.onclick = closeModal;
+    }
+
+    confirmBtn.disabled = false;
+    pendingModalAction = null;
+}
+
+function markStep(id, state) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('done', 'error');
+    if (state === 'done') el.classList.add('done');
+    if (state === 'error') el.classList.add('error');
+    if (state === 'running') el.style.fontWeight = '600';
+}
+
+function buildNewFunction(suggestion) {
+    return {
+        id: 'eval',
+        filter: suggestion.filter,
+        disabled: false,
+        conf: {
+            add: [
+                { name: 'classification', value: `'${suggestion.classification}'` },
+                { name: 'classification_method', value: "'rule_based'" },
+                { name: 'classification_reason', value: `'${suggestion.reason}'` }
+            ]
+        },
+        description: `Auto-Rule: ${suggestion.title}`
+    };
+}
+
+function closeModal() {
+    document.getElementById('activationModal').classList.remove('active');
+    pendingModalAction = null;
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    confirmBtn.textContent = 'Bestaetigen & Aktivieren';
+    confirmBtn.onclick = modalConfirmAction;
+    confirmBtn.disabled = false;
+}
+
+// ============================================================
+// API LOG
+// ============================================================
+let apiLogEntries = [];
+
+function logApiCall(method, url, body, respStatus, respBody) {
+    document.getElementById('apiLogEmpty').classList.add('hidden');
+    const entry = {
+        time: new Date().toLocaleTimeString('de-DE'),
+        method, url,
+        body: body ? JSON.stringify(body, null, 2) : null,
+        status: respStatus,
+        response: respBody ? (typeof respBody === 'string' ? respBody : JSON.stringify(respBody, null, 2)) : null
+    };
+    apiLogEntries.unshift(entry);
+    renderApiLog();
+}
+
+function renderApiLog() {
+    const log = document.getElementById('apiLog');
+    const empty = document.getElementById('apiLogEmpty');
+    const entries = apiLogEntries.slice(0, 50); // keep last 50
+    if (entries.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    // Keep existing entries, only add new ones
+    log.innerHTML = entries.map((e, i) => {
+        const statusClass = e.status && e.status < 400 ? 'ok' : 'err';
+        const curlCmd = buildCurlFromEntry(e);
+        return `<div class="log-entry" onclick="this.classList.toggle('expanded')">
+            <div class="log-entry-header">
+                <span class="time">${escHtml(e.time)}</span>
+                <span class="method ${escHtml(e.method)}">${escHtml(e.method)}</span>
+                <span class="url">${escHtml(e.url)}</span>
+                <span class="status ${statusClass}">${e.status || '...'}</span>
+                <button class="btn btn-sm btn-outline" style="padding:2px 6px;font-size:0.75em;" onclick="event.stopPropagation();copyToClipboard(\`${escAttr(curlCmd)}\`)">curl</button>
+            </div>
+            <div class="log-entry-body">
+                ${e.body ? `<div><strong>Request Body:</strong><pre style="font-size:0.8em;max-height:200px;overflow:auto;">${escHtml(e.body)}</pre></div>` : ''}
+                ${e.response ? `<div class="mt-1"><strong>Response:</strong><pre style="font-size:0.8em;max-height:200px;overflow:auto;">${escHtml(truncate(e.response, 2000))}</pre></div>` : ''}
+            </div>
+        </div>`;
+    }).join('') + `<div class="empty-state hidden" id="apiLogEmpty">Noch keine API-Aufrufe protokolliert.</div>`;
+}
+
+function buildCurlFromEntry(entry) {
+    let cmd = `curl -s -X ${entry.method} '${entry.url}'`;
+    if (entry.body) {
+        cmd += ` \\\n  -H 'Content-Type: application/json' \\\n  -d '${entry.body.replace(/'/g, "'\\''")}'`;
+    }
+    return cmd;
+}
+
+function clearApiLog() {
+    apiLogEntries = [];
+    const log = document.getElementById('apiLog');
+    log.innerHTML = '<div class="empty-state" id="apiLogEmpty">Noch keine API-Aufrufe protokolliert.</div>';
+}
+
+// ============================================================
+// API FETCH WRAPPER (logs all calls)
+// ============================================================
+async function apiFetch(method, url, body, silent, extraHeaders) {
+    const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json', ...(extraHeaders || {}) }
+    };
+    if (body && method !== 'GET') {
+        opts.body = JSON.stringify(body);
+    }
+
+    let respStatus, respBody;
+    try {
+        const resp = await fetch(url, opts);
+        respStatus = resp.status;
+        // Clone response so we can read it in the log and return it
+        const clone = resp.clone();
+        try { respBody = await clone.text(); } catch { respBody = null; }
+        if (!silent) logApiCall(method, url, body, respStatus, respBody);
+        return resp;
+    } catch (e) {
+        if (!silent) logApiCall(method, url, body, 0, e.message);
+        throw e;
+    }
+}
+
+// ============================================================
+// LOG ANALYZER
+// ============================================================
+// ============================================================
+// SPLUNK SIEM CONFIG GENERATOR
+// ============================================================
+async function generateSplunkConfig() {
+    const resultDiv = document.getElementById('splunkConfigResult');
+    const statusSpan = document.getElementById('splunkGenStatus');
+    const btn = document.getElementById('splunkGenBtn');
+    const model = document.getElementById('splunkModel').value;
+    const esUrl = getConfig('ES_URL');
+    const ollamaUrl = getConfig('OLLAMA_URL');
+
+    btn.disabled = true;
+    statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Lade SIEM-Events...';
+    resultDiv.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 1/3: SIEM-Events aus Elasticsearch laden...</div>';
+
+    try {
+        // Step 1: Fetch SIEM events grouped by source type with samples
+        const siemResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+            size: 0,
+            query: { bool: { should: [
+                { term: { 'classification.keyword': 'siem' } },
+                { terms: { 'classification_reason.keyword': ['security_keyword_match', 'access_control_keyword_match', 'auditd_security_event', 'windows_security_event_id', 'sysmon_detection', 'fail2ban_alert'] } }
+            ], minimum_should_match: 1 } },
+            aggs: {
+                by_container: {
+                    terms: { field: 'CONTAINER_NAME.keyword', size: 20 },
+                    aggs: {
+                        by_reason: { terms: { field: 'classification_reason.keyword', size: 10 } },
+                        sample_events: { top_hits: { size: 5, _source: ['message', 'log_message', 'CONTAINER_NAME', 'classification', 'classification_reason', 'severity', 'severityName', 'appname', '@timestamp'], sort: [{ '@timestamp': 'desc' }] } }
+                    }
+                },
+                by_reason: { terms: { field: 'classification_reason.keyword', size: 20 } },
+                total_siem: { filter: { term: { 'classification.keyword': 'siem' } } }
+            }
+        });
+        const siemData = await siemResp.json();
+        const totalSiem = siemData.aggregations?.total_siem?.doc_count || 0;
+        const containerBuckets = siemData.aggregations?.by_container?.buckets || [];
+        const reasonBuckets = siemData.aggregations?.by_reason?.buckets || [];
+
+        // Also fetch ALL events aggregated for context
+        const allResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+            size: 0,
+            aggs: {
+                by_container: { terms: { field: 'CONTAINER_NAME.keyword', size: 20 } },
+                by_method: { terms: { field: 'classification_method.keyword', size: 5 } },
+                by_severity: { terms: { field: 'severityName.keyword', size: 10 } }
+            }
+        }, true);
+        const allData = await allResp.json();
+        const totalAll = allData.hits?.total?.value || 0;
+
+        // Build sample log blocks per source
+        const sourceSamples = [];
+        for (const cb of containerBuckets) {
+            const samples = (cb.sample_events?.hits?.hits || []).map(h => {
+                const s = h._source || {};
+                return (s.message || s.log_message || '').substring(0, 300);
+            });
+            sourceSamples.push({
+                container: cb.key,
+                count: cb.doc_count,
+                reasons: (cb.by_reason?.buckets || []).map(r => `${r.key}(${r.doc_count})`).join(', '),
+                samples: samples
+            });
+        }
+
+        if (sourceSamples.length === 0) {
+            // If no SIEM events yet, use a broader query
+            const fallbackResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+                size: 10,
+                sort: [{ '@timestamp': 'desc' }],
+                _source: ['message', 'log_message', 'CONTAINER_NAME', 'classification', 'classification_reason', 'severityName']
+            }, true);
+            const fbData = await fallbackResp.json();
+            const fbHits = fbData.hits?.hits || [];
+            if (fbHits.length > 0) {
+                sourceSamples.push({
+                    container: 'mixed',
+                    count: fbHits.length,
+                    reasons: 'various',
+                    samples: fbHits.map(h => (h._source?.message || h._source?.log_message || '').substring(0, 300))
+                });
+            }
+        }
+
+        // Step 2: Build Ollama prompt
+        statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Ollama analysiert...';
+        resultDiv.innerHTML = `<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 2/3: Ollama analysiert ${totalSiem} SIEM-Events aus ${containerBuckets.length} Quellen...</div>`;
+
+        const routingContext = `AKTUELLES ROUTING:
+- SIEM-Events (classification=siem) werden via Cribl Stream an Splunk HEC gesendet (http://<SPLUNK_HOST>:8088/services/collector)
+- Splunk Web: http://10.10.0.66:8000
+- Quellen: Docker Container Logs von NUC-HA (Ubuntu), geplant: Windows Workstation Edge + Ubuntu Edge mit auditd/Sysmon
+- Gesamt-Events: ${formatNum(totalAll)}, davon SIEM: ${formatNum(totalSiem)}
+- Severity-Verteilung: ${(allData.aggregations?.by_severity?.buckets || []).map(b => `${b.key}(${b.doc_count})`).join(', ')}
+- Klassifikations-Methoden: ${(allData.aggregations?.by_method?.buckets || []).map(b => `${b.key}(${b.doc_count})`).join(', ')}
+- Klassifikations-Gruende: ${reasonBuckets.map(r => `${r.key}(${r.doc_count})`).join(', ')}`;
+
+        const sampleText = sourceSamples.map(s =>
+            `=== Container: ${s.container} (${s.count} Events, Reasons: ${s.reasons}) ===\n${s.samples.join('\n')}`
+        ).join('\n\n');
+
+        const prompt = `Du bist ein Splunk Enterprise Experte mit tiefem Wissen ueber inputs.conf, props.conf, transforms.conf und das Common Information Model (CIM).
+
+${routingContext}
+
+SIEM-EVENT-SAMPLES PRO QUELLE:
+${sampleText}
+
+GEPLANTE ZUSAETZLICHE QUELLEN (noch nicht aktiv):
+- Windows Security Event Log (Event IDs 4624-4634, 4672, 4720, 4732, 4688, 7045)
+- Windows Sysmon (Event IDs 1, 3, 7, 8, 10, 11, 12, 13, 22, 23, 25)
+- Windows PowerShell Script Block Logging (Event ID 4104)
+- Windows Defender (Event IDs 1116, 1117)
+- Linux auditd (execve, file access, network, user auth)
+- Linux auth.log (SSH, sudo, PAM)
+- Linux fail2ban (Ban/Unban)
+- Linux UFW Firewall Logs
+
+Erstelle eine VOLLSTAENDIGE Splunk-Konfiguration. Antworte EXAKT im folgenden JSON-Format (kein Markdown, nur JSON):
+{
+  "inputs_conf": {
+    "description": "Beschreibung der inputs.conf Konfiguration",
+    "stanzas": [
+      {
+        "stanza": "[vollstaendiger Stanza-Name]",
+        "settings": {"key": "value"},
+        "comment": "Erklaerung"
+      }
+    ]
+  },
+  "props_conf": {
+    "description": "Beschreibung der props.conf Konfiguration",
+    "stanzas": [
+      {
+        "stanza": "[sourcetype-name]",
+        "settings": {"key": "value"},
+        "comment": "Erklaerung welche Felder extrahiert werden"
+      }
+    ]
+  },
+  "transforms_conf": {
+    "description": "Beschreibung der transforms.conf Konfiguration",
+    "stanzas": [
+      {
+        "stanza": "[transform-name]",
+        "settings": {"key": "value"},
+        "comment": "Erklaerung"
+      }
+    ]
+  },
+  "datamodels": [
+    {
+      "name": "CIM Datamodel Name (z.B. Authentication, Network_Traffic, Endpoint, Change)",
+      "sourcetypes": ["zugeordnete sourcetypes"],
+      "key_fields": ["wichtige Felder fuer das Modell"],
+      "tags": ["tag1", "tag2"],
+      "eventtypes_conf": "[eventtype-name]\\nsearch = sourcetype=xxx",
+      "tags_conf": "[eventtype=eventtype-name]\\ntag1 = enabled\\ntag2 = enabled",
+      "comment": "Warum dieses Datenmodell"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "index-name",
+      "purpose": "Zweck",
+      "retention_days": 90,
+      "sourcetypes": ["zugeordnete sourcetypes"]
+    }
+  ],
+  "summary": "Zusammenfassung in 2-3 Saetzen"
+}`;
+
+        const ollamaResp = await fetch(`${ollamaUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: model,
+                prompt: prompt,
+                stream: false,
+                options: { num_predict: 4096, temperature: 0.15 }
+            })
+        });
+
+        if (!ollamaResp.ok) throw new Error(`Ollama HTTP ${ollamaResp.status}`);
+        const ollamaData = await ollamaResp.json();
+        const raw = ollamaData.response || '';
+
+        // Step 3: Parse and render
+        statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Ergebnis rendern...';
+        resultDiv.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 3/3: Konfiguration rendern...</div>';
+
+        let jsonStr = raw;
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        let config;
+        try {
+            config = JSON.parse(jsonStr);
+        } catch {
+            resultDiv.innerHTML = `<div class="config-card"><div class="config-card-header">KI-Rohantwort (JSON-Parse fehlgeschlagen)</div><div class="config-card-body"><pre><code>${escHtml(raw)}</code></pre></div></div>`;
+            btn.disabled = false;
+            statusSpan.textContent = 'Parse-Fehler';
+            return;
+        }
+
+        renderSplunkConfig(config, model, totalSiem, containerBuckets.length, ollamaData.total_duration);
+        statusSpan.textContent = `Analyse abgeschlossen (${model}, ${((ollamaData.total_duration || 0) / 1e9).toFixed(1)}s)`;
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="empty-state" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</div>`;
+        statusSpan.textContent = 'Fehler';
+    }
+    btn.disabled = false;
+}
+
+function renderSplunkConfig(cfg, model, siemCount, sourceCount, duration) {
+    const resultDiv = document.getElementById('splunkConfigResult');
+    let html = '';
+
+    // Summary header
+    html += `<div class="config-card" style="border-left:4px solid #2b6cb0;">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>Zusammenfassung</span>
+            <span style="font-size:0.85em;font-weight:400;color:#718096;">${formatNum(siemCount)} SIEM-Events, ${sourceCount} Quellen</span>
+        </div>
+        <div class="config-card-body">
+            <p>${escHtml(cfg.summary || '')}</p>
+        </div>
+    </div>`;
+
+    // inputs.conf
+    const inputs = cfg.inputs_conf || {};
+    html += renderSplunkStanzaCard('inputs.conf', inputs.description || 'HEC Input-Konfiguration', inputs.stanzas || [], '#38a169');
+
+    // props.conf
+    const props = cfg.props_conf || {};
+    html += renderSplunkStanzaCard('props.conf', props.description || 'Sourcetype-Definitionen und Feldextraktion', props.stanzas || [], '#805ad5');
+
+    // transforms.conf
+    const transforms = cfg.transforms_conf || {};
+    html += renderSplunkStanzaCard('transforms.conf', transforms.description || 'Feld-Transformationen', transforms.stanzas || [], '#d69e2e');
+
+    // Indexes
+    const indexes = cfg.indexes || [];
+    if (indexes.length > 0) {
+        html += `<div class="config-card" style="border-left:4px solid #2b6cb0;">
+            <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span><span class="tag source">indexes.conf</span> ${indexes.length} Index${indexes.length !== 1 ? 'e' : ''}</span>
+            </div>
+            <div class="config-card-body">
+                <pre><code>${indexes.map(idx =>
+                    `# ${escHtml(idx.purpose || '')}\n[${escHtml(idx.name)}]\nhomePath = $SPLUNK_DB/${escHtml(idx.name)}/db\ncoldPath = $SPLUNK_DB/${escHtml(idx.name)}/colddb\nthawedPath = $SPLUNK_DB/${escHtml(idx.name)}/thaweddb\nfrozenTimePeriodInSecs = ${(idx.retention_days || 90) * 86400}\n# Sourcetypes: ${(idx.sourcetypes || []).join(', ')}`
+                ).join('\n\n')}</code></pre>
+            </div>
+        </div>`;
+    }
+
+    // Data Models
+    const datamodels = cfg.datamodels || [];
+    if (datamodels.length > 0) {
+        html += `<div class="config-card" style="border-left:4px solid #e53e3e;">
+            <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span><span class="tag destination">CIM Datenmodelle</span> ${datamodels.length} Modell${datamodels.length !== 1 ? 'e' : ''}</span>
+            </div>
+            <div class="config-card-body">
+                ${datamodels.map(dm => `
+                    <div style="padding:10px 0;border-bottom:1px solid #edf2f7;">
+                        <h4 style="margin:0 0 6px 0;color:#2c5282;">${escHtml(dm.name)}</h4>
+                        <p style="font-size:0.88em;margin-bottom:6px;">${escHtml(dm.comment || '')}</p>
+                        <p style="font-size:0.85em;"><strong>Sourcetypes:</strong> ${(dm.sourcetypes || []).map(s => `<code>${escHtml(s)}</code>`).join(', ')}</p>
+                        <p style="font-size:0.85em;"><strong>Key Fields:</strong> ${(dm.key_fields || []).map(f => `<code>${escHtml(f)}</code>`).join(', ')}</p>
+                        <p style="font-size:0.85em;"><strong>Tags:</strong> ${(dm.tags || []).map(t => `<span class="badge badge-unknown">${escHtml(t)}</span>`).join(' ')}</p>
+                        ${dm.eventtypes_conf ? `<pre><code># eventtypes.conf\n${escHtml(dm.eventtypes_conf)}\n\n# tags.conf\n${escHtml(dm.tags_conf || '')}</code></pre>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+    }
+
+    // Export buttons
+    html += `<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn" onclick="exportSplunkConfigs()">Alle .conf Dateien kopieren</button>
+        <button class="btn btn-outline" onclick="copySplunkJSON()">JSON exportieren</button>
+    </div>`;
+
+    resultDiv.innerHTML = html;
+    window._lastSplunkConfig = cfg;
+}
+
+function renderSplunkStanzaCard(filename, description, stanzas, color) {
+    if (!stanzas || stanzas.length === 0) return '';
+
+    const confContent = stanzas.map(s => {
+        let block = `# ${s.comment || ''}\n${s.stanza}\n`;
+        const settings = s.settings || {};
+        for (const [k, v] of Object.entries(settings)) {
+            block += `${k} = ${v}\n`;
+        }
+        return block;
+    }).join('\n');
+
+    // Store for copy button
+    const storeKey = '_splunkConf_' + filename.replace(/\./g, '_');
+    window[storeKey] = confContent;
+
+    return `<div class="config-card" style="border-left:4px solid ${color};">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span><span class="tag pipeline">${escHtml(filename)}</span> ${stanzas.length} Stanza${stanzas.length !== 1 ? 's' : ''}</span>
+            <button class="copy-btn" onclick="event.stopPropagation();copyToClipboard(window['${storeKey}'])">Kopieren</button>
+        </div>
+        <div class="config-card-body">
+            <p style="font-size:0.88em;margin-bottom:10px;">${escHtml(description)}</p>
+            <pre><code>${escHtml(confContent)}</code></pre>
+        </div>
+    </div>`;
+}
+
+function exportSplunkConfigs() {
+    if (!window._lastSplunkConfig) return;
+    const cfg = window._lastSplunkConfig;
+    let output = '';
+
+    const renderStanzas = (filename, stanzas) => {
+        if (!stanzas || stanzas.length === 0) return '';
+        let text = `# ============================\n# ${filename}\n# Generated by IceDataEmphasise AI\n# ============================\n\n`;
+        for (const s of stanzas) {
+            text += `# ${s.comment || ''}\n${s.stanza}\n`;
+            for (const [k, v] of Object.entries(s.settings || {})) {
+                text += `${k} = ${v}\n`;
+            }
+            text += '\n';
+        }
+        return text;
+    };
+
+    output += renderStanzas('inputs.conf', cfg.inputs_conf?.stanzas);
+    output += '\n' + renderStanzas('props.conf', cfg.props_conf?.stanzas);
+    output += '\n' + renderStanzas('transforms.conf', cfg.transforms_conf?.stanzas);
+
+    // indexes.conf
+    if (cfg.indexes && cfg.indexes.length > 0) {
+        output += `\n# ============================\n# indexes.conf\n# ============================\n\n`;
+        for (const idx of cfg.indexes) {
+            output += `# ${idx.purpose || ''}\n[${idx.name}]\nhomePath = $SPLUNK_DB/${idx.name}/db\ncoldPath = $SPLUNK_DB/${idx.name}/colddb\nthawedPath = $SPLUNK_DB/${idx.name}/thaweddb\nfrozenTimePeriodInSecs = ${(idx.retention_days || 90) * 86400}\n\n`;
+        }
+    }
+
+    // eventtypes.conf + tags.conf
+    if (cfg.datamodels && cfg.datamodels.length > 0) {
+        output += `\n# ============================\n# eventtypes.conf\n# ============================\n\n`;
+        for (const dm of cfg.datamodels) {
+            if (dm.eventtypes_conf) output += dm.eventtypes_conf + '\n\n';
+        }
+        output += `\n# ============================\n# tags.conf\n# ============================\n\n`;
+        for (const dm of cfg.datamodels) {
+            if (dm.tags_conf) output += dm.tags_conf + '\n\n';
+        }
+    }
+
+    copyToClipboard(output);
+}
+
+function copySplunkJSON() {
+    if (!window._lastSplunkConfig) return;
+    copyToClipboard(JSON.stringify(window._lastSplunkConfig, null, 2));
+}
+
+// ============================================================
+// LOG ANALYZER (manuelle Eingabe)
+// ============================================================
+async function analyzeLogSamples() {
+    const input = document.getElementById('analyzerInput').value.trim();
+    const resultDiv = document.getElementById('analyzerResult');
+    const statusSpan = document.getElementById('analyzerStatus');
+    const btn = document.getElementById('analyzerBtn');
+
+    if (!input || input.split('\n').filter(l => l.trim()).length < 2) {
+        resultDiv.innerHTML = '<div class="empty-state" style="color:#e53e3e;">Bitte mindestens 2-3 Log-Zeilen einfuegen.</div>';
+        return;
+    }
+
+    const model = document.getElementById('analyzerModel').value;
+    const ollamaUrl = getConfig('OLLAMA_URL');
+    btn.disabled = true;
+    statusSpan.innerHTML = '<span class="analyzer-spinner"></span>KI analysiert auf ki01...';
+    resultDiv.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Analyse laeuft... (kann 15-30s dauern)</div>';
+
+    const logLines = input.split('\n').filter(l => l.trim()).slice(0, 50);
+    const sampleBlock = logLines.slice(0, 20).join('\n');
+
+    const prompt = `Du bist ein Cribl Stream/Edge Experte. Analysiere diese Log-Zeilen und erstelle eine vollstaendige Konfigurationsempfehlung.
+
+LOG-DATEN:
+${sampleBlock}
+
+Antworte EXAKT im folgenden JSON-Format (kein Markdown, kein Kommentar, nur reines JSON):
+{
+  "log_format": {
+    "type": "Name des Formats (z.B. syslog, JSON, Apache CLF, CSV, Windows Event, custom)",
+    "description": "Kurze Beschreibung was diese Logs enthalten",
+    "detected_fields": ["feld1", "feld2", "feld3"],
+    "timestamp_format": "Erkanntes Zeitstempel-Format oder null",
+    "security_relevant": true oder false,
+    "classification": "siem oder operational",
+    "confidence": 0.0 bis 1.0
+  },
+  "source": {
+    "type": "Cribl Source-Typ (file_monitor, syslog, http, docker, etc.)",
+    "config": {
+      "Schluessel": "Wert Paare fuer die Source-Konfiguration"
+    },
+    "description": "Warum dieser Source-Typ"
+  },
+  "pipeline": {
+    "id": "pipeline_name_vorschlag",
+    "description": "Was die Pipeline tut",
+    "functions": [
+      {
+        "id": "Cribl-Funktions-ID (serde, eval, regex_extract, etc.)",
+        "description": "Was dieser Schritt tut",
+        "config_hint": "Kurze Konfig-Beschreibung"
+      }
+    ]
+  },
+  "route": {
+    "id": "route_name_vorschlag",
+    "filter": "Cribl-Filter-Ausdruck",
+    "description": "Routing-Logik Erklaerung"
+  },
+  "destinations": [
+    {
+      "type": "Ziel-Typ (splunk_hec, elasticsearch, s3, etc.)",
+      "reason": "Warum dieses Ziel",
+      "index_or_bucket": "Vorgeschlagener Index/Bucket-Name"
+    }
+  ],
+  "edge_config": {
+    "recommended": true oder false,
+    "reason": "Warum Edge empfohlen oder nicht",
+    "fleet_filter": "Vorgeschlagener Fleet-Filter oder null"
+  }
+}`;
+
+    try {
+        const resp = await fetch(`${ollamaUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: model,
+                prompt: prompt,
+                stream: false,
+                options: { num_predict: 2048, temperature: 0.2 }
+            })
+        });
+
+        if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status}`);
+        const data = await resp.json();
+        const raw = data.response || '';
+
+        // Extract JSON from response (handle markdown fences)
+        let jsonStr = raw;
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        let analysis;
+        try {
+            analysis = JSON.parse(jsonStr);
+        } catch {
+            resultDiv.innerHTML = `<div class="config-card"><div class="config-card-header">KI-Rohantwort (JSON-Parse fehlgeschlagen)</div><div class="config-card-body"><pre><code>${escHtml(raw)}</code></pre><p class="text-muted mt-1">Die KI-Antwort konnte nicht als JSON geparst werden. Versuche es mit einem anderen Modell.</p></div></div>`;
+            btn.disabled = false;
+            statusSpan.textContent = 'Parse-Fehler';
+            return;
+        }
+
+        renderAnalysis(analysis, model, logLines.length);
+        statusSpan.textContent = `Analyse abgeschlossen (${model}, ${(data.total_duration / 1e9).toFixed(1)}s)`;
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="empty-state" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}<br><span class="text-muted">Ist Ollama auf ki01 (${escHtml(ollamaUrl)}) erreichbar?</span></div>`;
+        statusSpan.textContent = 'Fehler';
+    }
+    btn.disabled = false;
+}
+
+function renderAnalysis(a, model, lineCount) {
+    const resultDiv = document.getElementById('analyzerResult');
+    const lf = a.log_format || {};
+    const src = a.source || {};
+    const pip = a.pipeline || {};
+    const rt = a.route || {};
+    const dests = a.destinations || [];
+    const edge = a.edge_config || {};
+    const confPct = Math.round((lf.confidence || 0) * 100);
+
+    let html = '';
+
+    // 1. Format Detection
+    html += `<div class="config-card">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>Erkanntes Log-Format</span>
+            <span style="font-size:0.85em;font-weight:400;color:#718096;">${confPct}% Konfidenz</span>
+        </div>
+        <div class="config-card-body">
+            <div class="stats-grid" style="margin-bottom:12px;">
+                <div class="stat-card"><div class="value" style="font-size:1.2em;">${escHtml(lf.type || '?')}</div><div class="label">Format</div></div>
+                <div class="stat-card ${lf.classification === 'siem' ? 'siem' : 'operational'}"><div class="value" style="font-size:1.2em;">${escHtml(lf.classification || '?')}</div><div class="label">Klassifikation</div></div>
+                <div class="stat-card"><div class="value" style="font-size:1.2em;">${lineCount}</div><div class="label">Zeilen analysiert</div></div>
+            </div>
+            <p style="margin-bottom:8px;">${escHtml(lf.description || '')}</p>
+            ${lf.detected_fields ? `<p style="font-size:0.88em;"><strong>Erkannte Felder:</strong> ${lf.detected_fields.map(f => `<code>${escHtml(f)}</code>`).join(', ')}</p>` : ''}
+            ${lf.timestamp_format ? `<p style="font-size:0.88em;margin-top:4px;"><strong>Zeitstempel:</strong> <code>${escHtml(lf.timestamp_format)}</code></p>` : ''}
+        </div>
+    </div>`;
+
+    // 2. Source
+    html += `<div class="config-card">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span><span class="tag source">Source</span> ${escHtml(src.type || 'unbekannt')}</span>
+        </div>
+        <div class="config-card-body">
+            <p style="margin-bottom:10px;">${escHtml(src.description || '')}</p>
+            ${src.config ? `<pre><code>${escHtml(JSON.stringify(src.config, null, 2))}</code></pre>` : ''}
+        </div>
+    </div>`;
+
+    // 3. Pipeline
+    html += `<div class="config-card">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span><span class="tag pipeline">Pipeline</span> ${escHtml(pip.id || 'pipeline_vorschlag')}</span>
+        </div>
+        <div class="config-card-body">
+            <p style="margin-bottom:10px;">${escHtml(pip.description || '')}</p>
+            ${(pip.functions || []).map((f, i) => `
+                <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #edf2f7;font-size:0.9em;">
+                    <span style="color:#805ad5;font-weight:700;min-width:24px;">${i + 1}.</span>
+                    <span><code>${escHtml(f.id)}</code> &mdash; ${escHtml(f.description)}${f.config_hint ? ` <span class="text-muted">(${escHtml(f.config_hint)})</span>` : ''}</span>
+                </div>`).join('')}
+        </div>
+    </div>`;
+
+    // 4. Route
+    html += `<div class="config-card">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span><span class="tag route">Route</span> ${escHtml(rt.id || 'route_vorschlag')}</span>
+        </div>
+        <div class="config-card-body">
+            <p style="margin-bottom:8px;">${escHtml(rt.description || '')}</p>
+            <p style="font-size:0.88em;"><strong>Filter:</strong> <code>${escHtml(rt.filter || 'true')}</code></p>
+        </div>
+    </div>`;
+
+    // 5. Destinations
+    html += `<div class="config-card">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span><span class="tag destination">Destinations</span> ${dests.length} Ziel${dests.length !== 1 ? 'e' : ''}</span>
+        </div>
+        <div class="config-card-body">
+            ${dests.map(d => `
+                <div style="padding:8px 0;border-bottom:1px solid #edf2f7;">
+                    <strong>${escHtml(d.type)}</strong> &rarr; <code>${escHtml(d.index_or_bucket || '-')}</code>
+                    <div class="text-muted">${escHtml(d.reason || '')}</div>
+                </div>`).join('')}
+        </div>
+    </div>`;
+
+    // 6. Edge Recommendation
+    html += `<div class="config-card">
+        <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <span>Cribl Edge Empfehlung</span>
+            <span style="font-size:0.85em;font-weight:400;color:${edge.recommended ? '#38a169' : '#718096'};">${edge.recommended ? 'Empfohlen' : 'Optional'}</span>
+        </div>
+        <div class="config-card-body">
+            <p>${escHtml(edge.reason || '')}</p>
+            ${edge.fleet_filter ? `<p class="mt-1" style="font-size:0.88em;"><strong>Fleet-Filter:</strong> <code>${escHtml(edge.fleet_filter)}</code></p>` : ''}
+        </div>
+    </div>`;
+
+    // Export button
+    html += `<div style="margin-top:16px;display:flex;gap:10px;">
+        <button class="btn" onclick="copyAnalysisJSON()">JSON exportieren</button>
+        <button class="btn btn-outline" onclick="copyAnalysisCurl()">curl-Befehle kopieren</button>
+    </div>`;
+
+    resultDiv.innerHTML = html;
+
+    // Store for export
+    window._lastAnalysis = a;
+}
+
+function copyAnalysisJSON() {
+    if (!window._lastAnalysis) return;
+    copyToClipboard(JSON.stringify(window._lastAnalysis, null, 2));
+}
+
+function copyAnalysisCurl() {
+    if (!window._lastAnalysis) return;
+    const a = window._lastAnalysis;
+    const criblUrl = getConfig('CRIBL_URL');
+    const user = getConfig('CRIBL_USER');
+
+    let cmds = `# === Cribl-Konfiguration generiert vom Log-Analyzer ===\n`;
+    cmds += `# Erstellt: ${new Date().toISOString()}\n`;
+    cmds += `# Log-Format: ${a.log_format?.type || 'unbekannt'}\n\n`;
+    cmds += `# 1. Authentifizierung\n`;
+    cmds += `TOKEN=$(curl -s -X POST "${criblUrl}/api/v1/auth/login" \\\n`;
+    cmds += `  -H "Content-Type: application/json" \\\n`;
+    cmds += `  -d '{"username":"${user}","password":"DEIN_PASSWORT"}' | jq -r '.token')\n\n`;
+
+    if (a.pipeline) {
+        cmds += `# 2. Pipeline erstellen: ${a.pipeline.id || 'neue_pipeline'}\n`;
+        cmds += `curl -s -X POST "${criblUrl}/api/v1/pipelines" \\\n`;
+        cmds += `  -H "Authorization: Bearer $TOKEN" \\\n`;
+        cmds += `  -H "Content-Type: application/json" \\\n`;
+        cmds += `  -d '${JSON.stringify({ id: a.pipeline.id, conf: { description: a.pipeline.description, functions: (a.pipeline.functions || []).map(f => ({ id: f.id, conf: {}, description: f.description })) } })}'\n\n`;
+    }
+
+    if (a.route) {
+        cmds += `# 3. Route pruefen/ergaenzen: ${a.route.id || 'neue_route'}\n`;
+        cmds += `# Route manuell in Cribl Stream UI oder per API hinzufuegen:\n`;
+        cmds += `# Filter: ${a.route.filter || 'true'}\n`;
+        cmds += `# Pipeline: ${a.pipeline?.id || 'pipeline_id'}\n`;
+        cmds += `# Output: ${(a.destinations || []).map(d => d.type).join(', ') || 'default'}\n\n`;
+    }
+
+    cmds += `# 4. Commit & Deploy\n`;
+    cmds += `curl -s -X POST "${criblUrl}/api/v1/version/commit" \\\n`;
+    cmds += `  -H "Authorization: Bearer $TOKEN" \\\n`;
+    cmds += `  -H "Content-Type: application/json" \\\n`;
+    cmds += `  -d '{"message":"Log-Analyzer: ${a.log_format?.type || 'neue'} Konfiguration"}'\n\n`;
+    cmds += `curl -s -X POST "${criblUrl}/api/v1/master/groups/default/deploy" \\\n`;
+    cmds += `  -H "Authorization: Bearer $TOKEN" \\\n`;
+    cmds += `  -H "Content-Type: application/json" \\\n`;
+    cmds += `  -d '{"version":"current"}'\n`;
+
+    copyToClipboard(cmds);
+}
+
+function clearAnalyzer() {
+    document.getElementById('analyzerInput').value = '';
+    document.getElementById('analyzerResult').innerHTML = '';
+    document.getElementById('analyzerStatus').textContent = '';
+    window._lastAnalysis = null;
+}
+
+// ============================================================
+// DATA FLOW MONITOR
+// ============================================================
+async function fetchDataFlowStats() {
+    const esUrl = getConfig('ES_URL');
+    const criblUrl = getConfig('CRIBL_URL');
+
+    try {
+        // ES: 24h aggregation by source_type, container, classification
+        const flowResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+            size: 0,
+            query: { range: { '@timestamp': { gte: 'now-24h' } } },
+            aggs: {
+                by_source_type: {
+                    terms: { field: 'source_type.keyword', size: 20, missing: 'unknown' },
+                    aggs: {
+                        by_classification: { terms: { field: 'classification.keyword', size: 5 } },
+                        by_container: { terms: { field: 'CONTAINER_NAME.keyword', size: 10 } }
+                    }
+                },
+                total_siem: { filter: { term: { 'classification.keyword': 'siem' } } },
+                total_ops: { filter: { term: { 'classification.keyword': 'operational' } } }
+            }
+        }, true);
+
+        const flowData = await flowResp.json();
+        const total24h = flowData.hits?.total?.value || 0;
+        const siem24h = flowData.aggregations?.total_siem?.doc_count || 0;
+        const ops24h = flowData.aggregations?.total_ops?.doc_count || 0;
+        const sourceBuckets = flowData.aggregations?.by_source_type?.buckets || [];
+
+        document.getElementById('flowTotal24h').textContent = formatNum(total24h);
+        document.getElementById('flowSiem24h').textContent = formatNum(siem24h);
+        document.getElementById('flowOps24h').textContent = formatNum(ops24h);
+
+        // Update SVG dots based on data presence
+        const hasDocker = sourceBuckets.some(b => b.key === 'docker' && b.doc_count > 0);
+        const hasEdge = sourceBuckets.some(b => b.key === 'edge' && b.doc_count > 0);
+        const hasJournal = sourceBuckets.some(b => (b.key === 'journal' || b.key === 'syslog') && b.doc_count > 0);
+        setDotColor('dotSrcDocker', hasDocker ? 'green' : 'grey');
+        setDotColor('dotSrcJournal', hasJournal ? 'green' : 'grey');
+        // Edge differentiation (check for windows/linux fields in data would require separate query, use generic)
+        setDotColor('dotSrcWinEdge', hasEdge ? 'green' : 'grey');
+        setDotColor('dotSrcLinuxEdge', hasEdge || hasJournal ? 'green' : 'grey');
+        setDotColor('dotDstES', total24h > 0 ? 'green' : 'grey');
+        setDotColor('dotDstSplunk', siem24h > 0 ? 'green' : 'grey');
+        setDotColor('dotDstS3', ops24h > 0 ? 'green' : 'grey');
+
+        // Source details table
+        const tbody = document.getElementById('flowSourceBody');
+        if (sourceBuckets.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted" style="text-align:center;">Keine Daten (24h)</td></tr>';
+        } else {
+            const rows = [];
+            for (const sb of sourceBuckets) {
+                const classBuckets = sb.by_classification?.buckets || [];
+                const siemCount = classBuckets.find(c => c.key === 'siem')?.doc_count || 0;
+                const opsCount = classBuckets.find(c => c.key === 'operational')?.doc_count || 0;
+                const containers = (sb.by_container?.buckets || []).map(c => c.key).slice(0, 3).join(', ');
+                const statusDot = sb.doc_count > 0 ? '<span class="status-dot green" style="display:inline-block;width:10px;height:10px;"></span>' : '<span class="status-dot grey" style="display:inline-block;width:10px;height:10px;"></span>';
+                rows.push(`<tr>
+                    <td><code>${escHtml(sb.key)}</code>${containers ? `<br><span class="text-muted">${escHtml(containers)}</span>` : ''}</td>
+                    <td>${escHtml(sb.key)}</td>
+                    <td>${formatNum(sb.doc_count)}</td>
+                    <td><span class="badge badge-siem">${formatNum(siemCount)}</span></td>
+                    <td><span class="badge badge-operational">${formatNum(opsCount)}</span></td>
+                    <td>${statusDot}</td>
+                </tr>`);
+            }
+            tbody.innerHTML = rows.join('');
+        }
+
+        // Try to get Edge node count from Cribl API
+        try {
+            const nodesResp = await apiFetch('GET', `${criblUrl}/api/v1/edge/nodes`, null, true);
+            if (nodesResp.ok) {
+                const nodesData = await nodesResp.json();
+                const nodes = nodesData.items || nodesData || [];
+                const nodeCount = Array.isArray(nodes) ? nodes.length : 0;
+                document.getElementById('flowEdgeNodes').textContent = String(nodeCount);
+            } else {
+                document.getElementById('flowEdgeNodes').textContent = '-';
+            }
+        } catch {
+            document.getElementById('flowEdgeNodes').textContent = '-';
+        }
+
+    } catch (e) {
+        document.getElementById('flowTotal24h').textContent = 'Err';
+        document.getElementById('flowSourceBody').innerHTML = `<tr><td colspan="6" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</td></tr>`;
+    }
+}
+
+function setDotColor(id, color) {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('fill', color === 'green' ? '#38a169' : '#a0aec0');
+}
+
+// ============================================================
+// OPS->SIEM RECLASSIFICATION
+// ============================================================
+let reclassAutoInterval = null;
+
+async function startReclassification() {
+    const sampleSize = parseInt(document.getElementById('reclassSampleSize').value) || 50;
+    const model = document.getElementById('reclassModel').value;
+    const resultDiv = document.getElementById('reclassResult');
+    const statusSpan = document.getElementById('reclassStatus');
+    const btn = document.getElementById('reclassBtn');
+    const esUrl = getConfig('ES_URL');
+    const ollamaUrl = getConfig('OLLAMA_URL');
+
+    btn.disabled = true;
+    statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Stichprobe laden...';
+    resultDiv.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Lade zufaellige Operational-Events...</div>';
+
+    try {
+        // Step 1: Random sample of operational events
+        const sampleResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+            size: sampleSize,
+            query: {
+                bool: {
+                    must: [
+                        { term: { 'classification.keyword': 'operational' } },
+                        { range: { '@timestamp': { gte: 'now-24h' } } }
+                    ]
+                }
+            },
+            sort: [{ '_script': { type: 'number', script: 'Math.random()', order: 'asc' } }],
+            _source: ['@timestamp', 'message', 'log_message', 'CONTAINER_NAME', 'classification_reason', 'classification_method', 'source_type']
+        });
+        const sampleData = await sampleResp.json();
+        const hits = sampleData.hits?.hits || [];
+
+        if (hits.length === 0) {
+            resultDiv.innerHTML = '<div class="empty-state">Keine operational Events in den letzten 24h gefunden.</div>';
+            btn.disabled = false;
+            statusSpan.textContent = '';
+            return;
+        }
+
+        // Step 2: Ollama batch analysis
+        statusSpan.innerHTML = `<span class="analyzer-spinner"></span>Ollama analysiert ${hits.length} Events...`;
+        resultDiv.innerHTML = `<div class="empty-state"><span class="analyzer-spinner"></span> Ollama prueft ${hits.length} Operational-Events auf SIEM-Relevanz...</div>`;
+
+        const eventExcerpts = hits.map((h, i) => {
+            const s = h._source || {};
+            const msg = (s.message || s.log_message || '').substring(0, 200);
+            return `[${i+1}] container=${s.CONTAINER_NAME || 'unknown'} source_type=${s.source_type || 'unknown'} reason=${s.classification_reason || 'unknown'}: ${msg}`;
+        }).join('\n');
+
+        const prompt = `Du bist ein Security Analyst. Pruefe diese ${hits.length} Log-Events, die als "operational" klassifiziert wurden.
+Finde Events, die eigentlich SIEM-relevant (sicherheitsrelevant) sein koennten.
+
+EVENTS:
+${eventExcerpts}
+
+Antworte EXAKT im folgenden JSON-Format (kein Markdown, nur JSON):
+{
+  "candidates": [
+    {
+      "event_index": 1,
+      "event_excerpt": "Kurzer Auszug des Events",
+      "confidence": 0.0 bis 1.0,
+      "reason": "Warum dieses Event SIEM-relevant sein koennte",
+      "suggested_rule_filter": "Vorgeschlagener Cribl-Filter-Ausdruck"
+    }
+  ],
+  "summary": "Zusammenfassung: X von Y Events koennten SIEM-relevant sein",
+  "total_checked": ${hits.length},
+  "total_candidates": 0
+}
+
+Nur Events mit confidence >= 0.6 als Kandidaten aufnehmen. Wenn keine Kandidaten gefunden, leeres Array.`;
+
+        const ollamaResp = await fetch(`${ollamaUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: model,
+                prompt: prompt,
+                stream: false,
+                options: { num_predict: 2048, temperature: 0.15 }
+            })
+        });
+
+        if (!ollamaResp.ok) throw new Error(`Ollama HTTP ${ollamaResp.status}`);
+        const ollamaData = await ollamaResp.json();
+        const raw = ollamaData.response || '';
+
+        let jsonStr = raw;
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        let result;
+        try {
+            result = JSON.parse(jsonStr);
+        } catch {
+            resultDiv.innerHTML = `<div class="config-card"><div class="config-card-header">KI-Rohantwort (JSON-Parse fehlgeschlagen)</div><div class="config-card-body"><pre><code>${escHtml(raw)}</code></pre></div></div>`;
+            btn.disabled = false;
+            statusSpan.textContent = 'Parse-Fehler';
+            return;
+        }
+
+        // Step 3: Render results
+        renderReclassResults(result, hits.length, model, ollamaData.total_duration);
+        statusSpan.textContent = `${(result.candidates || []).length} Kandidaten gefunden (${model}, ${((ollamaData.total_duration || 0) / 1e9).toFixed(1)}s)`;
+
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="empty-state" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</div>`;
+        statusSpan.textContent = 'Fehler';
+    }
+    btn.disabled = false;
+}
+
+function renderReclassResults(result, totalChecked, model, duration) {
+    const resultDiv = document.getElementById('reclassResult');
+    const candidates = result.candidates || [];
+    let html = '';
+
+    // Summary
+    html += `<div style="padding:12px;background:#f7fafc;border-radius:6px;margin-bottom:14px;border-left:4px solid ${candidates.length > 0 ? '#d69e2e' : '#38a169'};">
+        <strong>${escHtml(result.summary || `${candidates.length} Kandidaten in ${totalChecked} Events gefunden`)}</strong>
+        <span class="text-muted" style="margin-left:10px;">${model}, ${((duration || 0) / 1e9).toFixed(1)}s</span>
+    </div>`;
+
+    if (candidates.length === 0) {
+        html += '<div class="empty-state">Keine falsch-klassifizierten Events gefunden. Alle operational Events scheinen korrekt.</div>';
+    } else {
+        html += '<div class="table-scroll" style="max-height:400px;"><table><thead><tr><th>#</th><th>Event-Auszug</th><th>Konfidenz</th><th>Grund</th><th>Aktion</th></tr></thead><tbody>';
+        for (const c of candidates) {
+            const confPct = Math.round((c.confidence || 0) * 100);
+            const confColor = confPct >= 80 ? '#e53e3e' : confPct >= 60 ? '#d69e2e' : '#38a169';
+            html += `<tr>
+                <td>${c.event_index || '-'}</td>
+                <td style="max-width:300px;"><code style="font-size:0.82em;">${escHtml((c.event_excerpt || '').substring(0, 150))}</code></td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:60px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
+                            <div style="width:${confPct}%;height:100%;background:${confColor};border-radius:4px;"></div>
+                        </div>
+                        <span style="font-size:0.85em;font-weight:600;color:${confColor};">${confPct}%</span>
+                    </div>
+                </td>
+                <td style="font-size:0.85em;">${escHtml(c.reason || '')}</td>
+                <td>
+                    ${c.suggested_rule_filter ? `<button class="btn btn-sm btn-primary" onclick="reclassActivateRule('${escAttr(c.suggested_rule_filter)}','${escAttr(c.reason || '')}')">Regel aktivieren</button>` : '<span class="text-muted">-</span>'}
+                </td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+    }
+
+    resultDiv.innerHTML = html;
+}
+
+function reclassActivateRule(filter, reason) {
+    const suggestion = {
+        type: 'new_rule',
+        title: 'Reklassifikation: ' + reason.substring(0, 50),
+        filter: filter,
+        classification: 'siem',
+        reason: 'reclass_' + reason.toLowerCase().replace(/[^a-z0-9]/g, '_').substring(0, 40),
+        count: 0,
+        samples: []
+    };
+    currentSuggestions.push(suggestion);
+    activateRule(currentSuggestions.length - 1);
+}
+
+function toggleReclassAuto() {
+    const enabled = document.getElementById('reclassAutoMode').checked;
+    if (enabled) {
+        startReclassification();
+        reclassAutoInterval = setInterval(startReclassification, 30 * 60 * 1000);
+    } else {
+        if (reclassAutoInterval) clearInterval(reclassAutoInterval);
+        reclassAutoInterval = null;
+    }
+}
+
+// ============================================================
+// CONFIG TAB SWITCHER (Splunk / Kibana)
+// ============================================================
+function switchConfigTab(tab) {
+    const splunkTab = document.getElementById('tabContentSplunk');
+    const kibanaTab = document.getElementById('tabContentKibana');
+    const splunkBtn = document.getElementById('tabSplunk');
+    const kibanaBtn = document.getElementById('tabKibana');
+
+    if (tab === 'splunk') {
+        splunkTab.classList.remove('hidden');
+        kibanaTab.classList.add('hidden');
+        splunkBtn.style.borderBottomColor = '#2b6cb0';
+        splunkBtn.style.background = '#ebf8ff';
+        splunkBtn.style.color = '#2b6cb0';
+        kibanaBtn.style.borderBottomColor = 'transparent';
+        kibanaBtn.style.background = 'transparent';
+        kibanaBtn.style.color = '#718096';
+    } else {
+        splunkTab.classList.add('hidden');
+        kibanaTab.classList.remove('hidden');
+        kibanaBtn.style.borderBottomColor = '#38a169';
+        kibanaBtn.style.background = '#f0fff4';
+        kibanaBtn.style.color = '#276749';
+        splunkBtn.style.borderBottomColor = 'transparent';
+        splunkBtn.style.background = 'transparent';
+        splunkBtn.style.color = '#718096';
+    }
+}
+
+// ============================================================
+// KIBANA CONFIG GENERATOR
+// ============================================================
+async function generateKibanaConfig() {
+    const resultDiv = document.getElementById('kibanaConfigResult');
+    const statusSpan = document.getElementById('kibanaGenStatus');
+    const btn = document.getElementById('kibanaGenBtn');
+    const model = document.getElementById('kibanaModel').value;
+    const esUrl = getConfig('ES_URL');
+    const ollamaUrl = getConfig('OLLAMA_URL');
+    const kibanaUrl = getConfig('KIBANA_URL');
+
+    btn.disabled = true;
+    statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Lade ES-Mappings...';
+    resultDiv.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 1/3: Elasticsearch Mappings und Aggregationen laden...</div>';
+
+    try {
+        // Step 1: Get ES mapping + aggregations for operational data
+        const [mappingResp, aggsResp] = await Promise.all([
+            apiFetch('GET', `${esUrl}/cribl-ops*/_mapping`, null, true),
+            apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+                size: 0,
+                query: { term: { 'classification.keyword': 'operational' } },
+                aggs: {
+                    by_container: { terms: { field: 'CONTAINER_NAME.keyword', size: 20 } },
+                    by_source_type: { terms: { field: 'source_type.keyword', size: 10 } },
+                    by_severity: { terms: { field: 'severityName.keyword', size: 10 } },
+                    by_reason: { terms: { field: 'classification_reason.keyword', size: 20 } },
+                    time_histogram: { date_histogram: { field: '@timestamp', calendar_interval: 'hour' } },
+                    sample_events: { top_hits: { size: 10, _source: true, sort: [{ '@timestamp': 'desc' }] } }
+                }
+            }, true)
+        ]);
+
+        const mappingData = await mappingResp.json();
+        const aggsData = await aggsResp.json();
+
+        // Extract field names from mapping
+        const indexKeys = Object.keys(mappingData || {});
+        let fields = [];
+        if (indexKeys.length > 0) {
+            const props = mappingData[indexKeys[0]]?.mappings?.properties || {};
+            fields = Object.keys(props).slice(0, 50);
+        }
+
+        const containerBuckets = aggsData.aggregations?.by_container?.buckets || [];
+        const sourceTypeBuckets = aggsData.aggregations?.by_source_type?.buckets || [];
+        const severityBuckets = aggsData.aggregations?.by_severity?.buckets || [];
+        const totalOps = aggsData.hits?.total?.value || 0;
+
+        const sampleHits = aggsData.aggregations?.sample_events?.hits?.hits || [];
+        const sampleEvents = sampleHits.map(h => JSON.stringify(h._source || {}).substring(0, 300)).join('\n');
+
+        // Step 2: Ollama prompt for Kibana config
+        statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Ollama generiert Kibana-Konfig...';
+        resultDiv.innerHTML = `<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 2/3: Ollama generiert Kibana-Konfiguration fuer ${formatNum(totalOps)} Ops-Events...</div>`;
+
+        const prompt = `Du bist ein Kibana/Elasticsearch Experte. Erstelle Kibana-Konfigurationen fuer Operational-Log-Daten.
+
+KONTEXT:
+- Index Pattern: cribl-ops*
+- Gesamt-Events: ${totalOps}
+- Verfuegbare Felder: ${fields.join(', ')}
+- Container: ${containerBuckets.map(b => `${b.key}(${b.doc_count})`).join(', ')}
+- Source Types: ${sourceTypeBuckets.map(b => `${b.key}(${b.doc_count})`).join(', ')}
+- Severities: ${severityBuckets.map(b => `${b.key}(${b.doc_count})`).join(', ')}
+
+SAMPLE EVENTS:
+${sampleEvents}
+
+Erstelle Kibana-Konfigurationen. Antworte EXAKT im JSON-Format:
+{
+  "index_patterns": [
+    {
+      "title": "cribl-ops*",
+      "timeFieldName": "@timestamp",
+      "description": "Beschreibung"
+    }
+  ],
+  "saved_searches": [
+    {
+      "title": "Titel der Suche",
+      "description": "Beschreibung",
+      "kql_query": "KQL-Query",
+      "columns": ["feld1", "feld2"],
+      "sort_field": "@timestamp",
+      "sort_order": "desc"
+    }
+  ],
+  "dashboard_panels": [
+    {
+      "title": "Panel-Titel",
+      "type": "visualization type (lens, metric, pie, bar, line, table, markdown)",
+      "description": "Was zeigt dieses Panel",
+      "config_hint": "Kurze Konfig-Beschreibung (Felder, Aggregationen)"
+    }
+  ],
+  "summary": "Zusammenfassung in 2-3 Saetzen"
+}`;
+
+        const ollamaResp = await fetch(`${ollamaUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: model,
+                prompt: prompt,
+                stream: false,
+                options: { num_predict: 3072, temperature: 0.15 }
+            })
+        });
+
+        if (!ollamaResp.ok) throw new Error(`Ollama HTTP ${ollamaResp.status}`);
+        const ollamaData = await ollamaResp.json();
+        const raw = ollamaData.response || '';
+
+        let jsonStr = raw;
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        let config;
+        try {
+            config = JSON.parse(jsonStr);
+        } catch {
+            resultDiv.innerHTML = `<div class="config-card"><div class="config-card-header">KI-Rohantwort (JSON-Parse fehlgeschlagen)</div><div class="config-card-body"><pre><code>${escHtml(raw)}</code></pre></div></div>`;
+            btn.disabled = false;
+            statusSpan.textContent = 'Parse-Fehler';
+            return;
+        }
+
+        // Step 3: Render
+        renderKibanaConfig(config, model, totalOps, ollamaData.total_duration, kibanaUrl);
+        statusSpan.textContent = `Analyse abgeschlossen (${model}, ${((ollamaData.total_duration || 0) / 1e9).toFixed(1)}s)`;
+
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="empty-state" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</div>`;
+        statusSpan.textContent = 'Fehler';
+    }
+    btn.disabled = false;
+}
+
+function renderKibanaConfig(cfg, model, opsCount, duration, kibanaUrl) {
+    const resultDiv = document.getElementById('kibanaConfigResult');
+    let html = '';
+
+    // Summary
+    html += `<div class="config-card" style="border-left:4px solid #38a169;">
+        <div class="config-card-header"><span>Zusammenfassung</span><span style="font-size:0.85em;color:#718096;">${formatNum(opsCount)} Ops-Events</span></div>
+        <div class="config-card-body"><p>${escHtml(cfg.summary || '')}</p></div>
+    </div>`;
+
+    // Index Patterns
+    const patterns = cfg.index_patterns || [];
+    if (patterns.length > 0) {
+        html += `<div class="config-card" style="border-left:4px solid #2b6cb0;">
+            <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span><span class="tag source">Index Patterns</span> ${patterns.length}</span>
+            </div>
+            <div class="config-card-body">
+                ${patterns.map(p => `
+                    <div style="padding:10px 0;border-bottom:1px solid #edf2f7;display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <strong>${escHtml(p.title)}</strong> (time: <code>${escHtml(p.timeFieldName || '@timestamp')}</code>)
+                            <div class="text-muted">${escHtml(p.description || '')}</div>
+                        </div>
+                        <button class="btn btn-sm btn-success" onclick="createKibanaIndexPattern('${escAttr(p.title)}','${escAttr(p.timeFieldName || '@timestamp')}')">In Kibana anlegen</button>
+                    </div>`).join('')}
+            </div>
+        </div>`;
+    }
+
+    // Saved Searches
+    const searches = cfg.saved_searches || [];
+    if (searches.length > 0) {
+        html += `<div class="config-card" style="border-left:4px solid #805ad5;">
+            <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span><span class="tag pipeline">Saved Searches</span> ${searches.length}</span>
+            </div>
+            <div class="config-card-body">
+                ${searches.map(s => `
+                    <div style="padding:10px 0;border-bottom:1px solid #edf2f7;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                            <div>
+                                <strong>${escHtml(s.title)}</strong>
+                                <div class="text-muted">${escHtml(s.description || '')}</div>
+                                <code style="font-size:0.82em;display:block;margin-top:4px;">${escHtml(s.kql_query || '')}</code>
+                                ${s.columns ? `<div class="text-muted" style="margin-top:2px;">Spalten: ${s.columns.map(c => `<code>${escHtml(c)}</code>`).join(', ')}</div>` : ''}
+                            </div>
+                            <button class="btn btn-sm btn-outline" onclick="copyToClipboard('${escAttr(s.kql_query || '')}')">KQL kopieren</button>
+                        </div>
+                    </div>`).join('')}
+            </div>
+        </div>`;
+    }
+
+    // Dashboard Panels
+    const panels = cfg.dashboard_panels || [];
+    if (panels.length > 0) {
+        html += `<div class="config-card" style="border-left:4px solid #d69e2e;">
+            <div class="config-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span><span class="tag route">Dashboard Panels</span> ${panels.length}</span>
+            </div>
+            <div class="config-card-body">
+                ${panels.map(p => `
+                    <div style="padding:10px 0;border-bottom:1px solid #edf2f7;">
+                        <strong>${escHtml(p.title)}</strong> <span class="badge badge-unknown">${escHtml(p.type || 'lens')}</span>
+                        <div class="text-muted">${escHtml(p.description || '')}</div>
+                        ${p.config_hint ? `<div style="font-size:0.82em;color:#805ad5;margin-top:2px;">${escHtml(p.config_hint)}</div>` : ''}
+                    </div>`).join('')}
+            </div>
+        </div>`;
+    }
+
+    // Export buttons
+    html += `<div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="exportKibanaNDJSON()">NDJSON-Export</button>
+        <button class="btn btn-outline" onclick="copyKibanaJSON()">JSON kopieren</button>
+    </div>`;
+
+    resultDiv.innerHTML = html;
+    window._lastKibanaConfig = cfg;
+}
+
+async function createKibanaIndexPattern(title, timeField) {
+    const kibanaUrl = getConfig('KIBANA_URL');
+    try {
+        const resp = await apiFetch('POST', `${kibanaUrl}/api/saved_objects/index-pattern`, {
+            attributes: {
+                title: title,
+                timeFieldName: timeField
+            }
+        }, false, { 'kbn-xsrf': 'true' });
+        if (resp.ok) {
+            alert(`Index Pattern "${title}" erfolgreich in Kibana angelegt!`);
+        } else {
+            const data = await resp.json();
+            alert(`Fehler: ${data.message || resp.status}`);
+        }
+    } catch (e) {
+        alert(`Fehler: ${e.message}`);
+    }
+}
+
+function exportKibanaNDJSON() {
+    if (!window._lastKibanaConfig) return;
+    const cfg = window._lastKibanaConfig;
+    const lines = [];
+
+    // Index patterns as NDJSON
+    for (const p of (cfg.index_patterns || [])) {
+        lines.push(JSON.stringify({
+            type: 'index-pattern',
+            id: p.title.replace(/\*/g, '_star'),
+            attributes: { title: p.title, timeFieldName: p.timeFieldName || '@timestamp' }
+        }));
+    }
+
+    // Saved searches as NDJSON
+    for (const s of (cfg.saved_searches || [])) {
+        lines.push(JSON.stringify({
+            type: 'search',
+            id: s.title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            attributes: {
+                title: s.title,
+                description: s.description || '',
+                kibanaSavedObjectMeta: {
+                    searchSourceJSON: JSON.stringify({
+                        query: { query: s.kql_query || '', language: 'kuery' },
+                        filter: [],
+                        indexRefName: 'kibanaSavedObjectMeta.searchSourceJSON.index'
+                    })
+                },
+                columns: s.columns || [],
+                sort: [[s.sort_field || '@timestamp', s.sort_order || 'desc']]
+            },
+            references: [{
+                name: 'kibanaSavedObjectMeta.searchSourceJSON.index',
+                type: 'index-pattern',
+                id: (cfg.index_patterns?.[0]?.title || 'cribl-ops*').replace(/\*/g, '_star')
+            }]
+        }));
+    }
+
+    const ndjson = lines.join('\n');
+    copyToClipboard(ndjson);
+    alert('NDJSON in Zwischenablage kopiert! Importieren in Kibana: Stack Management → Saved Objects → Import');
+}
+
+function copyKibanaJSON() {
+    if (!window._lastKibanaConfig) return;
+    copyToClipboard(JSON.stringify(window._lastKibanaConfig, null, 2));
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function escAttr(str) {
+    return String(str).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+}
+
+function formatNum(n) {
+    return Number(n).toLocaleString('de-DE');
+}
+
+function truncate(str, max) {
+    if (!str) return '';
+    return str.length > max ? str.substring(0, max) + '...' : str;
+}
+
+function copyText(btn, idx) {
+    const s = currentSuggestions[idx];
+    if (s) copyToClipboard(buildCurlPreview(s));
+    btn.textContent = 'Kopiert!';
+    setTimeout(() => btn.textContent = 'Kopieren', 1500);
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).catch(() => {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    });
+}
+
+// Close modal on overlay click
+document.getElementById('activationModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// Keyboard: Escape closes modal
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+
+</body>
+</html>

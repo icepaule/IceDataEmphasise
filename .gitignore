@@ -1,5 +1,6 @@
 # Environment & Secrets
 .env
+docker-compose.override.yml
 INTERNAL-DOKU.md
 *.pem
 *.key

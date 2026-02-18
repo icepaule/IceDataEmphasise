@@ -1,0 +1,22 @@
+{
+  "id": "elasticsearch_ops",
+  "type": "elastic",
+  "description": "Elasticsearch destination for operational Docker logs with daily index rotation",
+  "elasticUrl": "${ELASTICSEARCH_URL}",
+  "index": "`cribl-ops-${C.Time.strftime(_time, '%Y.%m.%d')}`",
+  "docTypeExpr": "`_doc`",
+  "type_elastic": "doc_type_expression",
+  "flush": {
+    "size": 1,
+    "intervalSec": 1
+  },
+  "maxPayloadSizeKB": 4096,
+  "maxPayloadEvents": 0,
+  "compress": true,
+  "rejectUnauthorized": false,
+  "timeoutSec": 30,
+  "concurrency": 5,
+  "onBackpressure": "block",
+  "systemFields": ["cribl_pipe"],
+  "pipeline": "passthrough"
+}

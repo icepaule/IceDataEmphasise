@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>15 - Phase 2 Uebungen | IceDataEmphasise</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; }
+        h4 { color: #2d3748; margin-bottom: 0.5em; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: left; }
+        th { background: #2b6cb0; color: white; }
+        tr:nth-child(even) { background: #f7fafc; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; }
+        pre code { background: none; color: inherit; }
+        .header { background: #1a365d; color: white; padding: 20px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0; }
+        .meta { display: flex; gap: 2em; margin-top: 10px; font-size: 0.9em; opacity: 0.9; }
+        .nav { display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #2b6cb0; margin-top: 3em; }
+        .nav a { color: #2b6cb0; text-decoration: none; font-weight: bold; }
+        .warning { background: #fff5f5; border-left: 4px solid #e53e3e; padding: 12px 16px; margin: 1em 0; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; }
+        .exercise { background: #ffffff; border: 2px solid #2b6cb0; border-radius: 8px; padding: 20px; margin: 1.5em 0; }
+        .exercise-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .exercise-header h3 { margin: 0; border: none; padding: 0; }
+        .difficulty { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: bold; color: white; }
+        .difficulty-einfach { background: #38a169; }
+        .difficulty-mittel { background: #d69e2e; }
+        .difficulty-fortgeschritten { background: #e53e3e; }
+        .lernziel { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 10px 14px; margin: 0.8em 0; font-style: italic; }
+        .voraussetzungen { background: #fefcbf; border-left: 4px solid #d69e2e; padding: 10px 14px; margin: 0.8em 0; }
+        .ergebnis { background: #f0fff4; border-left: 4px solid #38a169; padding: 10px 14px; margin: 0.8em 0; }
+        .tipps { background: #faf5ff; border-left: 4px solid #805ad5; padding: 10px 14px; margin: 0.8em 0; }
+        .checklist { list-style: none; padding-left: 0; }
+        .checklist li::before { content: "\2610 "; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>15 &ndash; Phase 2: Hands-on Uebungen</h1>
+    <div class="meta">
+        <span>Version: 1.0</span>
+        <span>Datum: 2026-02-17</span>
+        <span>Klassifikation: Vertraulich / Intern</span>
+        <span>Projekt: IceDataEmphasise</span>
+    </div>
+</div>
+
+<!-- Revisionshistorie -->
+<h2 id="revisionshistorie">Revisionshistorie</h2>
+<table>
+    <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
+    <tr><td>1.0</td><td>2026-02-17</td><td>Marcus Pauli</td><td>Erstversion: 10 Hands-on Uebungen fuer Phase 2</td></tr>
+</table>
+
+<!-- Inhaltsverzeichnis -->
+<h2 id="inhaltsverzeichnis">Inhaltsverzeichnis</h2>
+<ol>
+    <li><a href="#uebung01">Container-Namen via Lookup extrahieren</a> (Einfach)</li>
+    <li><a href="#uebung02">Log-Level Extraktion + Severity-Mapping</a> (Einfach)</li>
+    <li><a href="#uebung03">Sampling/Volumen-Reduktion</a> (Mittel)</li>
+    <li><a href="#uebung04">Eigene Route fuer Mosquitto-MQTT</a> (Mittel)</li>
+    <li><a href="#uebung05">Sensitive Daten maskieren</a> (Mittel)</li>
+    <li><a href="#uebung06">Metriken aus Redis-Logs extrahieren</a> (Mittel)</li>
+    <li><a href="#uebung07">Conditional Routing mit Regex</a> (Fortgeschritten)</li>
+    <li><a href="#uebung08">Cribl Pack erstellen</a> (Fortgeschritten)</li>
+    <li><a href="#uebung09">Backpressure + Persistent Queue testen</a> (Fortgeschritten)</li>
+    <li><a href="#uebung10">A/B-Test: Regeln vs. Ollama-Klassifikation</a> (Fortgeschritten)</li>
+</ol>
+
+<div class="info">
+    <strong>Hinweis:</strong> Alle Uebungen bauen auf der in Phase 1 eingerichteten Infrastruktur auf.
+    Stellen Sie sicher, dass Cribl Stream, Docker und die konfigurierten Quellen betriebsbereit sind,
+    bevor Sie mit den Uebungen beginnen. Die Verifikation erfolgt mit:
+    <code>sudo ./scripts/07-verify-deployment.sh</code>
+</div>
+
+<!-- Uebersicht -->
+<h2 id="uebersicht">Uebersicht der Schwierigkeitsgrade</h2>
+<table>
+    <tr><th>Nr.</th><th>Uebung</th><th>Schwierigkeit</th><th>Geschaetzte Dauer</th></tr>
+    <tr><td>1</td><td>Container-Namen via Lookup extrahieren</td><td><span class="difficulty difficulty-einfach">Einfach</span></td><td>20 Min.</td></tr>
+    <tr><td>2</td><td>Log-Level Extraktion + Severity-Mapping</td><td><span class="difficulty difficulty-einfach">Einfach</span></td><td>25 Min.</td></tr>
+    <tr><td>3</td><td>Sampling/Volumen-Reduktion</td><td><span class="difficulty difficulty-mittel">Mittel</span></td><td>30 Min.</td></tr>
+    <tr><td>4</td><td>Eigene Route fuer Mosquitto-MQTT</td><td><span class="difficulty difficulty-mittel">Mittel</span></td><td>30 Min.</td></tr>
+    <tr><td>5</td><td>Sensitive Daten maskieren</td><td><span class="difficulty difficulty-mittel">Mittel</span></td><td>35 Min.</td></tr>
+    <tr><td>6</td><td>Metriken aus Redis-Logs extrahieren</td><td><span class="difficulty difficulty-mittel">Mittel</span></td><td>40 Min.</td></tr>
+    <tr><td>7</td><td>Conditional Routing mit Regex</td><td><span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span></td><td>40 Min.</td></tr>
+    <tr><td>8</td><td>Cribl Pack erstellen</td><td><span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span></td><td>45 Min.</td></tr>
+    <tr><td>9</td><td>Backpressure + Persistent Queue testen</td><td><span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span></td><td>45 Min.</td></tr>
+    <tr><td>10</td><td>A/B-Test: Regeln vs. Ollama-Klassifikation</td><td><span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span></td><td>60 Min.</td></tr>
+</table>
+
+<!-- ==================== UEBUNG 1 ==================== -->
+<h2 id="uebung01">Uebung 1: Container-Namen via Lookup extrahieren</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Container-Namen via Lookup extrahieren</h3>
+        <span class="difficulty difficulty-einfach">Einfach</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Verstehen, wie Cribl Lookup-Tabellen funktionieren, um Events mit
+        zusaetzlichen Kontextinformationen anzureichern. Nach dieser Uebung koennen Sie eine CSV-Lookup-Datei
+        erstellen und in einer Pipeline verwenden, um container_id auf container_name abzubilden.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Cribl Stream laeuft und ist erreichbar unter <code>http://localhost:9000</code></li>
+            <li>Docker-Container sind gestartet und liefern Logs</li>
+            <li>Die Pipeline <code>pipeline_docker_json</code> ist konfiguriert (siehe <a href="07-pipelines-routen.html">Pipelines und Routen</a>)</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Container-IDs ermitteln</h4>
+    <p>Ermitteln Sie die laufenden Container und deren IDs:</p>
+    <pre><code># Alle laufenden Container mit ID und Name auflisten
+docker ps --format "{{.ID}},{{.Names}}" --no-trunc</code></pre>
+
+    <h4>Schritt 2: CSV-Lookup-Datei erstellen</h4>
+    <p>Erstellen Sie die Datei <code>container_lookup.csv</code> im Cribl-Lookup-Verzeichnis:</p>
+    <pre><code># Verzeichnis fuer Lookups
+sudo mkdir -p /opt/cribl/local/cribl/lookups
+
+# CSV-Datei erstellen (Beispielwerte anpassen!)
+sudo tee /opt/cribl/local/cribl/lookups/container_lookup.csv &lt;&lt;'EOF'
+container_id,container_name,service_type
+a1b2c3d4e5f6,redis-stack,cache
+f6e5d4c3b2a1,mosquitto-mqtt,messaging
+1a2b3c4d5e6f,nginx-proxy,webserver
+6f5e4d3c2b1a,node-red,automation
+EOF</code></pre>
+
+    <div class="info">
+        <strong>Hinweis:</strong> Ersetzen Sie die Beispiel-Container-IDs durch die tatsaechlichen IDs
+        aus Schritt 1. Verwenden Sie die vollstaendigen 64-Zeichen-IDs oder die 12-Zeichen-Kurzform
+        konsistent.
+    </div>
+
+    <h4>Schritt 3: Lookup-Funktion in der Pipeline konfigurieren</h4>
+    <p>Oeffnen Sie die Cribl UI und navigieren Sie zu:</p>
+    <ol>
+        <li><strong>Processing &rarr; Pipelines &rarr; pipeline_docker_json</strong></li>
+        <li>Klicken Sie auf <strong>+ Add Function</strong></li>
+        <li>Waehlen Sie <strong>Lookup</strong> aus der Kategorie "Standard"</li>
+        <li>Konfigurieren Sie die Funktion:
+            <ul>
+                <li><strong>Lookup File:</strong> <code>container_lookup.csv</code></li>
+                <li><strong>Input Field:</strong> <code>container_id</code></li>
+                <li><strong>Output Fields:</strong> <code>container_name</code>, <code>service_type</code></li>
+            </ul>
+        </li>
+        <li>Klicken Sie auf <strong>Save</strong></li>
+    </ol>
+
+    <h4>Schritt 4: Testen mit Sample-Event</h4>
+    <p>Testen Sie die Pipeline mit einem Beispiel-Event:</p>
+    <ol>
+        <li>In der Pipeline-Ansicht klicken Sie auf <strong>Preview</strong></li>
+        <li>Geben Sie ein Test-Event ein:</li>
+    </ol>
+    <pre><code>{
+  "_raw": "{\"log\":\"Connection accepted\",\"stream\":\"stdout\",\"time\":\"2026-02-17T10:00:00Z\"}",
+  "container_id": "a1b2c3d4e5f6",
+  "source": "docker"
+}</code></pre>
+    <p>Das Ergebnis sollte die neuen Felder <code>container_name</code> und <code>service_type</code> enthalten.</p>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Das verarbeitete Event enthaelt die zusaetzlichen Felder
+        <code>container_name: "redis-stack"</code> und <code>service_type: "cache"</code>. In Splunk
+        koennen Sie nun nach <code>container_name=redis-stack</code> filtern, anstatt die kryptische
+        Container-ID verwenden zu muessen.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Automatisieren Sie die CSV-Erzeugung mit einem Cronjob: <code>docker ps --format ... &gt; container_lookup.csv</code></li>
+            <li>Verwenden Sie <code>matchMode: exact</code> fuer performante Lookups bei grossen Tabellen</li>
+            <li>Pruefen Sie mit <code>matchType: regex</code>, falls Container-IDs nur als Praefix im Event vorliegen</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 2 ==================== -->
+<h2 id="uebung02">Uebung 2: Log-Level Extraktion + Severity-Mapping</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Log-Level Extraktion + Severity-Mapping</h3>
+        <span class="difficulty difficulty-einfach">Einfach</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Lernen, wie man mit Regex Extract und Eval-Funktionen strukturierte
+        Felder aus unstrukturierten Log-Nachrichten gewinnt und numerische Severity-Werte zuordnet
+        (angelehnt an RFC 5424 Syslog Severity Levels).
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Cribl Stream laeuft und ist erreichbar</li>
+            <li>Docker-Container generieren Log-Events mit unterschiedlichen Log-Levels</li>
+            <li>Grundkenntnisse in regulaeren Ausdruecken</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Log-Level per Regex extrahieren</h4>
+    <p>Fuegen Sie eine <strong>Regex Extract</strong>-Funktion zur Docker-Pipeline hinzu:</p>
+    <ol>
+        <li>Navigieren Sie zu <strong>Processing &rarr; Pipelines &rarr; pipeline_docker_json</strong></li>
+        <li>Fuegen Sie eine neue Funktion <strong>Regex Extract</strong> hinzu</li>
+        <li>Konfiguration:
+            <ul>
+                <li><strong>Source Field:</strong> <code>_raw</code></li>
+                <li><strong>Regex:</strong> <code>/\b(DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL)\b/i</code></li>
+                <li><strong>Output Field:</strong> <code>log_level</code></li>
+            </ul>
+        </li>
+    </ol>
+    <pre><code># Der regulaere Ausdruck im Detail:
+# \b          - Wortgrenze (verhindert Teilmatches wie "INFORMATION")
+# (DEBUG|...) - Capture Group mit den moeglichen Log-Levels
+# \b          - Wortgrenze am Ende
+# /i          - Case-insensitive Matching</code></pre>
+
+    <h4>Schritt 2: Severity-Mapping per Eval-Funktion</h4>
+    <p>Fuegen Sie eine <strong>Eval</strong>-Funktion nach der Regex-Extraktion hinzu:</p>
+    <ol>
+        <li>Klicken Sie auf <strong>+ Add Function &rarr; Eval</strong></li>
+        <li>Fuegen Sie folgende Evaluations hinzu:</li>
+    </ol>
+    <pre><code>// Feld: severity
+// Ausdruck:
+log_level === 'DEBUG' ? 7
+  : log_level === 'INFO' ? 6
+  : (log_level === 'WARNING' || log_level === 'WARN') ? 4
+  : log_level === 'ERROR' ? 3
+  : (log_level === 'CRITICAL' || log_level === 'FATAL') ? 2
+  : 6
+
+// Feld: severity_label (optional, fuer bessere Lesbarkeit)
+// Ausdruck:
+severity &lt;= 3 ? 'high' : severity &lt;= 4 ? 'medium' : 'low'</code></pre>
+
+    <h4>Schritt 3: Log-Level normalisieren</h4>
+    <p>Ergaenzen Sie eine weitere Eval-Zeile, um Varianten zu vereinheitlichen:</p>
+    <pre><code>// Feld: log_level
+// Ausdruck (Normalisierung):
+log_level === 'WARN' ? 'WARNING'
+  : log_level === 'FATAL' ? 'CRITICAL'
+  : log_level ? log_level.toUpperCase()
+  : 'INFO'</code></pre>
+
+    <h4>Schritt 4: Testen mit verschiedenen Log-Formaten</h4>
+    <p>Testen Sie die Pipeline im Preview-Modus mit diesen Beispiel-Events:</p>
+    <pre><code>// Docker JSON Log (Redis)
+{"log":"1:M 17 Feb 2026 10:15:00.123 # WARNING Memory usage high","stream":"stdout"}
+
+// Docker JSON Log (Node-RED)
+{"log":"17 Feb 10:15:01 - [info] Server now running at http://127.0.0.1:1880/","stream":"stdout"}
+
+// Docker JSON Log (Mosquitto)
+{"log":"1708171500: Error: Connection refused","stream":"stderr"}</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Jedes Event enthaelt die Felder <code>log_level</code>
+        (normalisiert: DEBUG, INFO, WARNING, ERROR, CRITICAL), <code>severity</code> (numerisch: 2-7)
+        und <code>severity_label</code> (high/medium/low). Die Severity-Mapping-Tabelle:
+        <table>
+            <tr><th>log_level</th><th>severity</th><th>severity_label</th></tr>
+            <tr><td>DEBUG</td><td>7</td><td>low</td></tr>
+            <tr><td>INFO</td><td>6</td><td>low</td></tr>
+            <tr><td>WARNING</td><td>4</td><td>medium</td></tr>
+            <tr><td>ERROR</td><td>3</td><td>high</td></tr>
+            <tr><td>CRITICAL</td><td>2</td><td>high</td></tr>
+        </table>
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Verwenden Sie <code>C.Lookup</code> statt verschachtelter Ternary-Operatoren, wenn die Mapping-Tabelle groesser wird</li>
+            <li>Testen Sie mit <code>__inputId=='docker:in_docker'</code> als Filter, um die Funktion nur auf Docker-Events anzuwenden</li>
+            <li>Bedenken Sie, dass manche Anwendungen eigene Log-Formate haben (z.B. Redis nutzt <code>#</code> als Praefix fuer Warnungen)</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 3 ==================== -->
+<h2 id="uebung03">Uebung 3: Sampling/Volumen-Reduktion</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Sampling/Volumen-Reduktion</h3>
+        <span class="difficulty difficulty-mittel">Mittel</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Verstehen, wie Cribl's Sampling-Funktionen genutzt werden koennen,
+        um das Log-Volumen intelligent zu reduzieren, ohne wichtige Events (ERROR, CRITICAL) zu verlieren.
+        Dies ist eine der Kernfunktionen von Cribl fuer Kostenoptimierung.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Uebung 2 abgeschlossen (log_level-Feld ist vorhanden)</li>
+            <li>Cribl Stream laeuft mit aktiven Docker-Quellen</li>
+            <li>Grundverstaendnis von Sampling-Konzepten</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Sampling-Strategie definieren</h4>
+    <p>Unsere Strategie: Hohe Prioritaet = alles behalten, niedrige Prioritaet = nur Stichprobe:</p>
+    <table>
+        <tr><th>Log-Level</th><th>Sampling-Rate</th><th>Begruendung</th></tr>
+        <tr><td>CRITICAL</td><td>100% (alles behalten)</td><td>Kritische Fehler duerfen nicht verloren gehen</td></tr>
+        <tr><td>ERROR</td><td>100% (alles behalten)</td><td>Fehler sind fuer Troubleshooting essenziell</td></tr>
+        <tr><td>WARNING</td><td>50%</td><td>Warnungen sind wichtig, aber haeufig redundant</td></tr>
+        <tr><td>INFO</td><td>25%</td><td>Informationsmeldungen sind oft repetitiv</td></tr>
+        <tr><td>DEBUG</td><td>10%</td><td>Debug-Logs erzeugen das meiste Volumen</td></tr>
+    </table>
+
+    <h4>Schritt 2: Sampling-Funktion hinzufuegen</h4>
+    <p>Fuegen Sie eine <strong>Sampling</strong>-Funktion in der Pipeline hinzu:</p>
+    <ol>
+        <li>Navigieren Sie zu <strong>Processing &rarr; Pipelines &rarr; pipeline_docker_json</strong></li>
+        <li>Fuegen Sie <strong>+ Add Function &rarr; Sampling</strong> hinzu (nach der Log-Level-Extraktion)</li>
+        <li>Konfiguration:</li>
+    </ol>
+    <pre><code># Filter: Nur auf DEBUG-Events anwenden
+# Filter Expression:
+log_level === 'DEBUG'
+
+# Sample Rate: 10  (behaelt jedes 10. Event = 10%)</code></pre>
+
+    <h4>Schritt 3: Weitere Sampling-Regeln hinzufuegen</h4>
+    <p>Erstellen Sie fuer jedes Level eine eigene Sampling-Funktion oder verwenden Sie eine
+    <strong>Eval</strong>-basierte Loesung:</p>
+    <pre><code>// Alternative: Dynamisches Sampling ueber Eval + Drop
+// Funktion: Eval
+// Feld: __sampling_rate
+// Ausdruck:
+log_level === 'DEBUG' ? 10
+  : log_level === 'INFO' ? 4
+  : log_level === 'WARNING' ? 2
+  : 1
+
+// Danach: Sampling-Funktion mit:
+// Sample Rate Field: __sampling_rate</code></pre>
+
+    <h4>Schritt 4: Volumen-Reduktion messen</h4>
+    <p>Pruefen Sie die Reduktion ueber die Cribl Monitoring-Seite:</p>
+    <ol>
+        <li>Navigieren Sie zu <strong>Monitoring &rarr; Data &rarr; Pipelines</strong></li>
+        <li>Vergleichen Sie <strong>Events In</strong> vs. <strong>Events Out</strong> fuer die Docker-Pipeline</li>
+        <li>Die Differenz zeigt die eingesparten Events</li>
+    </ol>
+    <pre><code># Alternativ ueber die API:
+TOKEN=$(curl -s -X POST "http://localhost:9000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' | jq -r '.token')
+
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:9000/api/v1/system/metrics" | jq '.pipelines.pipeline_docker_json'</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Das Log-Volumen der Docker-Pipeline wird um ca. 40-60%
+        reduziert (abhaengig von der Verteilung der Log-Levels). Alle ERROR- und CRITICAL-Events bleiben
+        zu 100% erhalten. In Splunk sehen Sie das Feld <code>cribl_sample_rate</code>, das angibt,
+        wie viele aehnliche Events durch das gesamplete Event repraesentiert werden.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Beginnen Sie konservativ (niedrige Sampling-Raten) und erhoehen Sie schrittweise</li>
+            <li>Nutzen Sie <code>cribl_sample_rate</code> in Splunk-Suchen: <code>| stats sum(cribl_sample_rate) as estimated_total</code></li>
+            <li>Ueberwachen Sie die <strong>Events Dropped</strong>-Metrik in Cribl Monitoring, um sicherzustellen, dass die Reduktion im erwarteten Bereich liegt</li>
+            <li>Fuer produktionskritische Systeme: Testen Sie Sampling zuerst auf einem separaten Output (z.B. DevNull), bevor Sie den produktiven Pfad aendern</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 4 ==================== -->
+<h2 id="uebung04">Uebung 4: Eigene Route fuer Mosquitto-MQTT</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Eigene Route fuer Mosquitto-MQTT</h3>
+        <span class="difficulty difficulty-mittel">Mittel</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Verstehen, wie dedizierte Routes in Cribl erstellt werden, um bestimmte
+        Log-Quellen mit spezialisierten Pipelines zu verarbeiten. MQTT-Broker-Logs haben ein eigenes Format,
+        das eine dedizierte Verarbeitung erfordert.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Mosquitto MQTT-Container laeuft: <code>docker ps | grep mosquitto</code></li>
+            <li>Grundverstaendnis von Cribl Routes (siehe <a href="07-pipelines-routen.html">Pipelines und Routen</a>)</li>
+            <li>Uebung 1 abgeschlossen (Container-Lookup konfiguriert)</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Mosquitto-Log-Format analysieren</h4>
+    <p>Untersuchen Sie das Mosquitto-Log-Format:</p>
+    <pre><code># Mosquitto-Logs anzeigen
+docker logs mosquitto --tail 20
+
+# Typisches Format:
+# 1708171500: New connection from 192.168.1.100:54321 on port 1883.
+# 1708171500: New client connected from 192.168.1.100:54321 as client_01 (p2, c1, k60).
+# 1708171500: Client client_01 disconnected.
+# 1708171501: Warning: Unable to open log file /mosquitto/log/mosquitto.log.
+# 1708171502: Error: Invalid protocol "MQTT" in connect from 192.168.1.200.</code></pre>
+
+    <h4>Schritt 2: Neue Pipeline erstellen</h4>
+    <ol>
+        <li>Navigieren Sie zu <strong>Processing &rarr; Pipelines</strong></li>
+        <li>Klicken Sie auf <strong>+ Add Pipeline</strong></li>
+        <li>Name: <code>pipeline_mosquitto_mqtt</code></li>
+        <li>Beschreibung: "Spezialisierte Pipeline fuer Mosquitto MQTT Broker Logs"</li>
+    </ol>
+
+    <h4>Schritt 3: Pipeline-Funktionen konfigurieren</h4>
+    <p>Fuegen Sie folgende Funktionen hinzu:</p>
+
+    <p><strong>Funktion 1: Regex Extract (Timestamp + Nachricht)</strong></p>
+    <pre><code>// Source Field: _raw
+// Regex:
+/^(\d+):\s+(.*)/
+
+// Output Fields:
+//   g1 -> mqtt_epoch
+//   g2 -> mqtt_message</code></pre>
+
+    <p><strong>Funktion 2: Regex Extract (Verbindungs-Details)</strong></p>
+    <pre><code>// Source Field: mqtt_message
+// Regex:
+/(?:connection from|connected from)\s+(\d+\.\d+\.\d+\.\d+):(\d+)(?:\s+as\s+(\S+))?/
+
+// Output Fields:
+//   g1 -> mqtt_client_ip
+//   g2 -> mqtt_client_port
+//   g3 -> mqtt_client_id</code></pre>
+
+    <p><strong>Funktion 3: Eval (Anreicherung)</strong></p>
+    <pre><code>// Felder:
+// source_type    = 'mosquitto:mqtt'
+// mqtt_timestamp = new Date(Number(mqtt_epoch) * 1000).toISOString()
+// log_level      = /Error/i.test(mqtt_message) ? 'ERROR'
+//                : /Warning/i.test(mqtt_message) ? 'WARNING'
+//                : 'INFO'</code></pre>
+
+    <h4>Schritt 4: Route erstellen</h4>
+    <ol>
+        <li>Navigieren Sie zu <strong>Processing &rarr; Routes</strong></li>
+        <li>Klicken Sie auf <strong>+ Add Route</strong></li>
+        <li>Konfiguration:
+            <ul>
+                <li><strong>Route Name:</strong> <code>route_mosquitto</code></li>
+                <li><strong>Filter:</strong> <code>container_name=='mosquitto' || source.includes('mosquitto')</code></li>
+                <li><strong>Pipeline:</strong> <code>pipeline_mosquitto_mqtt</code></li>
+                <li><strong>Output:</strong> <code>splunk_hec</code> (oder Ihre konfigurierte Destination)</li>
+                <li><strong>Final:</strong> aktiviert (damit Events nicht auch von anderen Routes verarbeitet werden)</li>
+            </ul>
+        </li>
+        <li><strong>Wichtig:</strong> Verschieben Sie die Route <em>vor</em> die generische Docker-Route in der Route-Tabelle</li>
+    </ol>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Mosquitto-Logs werden ueber die dedizierte Route und Pipeline
+        verarbeitet. Die Events enthalten die Felder <code>mqtt_client_ip</code>, <code>mqtt_client_id</code>,
+        <code>mqtt_timestamp</code> und <code>source_type: mosquitto:mqtt</code>. In Splunk koennen Sie
+        mit <code>sourcetype=mosquitto:mqtt</code> gezielt nach MQTT-Events suchen und nach Client-IP
+        filtern.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Route-Reihenfolge ist entscheidend: Spezifische Routes muessen <em>vor</em> generischen Routes stehen</li>
+            <li>Testen Sie den Filter-Ausdruck zuerst mit der Preview-Funktion, bevor Sie die Route aktivieren</li>
+            <li>Verwenden Sie <code>final: true</code>, um zu verhindern, dass Events doppelt verarbeitet werden</li>
+            <li>Mosquitto-Timestamps sind Unix-Epochs &ndash; die Konvertierung in ISO 8601 erleichtert die Suche in Splunk</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 5 ==================== -->
+<h2 id="uebung05">Uebung 5: Sensitive Daten maskieren</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Sensitive Daten maskieren</h3>
+        <span class="difficulty difficulty-mittel">Mittel</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Lernen, wie Cribl's Maskierungs- und Redaktionsfunktionen eingesetzt werden,
+        um personenbezogene Daten (PII) und andere sensitive Informationen vor der Weiterleitung an Destinations
+        zu schuetzen. Dies ist besonders relevant fuer DSGVO-Compliance.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Cribl Stream laeuft mit aktiven Log-Quellen</li>
+            <li>Kenntnis der Compliance-Anforderungen (siehe <a href="13-compliance.html">Compliance-Dokument</a>)</li>
+            <li>Grundkenntnisse regulaerer Ausdruecke</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Sensitive Daten identifizieren</h4>
+    <p>In unseren Logs koennen folgende sensitive Daten vorkommen:</p>
+    <table>
+        <tr><th>Datentyp</th><th>Beispiel</th><th>Vorkommen</th></tr>
+        <tr><td>E-Mail-Adressen</td><td><code>user@example.com</code></td><td>Apache-Logs, Anwendungslogs</td></tr>
+        <tr><td>IP-Adressen</td><td><code>192.168.1.100</code></td><td>Alle Netzwerk-Logs</td></tr>
+        <tr><td>Benutzernamen</td><td><code>admin</code>, <code>jdoe</code></td><td>Auth-Logs, SSH-Logs</td></tr>
+        <tr><td>API-Tokens</td><td><code>Bearer eyJhb...</code></td><td>HTTP-Request-Logs</td></tr>
+    </table>
+
+    <h4>Schritt 2: Masking-Funktion fuer E-Mail-Adressen</h4>
+    <ol>
+        <li>Oeffnen Sie die gewuenschte Pipeline (z.B. <code>pipeline_generic_passthrough</code>)</li>
+        <li>Fuegen Sie <strong>+ Add Function &rarr; Mask</strong> hinzu</li>
+        <li>Konfiguration:</li>
+    </ol>
+    <pre><code>// Regex Pattern fuer E-Mail-Adressen:
+/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+
+// Replace Expression:
+C.Mask.REDACT
+// Oder spezifisch:
+'***@***.***'
+
+// Felder, die durchsucht werden:
+_raw</code></pre>
+
+    <h4>Schritt 3: Masking-Funktion fuer IP-Adressen</h4>
+    <p>Fuegen Sie eine weitere Mask-Funktion hinzu:</p>
+    <pre><code>// Regex Pattern fuer IPv4-Adressen:
+/\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}\b/g
+
+// Replace Expression (letztes Oktett maskieren):
+`${g1}.${g2}.${g3}.xxx`
+
+// Alternativ: Komplette Maskierung
+C.Mask.HASH
+// Erzeugt einen konsistenten Hash, sodass gleiche IPs
+// gleich maskiert werden (nützlich fuer Korrelation)</code></pre>
+
+    <h4>Schritt 4: API-Token-Redaktion</h4>
+    <pre><code>// Regex Pattern fuer Bearer Tokens:
+/Bearer\s+[A-Za-z0-9\-._~+\/]+=*/g
+
+// Replace Expression:
+'Bearer [REDACTED]'
+
+// Regex Pattern fuer generische API-Keys:
+/(?:api[_-]?key|token|secret)[=:]\s*["']?([A-Za-z0-9\-._~+\/]{16,})["']?/gi
+
+// Replace Expression:
+'$1=[REDACTED]'</code></pre>
+
+    <h4>Schritt 5: Testen mit Sample-Daten</h4>
+    <p>Erstellen Sie Test-Events mit sensitiven Daten:</p>
+    <pre><code>{
+  "_raw": "2026-02-17 10:00:00 INFO User login: user@example.com from 192.168.1.100 with Bearer eyJhbGciOiJIUzI1NiJ9.secret",
+  "source": "application.log"
+}</code></pre>
+    <p>Das maskierte Ergebnis sollte so aussehen:</p>
+    <pre><code>{
+  "_raw": "2026-02-17 10:00:00 INFO User login: ***@***.*** from 192.168.1.xxx with Bearer [REDACTED]",
+  "source": "application.log"
+}</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Alle E-Mail-Adressen, die letzten Oktette von IP-Adressen
+        und API-Tokens werden vor der Weiterleitung an Splunk maskiert. Die Maskierung erfolgt
+        transparent &ndash; die Log-Struktur bleibt erhalten, nur die sensitiven Werte werden ersetzt.
+        In Cribl Monitoring sehen Sie unter der Pipeline die Anzahl der maskierten Events.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Verwenden Sie <code>C.Mask.HASH</code> statt <code>C.Mask.REDACT</code>, wenn Sie Korrelation benoetigen (gleiche Eingabe = gleicher Hash)</li>
+            <li>Testen Sie Regex-Muster gruendlich &ndash; zu breite Muster koennen unbeabsichtigt Daten maskieren</li>
+            <li>Dokumentieren Sie alle Maskierungsregeln fuer Compliance-Audits (siehe <a href="13-compliance.html">Compliance-Dokument</a>)</li>
+            <li>Beachten Sie die Reihenfolge: Maskierung sollte <em>vor</em> dem Routing an externe Destinations erfolgen</li>
+        </ul>
+    </div>
+
+    <div class="warning">
+        <strong>DSGVO-Hinweis:</strong> Die Maskierung von personenbezogenen Daten ist eine technische
+        Massnahme nach Art. 32 DSGVO. Stellen Sie sicher, dass die Maskierungsregeln regelmaessig
+        ueberprueft und aktualisiert werden, wenn neue Datenquellen hinzugefuegt werden.
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 6 ==================== -->
+<h2 id="uebung06">Uebung 6: Metriken aus Redis-Logs extrahieren</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Metriken aus Redis-Logs extrahieren</h3>
+        <span class="difficulty difficulty-mittel">Mittel</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Verstehen, wie aus unstrukturierten Log-Daten numerische Metriken
+        extrahiert und als eigenstaendige Metriken-Events an Monitoring-Systeme weitergeleitet werden koennen.
+        Redis-Logs enthalten wertvolle Performance-Daten, die fuer proaktives Monitoring genutzt werden koennen.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Redis-Container (redis-stack) laeuft: <code>docker ps | grep redis</code></li>
+            <li>Cribl Stream laeuft mit Docker-Quelle</li>
+            <li>Grundverstaendnis von Redis-Log-Formaten</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Redis-Log-Format verstehen</h4>
+    <p>Untersuchen Sie die Redis-Logs:</p>
+    <pre><code># Redis-Logs anzeigen
+docker logs redis-stack --tail 30
+
+# Typische Redis-Log-Eintraege:
+# 1:M 17 Feb 2026 10:15:00.123 * DB loaded from disk: 0.002 seconds
+# 1:M 17 Feb 2026 10:15:00.124 * Ready to accept connections tcp
+# 1:M 17 Feb 2026 10:20:00.001 # WARNING Memory usage &gt; 90%
+# 1:M 17 Feb 2026 10:20:00.002 * 10 changes in 300 seconds. Saving...
+# 1:M 17 Feb 2026 10:20:00.100 * Background saving terminated with success
+
+# Redis INFO-Kommando fuer aktuelle Metriken:
+docker exec redis-stack redis-cli INFO memory | head -5
+# used_memory:1234567
+# used_memory_human:1.18M
+# used_memory_rss:2345678
+# used_memory_peak:3456789</code></pre>
+
+    <h4>Schritt 2: Pipeline fuer Redis-Metriken erstellen</h4>
+    <ol>
+        <li>Erstellen Sie eine neue Pipeline: <code>pipeline_redis_metrics</code></li>
+        <li>Fuegen Sie eine <strong>Regex Extract</strong>-Funktion hinzu:</li>
+    </ol>
+    <pre><code>// Pattern 1: Memory-Meldungen
+// Source: _raw
+// Regex:
+/used_memory:(\d+)/
+// Output: redis_memory_bytes
+
+// Pattern 2: Verbindungen
+// Regex:
+/connected_clients:(\d+)/
+// Output: redis_connected_clients
+
+// Pattern 3: Operationen pro Sekunde
+// Regex:
+/instantaneous_ops_per_sec:(\d+)/
+// Output: redis_ops_per_sec
+
+// Pattern 4: DB-Saves
+// Regex:
+/(\d+)\s+changes\s+in\s+(\d+)\s+seconds/
+// Output: g1 -> redis_changes, g2 -> redis_save_interval</code></pre>
+
+    <h4>Schritt 3: Numerische Konvertierung per Eval</h4>
+    <pre><code>// Eval-Funktion: Felder in Zahlen konvertieren
+// redis_memory_bytes  = Number(redis_memory_bytes) || 0
+// redis_memory_mb     = Math.round(redis_memory_bytes / 1024 / 1024 * 100) / 100
+// redis_connected_clients = Number(redis_connected_clients) || 0
+// redis_ops_per_sec   = Number(redis_ops_per_sec) || 0
+// metric_type         = 'redis_performance'
+// _time               = Date.now() / 1000</code></pre>
+
+    <h4>Schritt 4: Metriken-Output konfigurieren</h4>
+    <p>Erstellen Sie optional einen separaten Output fuer Metriken:</p>
+    <ol>
+        <li>Navigieren Sie zu <strong>Data &rarr; Destinations &rarr; + Add Destination</strong></li>
+        <li>Waehlen Sie <strong>Splunk HEC</strong> (oder einen Metrics-Store Ihrer Wahl)</li>
+        <li>Konfiguration:
+            <ul>
+                <li><strong>Name:</strong> <code>splunk_hec_metrics</code></li>
+                <li><strong>Index:</strong> <code>ice_metrics</code> (separater Metriken-Index)</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h4>Schritt 5: Route fuer Redis-Metriken erstellen</h4>
+    <pre><code>// Route-Filter:
+container_name === 'redis-stack' &amp;&amp; /used_memory|connected_clients|ops_per_sec|changes in/.test(_raw)
+
+// Pipeline: pipeline_redis_metrics
+// Output: splunk_hec_metrics
+// Final: false (Events auch an regulaere Pipeline weiterleiten)</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Redis-Performance-Metriken werden als strukturierte Events
+        mit numerischen Werten extrahiert. In Splunk koennen Sie Dashboards erstellen:
+        <code>index=ice_metrics metric_type=redis_performance | timechart avg(redis_memory_mb), avg(redis_ops_per_sec)</code>.
+        Die Metriken umfassen Speicherverbrauch (MB), aktive Verbindungen und Operationen pro Sekunde.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Verwenden Sie <code>redis-cli INFO</code> periodisch (z.B. via Cron) als zusaetzliche Metrik-Quelle</li>
+            <li>Setzen Sie Schwellwerte in Splunk-Alerts: <code>redis_memory_mb &gt; 500</code> oder <code>redis_ops_per_sec &gt; 10000</code></li>
+            <li>Bedenken Sie, dass Redis-Logs nicht alle Metriken kontinuierlich ausgeben &ndash; ergaenzen Sie mit <code>redis-cli INFO</code></li>
+            <li>Mit <code>Final: false</code> auf der Route erhalten Sie sowohl Metriken als auch die Original-Logs</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 7 ==================== -->
+<h2 id="uebung07">Uebung 7: Conditional Routing mit Regex</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Conditional Routing mit Regex</h3>
+        <span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Erlernen fortgeschrittener Routing-Techniken mit regex-basierten
+        Filtern, um Events basierend auf komplexen Inhaltsmuster an unterschiedliche Pipelines und
+        Destinations zu leiten. Dies ermoeglicht eine praezise Steuerung des Datenflusses.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Uebungen 1-4 abgeschlossen (Pipelines und Routes sind konfiguriert)</li>
+            <li>Fortgeschrittene Kenntnisse in regulaeren Ausdruecken</li>
+            <li>Verstaendnis der Cribl Route-Tabelle und Evaluationsreihenfolge</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Routing-Szenarien definieren</h4>
+    <p>Wir konfigurieren folgende Routing-Regeln:</p>
+    <table>
+        <tr><th>Szenario</th><th>Regex-Filter</th><th>Ziel-Pipeline</th><th>Destination</th></tr>
+        <tr>
+            <td>Security-Events (SSH, Auth)</td>
+            <td><code>/(?:ssh|auth|sudo|login|password)/i</code></td>
+            <td>pipeline_security_auth</td>
+            <td>splunk_s2s (Security-Index)</td>
+        </tr>
+        <tr>
+            <td>HTTP-Fehler (4xx, 5xx)</td>
+            <td><code>/HTTP\/\d\.\d"\s+[45]\d{2}/</code></td>
+            <td>pipeline_http_errors</td>
+            <td>splunk_hec (Error-Index)</td>
+        </tr>
+        <tr>
+            <td>Performance-Warnungen</td>
+            <td><code>/(?:memory|cpu|disk|timeout|slow)/i</code></td>
+            <td>pipeline_performance</td>
+            <td>splunk_hec_metrics</td>
+        </tr>
+        <tr>
+            <td>Health-Check-Noise</td>
+            <td><code>/(?:health|ping|alive|ready)/i</code></td>
+            <td>devnull (Drop)</td>
+            <td>-</td>
+        </tr>
+    </table>
+
+    <h4>Schritt 2: Regex-basierte Routes erstellen</h4>
+    <p>Erstellen Sie die Routes in der Cribl UI:</p>
+
+    <p><strong>Route 1: Security Events</strong></p>
+    <pre><code>// Route: route_security_regex
+// Filter Expression:
+/(?:ssh|auth|sudo|login|password|failed|accepted|session opened|session closed)/i.test(_raw)
+
+// Pipeline: pipeline_security_auth
+// Output: splunk_s2s
+// Final: true</code></pre>
+
+    <p><strong>Route 2: HTTP Errors</strong></p>
+    <pre><code>// Route: route_http_errors
+// Filter Expression:
+/HTTP\/\d\.\d"\s+[45]\d{2}\s/.test(_raw) || (statusCode &amp;&amp; statusCode >= 400)
+
+// Pipeline: pipeline_apache_clf
+// Output: splunk_hec
+// Final: true</code></pre>
+
+    <p><strong>Route 3: Performance Warnings</strong></p>
+    <pre><code>// Route: route_performance
+// Filter Expression:
+/(?:out of memory|high cpu|disk full|timeout exceeded|slow query|latency)/i.test(_raw)
+  &amp;&amp; severity &lt;= 4
+
+// Pipeline: pipeline_generic_passthrough
+// Output: splunk_hec_metrics
+// Final: false  (auch an regulaere Destination senden)</code></pre>
+
+    <p><strong>Route 4: Health-Check Noise (Drop)</strong></p>
+    <pre><code>// Route: route_drop_healthchecks
+// Filter Expression:
+/^(?:GET|HEAD)\s+\/(?:health|ping|alive|ready|status)\s+HTTP/i.test(_raw)
+  || (/health.*check/i.test(_raw) &amp;&amp; log_level === 'DEBUG')
+
+// Pipeline: devnull
+// Output: devnull
+// Final: true</code></pre>
+
+    <h4>Schritt 3: Route-Reihenfolge festlegen</h4>
+    <p>Die Reihenfolge in der Route-Tabelle ist entscheidend:</p>
+    <ol>
+        <li><code>route_drop_healthchecks</code> (Noise zuerst eliminieren)</li>
+        <li><code>route_mosquitto</code> (spezifische Quellen)</li>
+        <li><code>route_security_regex</code> (Security-Events)</li>
+        <li><code>route_http_errors</code> (HTTP-Fehler)</li>
+        <li><code>route_performance</code> (Performance, nicht final)</li>
+        <li><code>route_docker_default</code> (Fallback fuer alle Docker-Events)</li>
+        <li><code>route_default</code> (Catch-all)</li>
+    </ol>
+
+    <h4>Schritt 4: Testen und Validieren</h4>
+    <pre><code># Test-Events ueber Syslog senden:
+# Security Event:
+echo "&lt;34&gt;Feb 17 10:30:00 nuc sshd[1234]: Failed password for admin from 10.0.0.1 port 22 ssh2" \
+  | nc -u localhost 514
+
+# HTTP Error:
+echo '192.168.1.1 - - [17/Feb/2026:10:30:00 +0100] "GET /admin HTTP/1.1" 403 287' \
+  | nc -u localhost 514
+
+# Health Check (should be dropped):
+echo '10.0.0.1 - - [17/Feb/2026:10:30:00 +0100] "GET /health HTTP/1.1" 200 2' \
+  | nc -u localhost 514</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Events werden basierend auf ihrem Inhalt an die korrekte
+        Pipeline und Destination geleitet. Security-Events landen im Security-Index, HTTP-Fehler im
+        Error-Index, Health-Checks werden verworfen. In der Cribl Monitoring-Ansicht sehen Sie die
+        Verteilung der Events pro Route. Die Health-Check-Route sollte eine messbare Volumenreduktion
+        zeigen.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Regex-Filter in Routes werden bei <em>jedem</em> Event evaluiert &ndash; halten Sie sie so einfach wie moeglich</li>
+            <li>Verwenden Sie <code>__inputId</code> als Vorbedingung, um Regex nur auf relevante Quellen anzuwenden: <code>__inputId=='syslog:in_syslog' &amp;&amp; /pattern/.test(_raw)</code></li>
+            <li>Nutzen Sie die Cribl Live-Capture-Funktion (<strong>Monitoring &rarr; Live Data</strong>), um zu sehen, welche Route ein Event durchlaeuft</li>
+            <li>Dokumentieren Sie jede Route mit Kommentaren im Description-Feld fuer spaetere Nachvollziehbarkeit</li>
+        </ul>
+    </div>
+
+    <div class="warning">
+        <strong>Achtung:</strong> Zu viele Regex-Filter koennen die Performance beeintraechtigen.
+        Messen Sie die CPU-Auslastung des Cribl-Prozesses nach dem Hinzufuegen neuer Regex-Routes
+        und optimieren Sie bei Bedarf (z.B. durch Verwendung einfacher String-Vergleiche statt Regex,
+        wo moeglich).
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 8 ==================== -->
+<h2 id="uebung08">Uebung 8: Cribl Pack erstellen</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Cribl Pack erstellen</h3>
+        <span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Verstehen, wie Cribl Packs als portable Konfigurationspakete funktionieren.
+        Sie lernen, die in Phase 2 erstellten Pipelines, Routes und Lookups als wiederverwendbares Pack
+        zu buendeln, das auf anderen Cribl-Instanzen importiert werden kann.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Uebungen 1-7 abgeschlossen (alle Pipelines, Routes und Lookups sind konfiguriert)</li>
+            <li>Cribl Stream Version 4.x (Packs werden ab Version 3.x unterstuetzt)</li>
+            <li>Zugriff auf die Cribl CLI und das Dateisystem</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Pack-Struktur anlegen</h4>
+    <pre><code># Pack-Verzeichnis erstellen
+PACK_DIR="/opt/cribl/local/cribl/packs/ice-data-phase2"
+sudo mkdir -p "${PACK_DIR}"/{pipelines,routes,lookups,knowledge}
+
+# Pack-Verzeichnisstruktur:
+# ice-data-phase2/
+# ├── pack.json              # Manifest-Datei
+# ├── pipelines/             # Pipeline-Konfigurationen
+# │   ├── pipeline_mosquitto_mqtt/
+# │   │   └── conf.yml
+# │   ├── pipeline_redis_metrics/
+# │   │   └── conf.yml
+# │   └── ...
+# ├── routes/
+# │   └── routes.yml         # Route-Tabelle
+# ├── lookups/
+# │   └── container_lookup.csv
+# └── knowledge/
+#     └── README.md           # Dokumentation des Packs</code></pre>
+
+    <h4>Schritt 2: Pack-Manifest erstellen (pack.json)</h4>
+    <pre><code>sudo tee "${PACK_DIR}/pack.json" &lt;&lt;'EOF'
+{
+  "name": "ice-data-phase2",
+  "displayName": "IceDataEmphasise Phase 2",
+  "description": "Cribl Pack mit Phase 2 Konfigurationen: Docker-Log-Verarbeitung, Severity-Mapping, Sampling, MQTT-Routing, PII-Maskierung und Redis-Metriken.",
+  "version": "1.0.0",
+  "author": "Marcus Pauli",
+  "tags": ["docker", "mqtt", "redis", "pii", "sampling", "metrics"],
+  "minCriblVersion": "4.0.0",
+  "dependencies": [],
+  "readme": "knowledge/README.md",
+  "config": {
+    "splunk_hec_url": {
+      "type": "string",
+      "title": "Splunk HEC URL",
+      "description": "URL des Splunk HEC Endpoints",
+      "default": "http://splunk:8088/services/collector"
+    },
+    "sampling_debug_rate": {
+      "type": "number",
+      "title": "DEBUG Sampling Rate",
+      "description": "Sampling-Rate fuer DEBUG-Events (1 = alle behalten, 10 = jedes 10.)",
+      "default": 10
+    }
+  }
+}
+EOF</code></pre>
+
+    <h4>Schritt 3: Pipelines in das Pack kopieren</h4>
+    <pre><code># Bestehende Pipeline-Konfigurationen kopieren
+CRIBL_CONF="/opt/cribl/local/cribl"
+
+# Pipeline: Docker JSON (erweitert)
+sudo cp -r "${CRIBL_CONF}/pipelines/pipeline_docker_json" \
+  "${PACK_DIR}/pipelines/"
+
+# Pipeline: Mosquitto MQTT
+sudo cp -r "${CRIBL_CONF}/pipelines/pipeline_mosquitto_mqtt" \
+  "${PACK_DIR}/pipelines/"
+
+# Pipeline: Redis Metrics
+sudo cp -r "${CRIBL_CONF}/pipelines/pipeline_redis_metrics" \
+  "${PACK_DIR}/pipelines/"
+
+# Lookup-Datei kopieren
+sudo cp "${CRIBL_CONF}/lookups/container_lookup.csv" \
+  "${PACK_DIR}/lookups/"</code></pre>
+
+    <h4>Schritt 4: Routes exportieren</h4>
+    <pre><code># Nur die Phase-2-Routes extrahieren und in das Pack kopieren
+# (Manuell die relevanten Eintraege aus routes.yml kopieren)
+sudo tee "${PACK_DIR}/routes/routes.yml" &lt;&lt;'EOF'
+routes:
+  - id: route_drop_healthchecks
+    name: Drop Health Checks
+    filter: "/^(?:GET|HEAD)\\s+\\/(?:health|ping|alive|ready)\\s+HTTP/i.test(_raw)"
+    pipeline: devnull
+    output: devnull
+    final: true
+    description: "Eliminiert Health-Check-Noise"
+
+  - id: route_mosquitto
+    name: Mosquitto MQTT
+    filter: "container_name=='mosquitto' || source.includes('mosquitto')"
+    pipeline: pipeline_mosquitto_mqtt
+    output: splunk_hec
+    final: true
+    description: "Dedizierte Route fuer Mosquitto MQTT Broker Logs"
+
+  - id: route_security_regex
+    name: Security Events
+    filter: "/(?:ssh|auth|sudo|login|password|failed|accepted)/i.test(_raw)"
+    pipeline: pipeline_security_auth
+    output: splunk_s2s
+    final: true
+    description: "Sicherheitsrelevante Events an Security-Index"
+EOF</code></pre>
+
+    <h4>Schritt 5: Pack validieren und testen</h4>
+    <pre><code># Pack-Struktur pruefen
+find "${PACK_DIR}" -type f | sort
+
+# Cribl-Konfiguration neu laden
+sudo /opt/cribl/bin/cribl reload
+
+# In der Cribl UI pruefen:
+# Settings &rarr; Packs &rarr; "ice-data-phase2" sollte sichtbar sein
+
+# Pack als .crbl-Datei exportieren (fuer Transport):
+cd /opt/cribl/local/cribl/packs
+sudo tar czf /tmp/ice-data-phase2-v1.0.0.crbl ice-data-phase2/
+ls -lh /tmp/ice-data-phase2-v1.0.0.crbl</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Ein vollstaendiges Cribl Pack mit dem Namen
+        <code>ice-data-phase2</code> ist erstellt und in der Cribl UI unter <strong>Settings &rarr; Packs</strong>
+        sichtbar. Das Pack enthaelt alle Phase-2-Pipelines, Routes, Lookups und ist als <code>.crbl</code>-Datei
+        exportierbar. Auf einer anderen Cribl-Instanz kann das Pack ueber
+        <strong>Settings &rarr; Packs &rarr; Import</strong> importiert werden.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Verwenden Sie Pack-Variablen (<code>C.vars</code>) fuer umgebungsspezifische Werte (z.B. Splunk-URL, Indices)</li>
+            <li>Testen Sie das Pack auf einer frischen Cribl-Instanz, um Abhaengigkeiten zu identifizieren</li>
+            <li>Versionieren Sie das Pack mit semantischer Versionierung (Major.Minor.Patch)</li>
+            <li>Cribl Packs koennen auch ueber die Cribl Pack Dispensary (Community-Repository) geteilt werden</li>
+            <li>Fuegen Sie eine <code>knowledge/README.md</code> mit Installations- und Konfigurationsanleitung hinzu</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 9 ==================== -->
+<h2 id="uebung09">Uebung 9: Backpressure + Persistent Queue testen</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>Backpressure + Persistent Queue testen</h3>
+        <span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Verstehen, wie Cribl mit Backpressure-Situationen umgeht und wie
+        Persistent Queues (PQ) konfiguriert und ueberwacht werden. Sie lernen, einen Destination-Ausfall
+        zu simulieren und die Wiederherstellung nach dem Ausfall zu verifizieren.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Cribl Stream laeuft mit mindestens einer aktiven Destination (z.B. Splunk HEC)</li>
+            <li>Persistent Queue ist auf der Destination aktiviert</li>
+            <li>Zugang zum Splunk-Server (zum Stoppen/Starten des HEC-Endpoints)</li>
+            <li>Grundverstaendnis von Queuing-Konzepten</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Persistent Queue konfigurieren</h4>
+    <p>Aktivieren Sie die PQ auf der Splunk-HEC-Destination:</p>
+    <ol>
+        <li>Navigieren Sie zu <strong>Data &rarr; Destinations &rarr; splunk_hec</strong></li>
+        <li>Scrollen Sie zu <strong>Persistent Queue</strong></li>
+        <li>Konfiguration:
+            <ul>
+                <li><strong>Enable Persistent Queue:</strong> aktiviert</li>
+                <li><strong>Max Queue Size:</strong> <code>100 MB</code></li>
+                <li><strong>Max Queue File Size:</strong> <code>10 MB</code></li>
+                <li><strong>Queue-full Behavior:</strong> <code>Block</code> (alternativ: Drop)</li>
+                <li><strong>Compression:</strong> <code>gzip</code></li>
+            </ul>
+        </li>
+        <li>Klicken Sie auf <strong>Save</strong></li>
+    </ol>
+
+    <h4>Schritt 2: Baseline-Metriken erfassen</h4>
+    <pre><code># Aktuelle Queue-Groesse und Events-Throughput notieren
+TOKEN=$(curl -s -X POST "http://localhost:9000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' | jq -r '.token')
+
+# Destination-Status pruefen
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:9000/api/v1/system/outputs/splunk_hec" | jq '{
+    status: .status,
+    pq_enabled: .pq.enabled,
+    pq_maxSize: .pq.maxSize
+  }'
+
+# Queue-Verzeichnis pruefen
+ls -la /opt/cribl/state/queues/
+du -sh /opt/cribl/state/queues/*</code></pre>
+
+    <h4>Schritt 3: Destination-Ausfall simulieren</h4>
+    <div class="warning">
+        <strong>Achtung:</strong> Diese Uebung unterbricht temporaer die Datenweiterleitung an Splunk.
+        Fuehren Sie dies nur in einer Test-/PoC-Umgebung durch, nicht in Produktion!
+    </div>
+    <pre><code># Option A: Splunk HEC temporaer deaktivieren
+# (Auf dem Splunk-Server)
+# Settings &rarr; Data Inputs &rarr; HTTP Event Collector &rarr; Disable
+
+# Option B: Firewall-Regel (blockiert Port 8088)
+sudo iptables -A OUTPUT -p tcp --dport 8088 -j DROP
+
+# Option C: Cribl Destination auf ungueltige URL aendern
+# In der Cribl UI: Destinations &rarr; splunk_hec &rarr; URL aendern auf:
+# http://localhost:19999/services/collector  (nicht existierender Port)</code></pre>
+
+    <h4>Schritt 4: Backpressure beobachten</h4>
+    <pre><code># Queue-Wachstum ueberwachen (alle 10 Sekunden)
+watch -n 10 'du -sh /opt/cribl/state/queues/* 2>/dev/null; echo "---"; \
+  curl -s http://localhost:9000/api/v1/health 2>/dev/null | jq .destinations'
+
+# Cribl-Logs auf Backpressure-Meldungen pruefen
+tail -f /opt/cribl/log/cribl.log | grep -i "backpressure\|queue\|blocked"
+
+# In der Cribl UI beobachten:
+# Monitoring &rarr; Destinations &rarr; splunk_hec
+# - Status sollte "Error" oder "Blocked" zeigen
+# - Queue Depth waechst an</code></pre>
+
+    <p>Lassen Sie die Simulation 2-5 Minuten laufen, damit sich die Queue fuellt.</p>
+
+    <h4>Schritt 5: Wiederherstellung und Drain verifizieren</h4>
+    <pre><code># Destination wiederherstellen:
+# Option A: Splunk HEC wieder aktivieren
+# Option B: Firewall-Regel entfernen
+sudo iptables -D OUTPUT -p tcp --dport 8088 -j DROP
+# Option C: URL in Cribl zuruecksetzen
+
+# Queue-Drain beobachten:
+watch -n 5 'du -sh /opt/cribl/state/queues/* 2>/dev/null'
+
+# Die Queue sollte schrittweise kleiner werden,
+# bis alle gepufferten Events zugestellt sind.
+
+# Verifizierung in Splunk:
+# Suchen Sie nach einer Luecke in den Events und pruefen Sie,
+# ob nach der Wiederherstellung alle Events lueckenlos ankommen:
+# index=ice_data | timechart span=1m count</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Waehrend des simulierten Ausfalls wachsen die PQ-Dateien
+        unter <code>/opt/cribl/state/queues/</code> an. In den Cribl-Logs erscheinen Backpressure-Warnungen.
+        Nach der Wiederherstellung der Destination werden alle gepufferten Events zugestellt (Queue-Drain).
+        In Splunk ist eine zeitliche Luecke sichtbar, aber <em>keine</em> Events gehen verloren.
+        Die Queue schrumpft nach Wiederherstellung auf 0.
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Setzen Sie Monitoring-Alerts fuer Queue-Fuellstand: Warnung bei 50%, Kritisch bei 80%</li>
+            <li>Testen Sie auch das Verhalten bei <code>Queue-full Behavior: Drop</code>, um den Unterschied zu <code>Block</code> zu verstehen</li>
+            <li>Bei <code>Block</code> stoppt Cribl die Aufnahme neuer Events, wenn die Queue voll ist &ndash; dies kann zu Datenverlust an der <em>Quelle</em> fuehren</li>
+            <li>Planen Sie die PQ-Groesse entsprechend: <code>Max Queue Size</code> sollte den erwarteten Durchsatz fuer die maximale Ausfallzeit abdecken</li>
+            <li>Pruefen Sie den Festplattenplatz: <code>df -h /opt/cribl/state/queues/</code></li>
+        </ul>
+    </div>
+</div>
+
+<!-- ==================== UEBUNG 10 ==================== -->
+<h2 id="uebung10">Uebung 10: A/B-Test: Regeln vs. Ollama-Klassifikation</h2>
+
+<div class="exercise">
+    <div class="exercise-header">
+        <h3>A/B-Test: Regeln vs. Ollama-Klassifikation</h3>
+        <span class="difficulty difficulty-fortgeschritten">Fortgeschritten</span>
+    </div>
+
+    <div class="lernziel">
+        <strong>Lernziel:</strong> Vergleichen Sie die Genauigkeit und Performance von regelbasierter
+        Log-Klassifikation (Regex, Lookup) mit KI-gestuetzter Klassifikation via Ollama (lokales LLM).
+        Sie lernen, einen strukturierten A/B-Test aufzusetzen, Ergebnisse zu messen und eine fundierte
+        Empfehlung abzugeben.
+    </div>
+
+    <div class="voraussetzungen">
+        <strong>Voraussetzungen:</strong>
+        <ul>
+            <li>Alle vorherigen Uebungen abgeschlossen (regelbasierte Klassifikation funktioniert)</li>
+            <li>Ollama ist installiert und ein Modell ist geladen: <code>ollama list</code></li>
+            <li>Ollama API ist erreichbar: <code>curl http://localhost:11434/api/tags</code></li>
+            <li>Ausreichend Ressourcen (Ollama benoetigt ca. 4-8 GB RAM je nach Modell)</li>
+        </ul>
+    </div>
+
+    <h4>Schritt 1: Test-Datensatz vorbereiten</h4>
+    <p>Erstellen Sie einen gelabelten Test-Datensatz mit 100 Events:</p>
+    <pre><code># Test-Events aus den letzten Logs extrahieren
+# und manuell mit dem korrekten Label versehen
+
+sudo tee /tmp/test_events.jsonl &lt;&lt;'JSONL'
+{"_raw":"Feb 17 10:00:01 nuc sshd[1234]: Failed password for root from 10.0.0.1 port 22","expected_category":"security","expected_severity":"high"}
+{"_raw":"192.168.1.1 - - [17/Feb/2026:10:00:02] \"GET /index.html HTTP/1.1\" 200 1234","expected_category":"web_access","expected_severity":"low"}
+{"_raw":"{\"log\":\"1:M 17 Feb 10:00:03 # WARNING Memory high\",\"stream\":\"stdout\"}","expected_category":"performance","expected_severity":"medium"}
+{"_raw":"Feb 17 10:00:04 nuc systemd[1]: Started Docker Container nginx.","expected_category":"system","expected_severity":"low"}
+{"_raw":"{\"log\":\"Error: Connection refused to database\",\"stream\":\"stderr\"}","expected_category":"error","expected_severity":"high"}
+JSONL
+
+# Erweitern Sie diesen Datensatz auf mindestens 50-100 Events
+# mit verschiedenen Kategorien und Severity-Levels</code></pre>
+
+    <h4>Schritt 2: Regelbasierte Klassifikation testen</h4>
+    <p>Nutzen Sie die bestehenden Cribl-Pipelines zur Klassifikation:</p>
+    <pre><code># Die regelbasierte Klassifikation ergibt sich aus:
+# - Uebung 2: log_level + severity (Regex + Eval)
+# - Uebung 7: Route-Zuordnung (Security, HTTP, Performance)
+
+# Ergebnis-Felder nach Pipeline-Verarbeitung:
+# rule_category  (security | web_access | performance | system | error)
+# rule_severity  (high | medium | low)
+
+# Messen Sie fuer jedes Test-Event:
+# 1. Stimmt rule_category mit expected_category ueberein?
+# 2. Stimmt rule_severity mit expected_severity ueberein?
+# 3. Verarbeitungszeit pro Event</code></pre>
+
+    <h4>Schritt 3: Ollama-Klassifikation einrichten</h4>
+    <p>Erstellen Sie ein Skript fuer die KI-Klassifikation:</p>
+    <pre><code>#!/usr/bin/env bash
+# ollama_classify.sh - Klassifiziert Log-Events via Ollama
+
+MODEL="llama3.2:3b"  # Oder ein anderes lokales Modell
+OLLAMA_URL="http://localhost:11434/api/generate"
+
+classify_event() {
+    local raw_event="$1"
+
+    local prompt="Klassifiziere dieses Log-Event. Antworte NUR mit einem JSON-Objekt.
+Kategorien: security, web_access, performance, system, error, other
+Severity: high, medium, low
+
+Log-Event: ${raw_event}
+
+Antwort (nur JSON):
+{\"ai_category\": \"...\", \"ai_severity\": \"...\", \"ai_confidence\": 0.0-1.0}"
+
+    curl -s "${OLLAMA_URL}" \
+      -d "$(jq -n --arg model "${MODEL}" --arg prompt "${prompt}" \
+        '{model: $model, prompt: $prompt, stream: false}')" \
+      | jq -r '.response'
+}
+
+# Test mit einem Event:
+classify_event "Feb 17 10:00:01 nuc sshd[1234]: Failed password for root from 10.0.0.1"</code></pre>
+
+    <h4>Schritt 4: A/B-Test durchfuehren</h4>
+    <pre><code>#!/usr/bin/env bash
+# ab_test.sh - Vergleicht regelbasierte und KI-Klassifikation
+
+RESULTS_FILE="/tmp/ab_test_results.csv"
+echo "event_id,expected_cat,expected_sev,rule_cat,rule_sev,rule_ms,ai_cat,ai_sev,ai_ms,ai_confidence" \
+  &gt; "${RESULTS_FILE}"
+
+EVENT_ID=0
+while IFS= read -r line; do
+    EVENT_ID=$((EVENT_ID + 1))
+
+    expected_cat=$(echo "${line}" | jq -r '.expected_category')
+    expected_sev=$(echo "${line}" | jq -r '.expected_severity')
+    raw=$(echo "${line}" | jq -r '._raw')
+
+    # Regelbasierte Klassifikation (simuliert)
+    RULE_START=$(date +%s%N)
+    # ... (Pipeline-Preview-API oder lokale Regex-Auswertung)
+    RULE_END=$(date +%s%N)
+    rule_ms=$(( (RULE_END - RULE_START) / 1000000 ))
+
+    # KI-Klassifikation
+    AI_START=$(date +%s%N)
+    ai_result=$(classify_event "${raw}")
+    AI_END=$(date +%s%N)
+    ai_ms=$(( (AI_END - AI_START) / 1000000 ))
+
+    ai_cat=$(echo "${ai_result}" | jq -r '.ai_category // "unknown"')
+    ai_sev=$(echo "${ai_result}" | jq -r '.ai_severity // "unknown"')
+    ai_conf=$(echo "${ai_result}" | jq -r '.ai_confidence // 0')
+
+    echo "${EVENT_ID},${expected_cat},${expected_sev},${rule_cat},${rule_sev},${rule_ms},${ai_cat},${ai_sev},${ai_ms},${ai_conf}" \
+      &gt;&gt; "${RESULTS_FILE}"
+
+    echo "Event ${EVENT_ID}: Rule=${rule_ms}ms, AI=${ai_ms}ms"
+done &lt; /tmp/test_events.jsonl
+
+echo "Ergebnisse gespeichert in: ${RESULTS_FILE}"</code></pre>
+
+    <h4>Schritt 5: Ergebnisse auswerten</h4>
+    <pre><code># Einfache Auswertung mit awk:
+
+echo "=== A/B-Test Ergebnisse ==="
+
+# Genauigkeit der Regel-Klassifikation
+echo "--- Regelbasiert ---"
+awk -F',' 'NR&gt;1 {
+    total++
+    if ($2==$4) cat_correct++
+    if ($3==$5) sev_correct++
+    rule_ms_sum+=$6
+} END {
+    printf "Kategorie-Genauigkeit: %.1f%% (%d/%d)\n", cat_correct/total*100, cat_correct, total
+    printf "Severity-Genauigkeit:  %.1f%% (%d/%d)\n", sev_correct/total*100, sev_correct, total
+    printf "Durchschn. Latenz:     %.1f ms\n", rule_ms_sum/total
+}' "${RESULTS_FILE}"
+
+# Genauigkeit der KI-Klassifikation
+echo "--- KI (Ollama) ---"
+awk -F',' 'NR&gt;1 {
+    total++
+    if ($2==$7) cat_correct++
+    if ($3==$8) sev_correct++
+    ai_ms_sum+=$9
+    conf_sum+=$10
+} END {
+    printf "Kategorie-Genauigkeit: %.1f%% (%d/%d)\n", cat_correct/total*100, cat_correct, total
+    printf "Severity-Genauigkeit:  %.1f%% (%d/%d)\n", sev_correct/total*100, sev_correct, total
+    printf "Durchschn. Latenz:     %.1f ms\n", ai_ms_sum/total
+    printf "Durchschn. Confidence: %.2f\n", conf_sum/total
+}' "${RESULTS_FILE}"</code></pre>
+
+    <div class="ergebnis">
+        <strong>Erwartetes Ergebnis:</strong> Die Auswertung zeigt typischerweise:
+        <table>
+            <tr><th>Metrik</th><th>Regelbasiert</th><th>Ollama KI</th></tr>
+            <tr><td>Kategorie-Genauigkeit</td><td>85-95%</td><td>70-90%</td></tr>
+            <tr><td>Severity-Genauigkeit</td><td>90-98%</td><td>75-90%</td></tr>
+            <tr><td>Latenz pro Event</td><td>&lt; 1 ms</td><td>100-2000 ms</td></tr>
+            <tr><td>Ressourcenverbrauch</td><td>Minimal</td><td>4-8 GB RAM</td></tr>
+        </table>
+        <p>Regelbasierte Klassifikation ist schneller und bei bekannten Mustern praeziser. KI-Klassifikation
+        kann bei unbekannten oder komplexen Mustern besser sein, hat aber deutlich hoehere Latenz und
+        Ressourcenanforderungen. Die Empfehlung fuer den PoC: Regelbasiert als Primaer-Klassifikation,
+        KI als Fallback fuer nicht klassifizierte Events.</p>
+    </div>
+
+    <div class="tipps">
+        <strong>Tipps:</strong>
+        <ul>
+            <li>Verwenden Sie mindestens 50 Test-Events pro Kategorie fuer statistisch aussagekraeftige Ergebnisse</li>
+            <li>Testen Sie verschiedene Ollama-Modelle: <code>llama3.2:3b</code> (schnell) vs. <code>llama3.2:8b</code> (genauer)</li>
+            <li>Fuer einen Hybrid-Ansatz: Regeln zuerst, bei <code>category=unknown</code> an Ollama weiterleiten</li>
+            <li>Beachten Sie, dass Ollama-Antworten nicht deterministisch sind &ndash; fuehren Sie den Test mehrfach durch</li>
+            <li>Messen Sie auch den Ressourcenverbrauch: <code>docker stats ollama</code> waehrend des Tests</li>
+            <li>Fuer Produktion: Pruefen Sie, ob die Ollama-Latenz fuer Echtzeit-Verarbeitung akzeptabel ist</li>
+        </ul>
+    </div>
+
+    <div class="warning">
+        <strong>Hinweis zur Datensicherheit:</strong> Wenn Sie Ollama verwenden, werden die Log-Events
+        an das lokale LLM gesendet. Da Ollama lokal laeuft, verlassen die Daten nicht den Server.
+        Bei Cloud-basierten LLMs (OpenAI, Anthropic, etc.) muessten Datenschutzaspekte (DSGVO)
+        beruecksichtigt werden. Fuer den PoC wird ausschliesslich die lokale Ollama-Instanz empfohlen.
+    </div>
+</div>
+
+<!-- Zusammenfassung -->
+<h2 id="zusammenfassung">Zusammenfassung</h2>
+
+<p>Die 10 Uebungen decken die wichtigsten Phase-2-Themen ab:</p>
+
+<table>
+    <tr><th>Bereich</th><th>Uebungen</th><th>Wichtigste Erkenntnis</th></tr>
+    <tr>
+        <td><strong>Datenanreicherung</strong></td>
+        <td>1, 2</td>
+        <td>Lookups und Regex-Extraktion sind die Grundbausteine fuer strukturierte Log-Verarbeitung</td>
+    </tr>
+    <tr>
+        <td><strong>Volumenoptimierung</strong></td>
+        <td>3</td>
+        <td>Intelligentes Sampling kann 40-60% Volumen sparen, ohne kritische Events zu verlieren</td>
+    </tr>
+    <tr>
+        <td><strong>Routing</strong></td>
+        <td>4, 7</td>
+        <td>Praezises Routing mit dedizierten Pipelines verbessert die Datenqualitaet erheblich</td>
+    </tr>
+    <tr>
+        <td><strong>Compliance</strong></td>
+        <td>5</td>
+        <td>PII-Maskierung ist fuer DSGVO-Konformitaet essenziell und sollte frueh implementiert werden</td>
+    </tr>
+    <tr>
+        <td><strong>Monitoring</strong></td>
+        <td>6</td>
+        <td>Metriken koennen direkt aus Logs extrahiert werden, ohne zusaetzliche Agenten</td>
+    </tr>
+    <tr>
+        <td><strong>Portabilitaet</strong></td>
+        <td>8</td>
+        <td>Cribl Packs ermoeglichen reproduzierbare Konfigurationen ueber Umgebungen hinweg</td>
+    </tr>
+    <tr>
+        <td><strong>Resilienz</strong></td>
+        <td>9</td>
+        <td>Persistent Queues schuetzen vor Datenverlust bei Destination-Ausfaellen</td>
+    </tr>
+    <tr>
+        <td><strong>KI-Integration</strong></td>
+        <td>10</td>
+        <td>Regelbasierte Klassifikation bleibt fuer bekannte Muster ueberlegen, KI ergaenzt bei unbekannten</td>
+    </tr>
+</table>
+
+<div class="success">
+    <strong>Naechste Schritte:</strong> Nach Abschluss aller Uebungen koennen Sie die Konfigurationen
+    in den produktiven Betrieb ueberfuehren. Dokumentieren Sie Ihre Ergebnisse und erstellen Sie ein
+    Cribl Pack (Uebung 8) fuer die Reproduzierbarkeit. Nutzen Sie die Erkenntnisse aus dem A/B-Test
+    (Uebung 10) fuer die Entscheidung ueber den Einsatz von KI in Phase 3.
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+    <a href="14-troubleshooting.html">&larr; 14 &ndash; Troubleshooting</a>
+    <a href="16-ai-status-panel.html">16 &ndash; AI Status Panel &rarr;</a>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
+    ITSO-konforme Dokumentation &ndash; Version 1.0 &ndash; 2026-02-17
+</div>
+
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "index_patterns": ["cribl-ops-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.lifecycle.name": "cribl-ops-ilm",
+      "index.lifecycle.rollover_alias": "cribl-ops"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "host": {
+          "type": "keyword"
+        },
+        "source": {
+          "type": "keyword"
+        },
+        "sourcetype": {
+          "type": "keyword"
+        },
+        "index": {
+          "type": "keyword"
+        },
+        "container_id": {
+          "type": "keyword"
+        },
+        "container_name": {
+          "type": "keyword"
+        },
+        "log_level": {
+          "type": "keyword"
+        },
+        "log_message": {
+          "type": "text"
+        },
+        "classification": {
+          "type": "keyword"
+        },
+        "classification_method": {
+          "type": "keyword"
+        },
+        "classification_reason": {
+          "type": "keyword"
+        },
+        "cribl_host": {
+          "type": "keyword"
+        },
+        "cribl_pipeline": {
+          "type": "keyword"
+        },
+        "_raw": {
+          "type": "text"
+        }
+      }
+    }
+  },
+  "priority": 200
+}

@@ -1,0 +1,327 @@
+{
+  "id": "ollama_classifier",
+  "conf": {
+    "description": "Two-stage AI classifier for Docker logs: Stage 1 = Rule-based (~80-90%), Stage 2 = Ollama AI for unknowns",
+    "asyncFuncTimeout": 10000,
+    "functions": [
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 0: Parse Docker JSON log format ==="
+        }
+      },
+      {
+        "id": "serde",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "mode": "extract",
+          "type": "json",
+          "srcField": "_raw"
+        },
+        "description": "Parse Docker JSON log format"
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "log_message",
+              "value": "log || _raw"
+            },
+            {
+              "name": "container_id",
+              "value": "source ? (source.match(/\\/([a-f0-9]{64})\\//)||[])[1] : undefined"
+            },
+            {
+              "name": "docker_stream",
+              "value": "stream || 'stdout'"
+            }
+          ]
+        },
+        "description": "Extract container_id and log message from Docker log"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 1: Rule-based classification (fast, handles ~80-90% of events) ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'unknown'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'pending'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'unclassified'"
+            }
+          ]
+        },
+        "description": "Initialize classification fields"
+      },
+      {
+        "id": "eval",
+        "filter": "container_name && /^(homeassistant|ha-|zigbee2mqtt|nodered|node-red|mosquitto|frigate|esphome|tasmota)/.test(container_name.toLowerCase())",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'iot_home_automation_container'"
+            }
+          ]
+        },
+        "description": "Rule: IoT/Home Automation containers -> operational"
+      },
+      {
+        "id": "eval",
+        "filter": "container_name && /^(paperless|nextcloud|vaultwarden|gitea|portainer|watchtower|traefik|nginx-proxy)/.test(container_name.toLowerCase())",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'infrastructure_service_container'"
+            }
+          ]
+        },
+        "description": "Rule: Infrastructure service containers -> operational"
+      },
+      {
+        "id": "eval",
+        "filter": "container_name && /^(tax-ai|ollama|open-webui|redis)/.test(container_name.toLowerCase())",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'ai_stack_container'"
+            }
+          ]
+        },
+        "description": "Rule: AI stack containers -> operational"
+      },
+      {
+        "id": "eval",
+        "filter": "log_message && /(authentication failure|failed password|invalid user|unauthorized|brute.?force|exploit|injection|malware|intrusion|CVE-\\d{4})/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'security_keyword_match'"
+            }
+          ]
+        },
+        "description": "Rule: Security-relevant keywords -> siem"
+      },
+      {
+        "id": "eval",
+        "filter": "log_message && /(permission denied|access denied|forbidden|ssl.?error|certificate.?expired|firewall|blocked|denied)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'access_control_keyword_match'"
+            }
+          ]
+        },
+        "description": "Rule: Access control events -> siem"
+      },
+      {
+        "id": "eval",
+        "filter": "docker_stream === 'stderr' && log_message && /(error|critical|fatal|panic|emergency)/i.test(log_message) && classification === 'unknown'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'stderr_error_pattern'"
+            }
+          ]
+        },
+        "description": "Rule: stderr errors without security keywords -> operational"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /(debug|trace|info|started|listening|connected|ready|healthy|heartbeat)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'normal_operation_pattern'"
+            }
+          ]
+        },
+        "description": "Rule: Normal operational keywords -> operational"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 2: Ollama AI classification for remaining 'unknown' events ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "__ollama_response",
+              "value": "C.Misc.fetch(`http://${C.vars.OLLAMA_HOST || '10.10.0.210'}:${C.vars.OLLAMA_PORT || '11434'}/api/generate`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ model: C.vars.OLLAMA_MODEL || 'qwen2.5:14b', prompt: `Classify this Docker container log line as either SIEM (security-relevant) or OPERATIONAL (normal operations). Reply with exactly one word: SIEM or OPERATIONAL.\\nLog: ${(log_message || '').substring(0, 500)}`, stream: false, options: { num_predict: 10, temperature: 0.1 } }), timeout: 5000 }).then(r => r.json()).then(r => r.response || 'OPERATIONAL').catch(() => 'OPERATIONAL')"
+            }
+          ]
+        },
+        "description": "Ollama AI: Classify unknown events via qwen2.5 (5s timeout, fallback: operational)"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && __ollama_response",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "/siem/i.test(__ollama_response) ? 'siem' : 'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'ollama_ai'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "`ollama_${C.vars.OLLAMA_MODEL || 'qwen2.5:14b'}_response`"
+            }
+          ],
+          "remove": [{"name": "__ollama_response"}]
+        },
+        "description": "Parse Ollama response and set classification"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Fallback: Any remaining 'unknown' defaults to operational ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'fallback'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'default_safe_fallback'"
+            }
+          ]
+        },
+        "description": "Fallback: Any unclassified event -> operational (safe default)"
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "cribl_pipeline",
+              "value": "'ollama_classifier'"
+            },
+            {
+              "name": "cribl_host",
+              "value": "C.os.hostname()"
+            }
+          ]
+        },
+        "description": "Add Cribl metadata"
+      }
+    ]
+  }
+}

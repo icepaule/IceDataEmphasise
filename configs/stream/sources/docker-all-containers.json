@@ -1,0 +1,29 @@
+{
+  "id": "docker_all_containers",
+  "type": "file_monitor",
+  "disabled": false,
+  "description": "Monitors all Docker container JSON log files for Phase 2 AI classification",
+  "fileFilter": "*.log",
+  "path": "/var/lib/docker/containers/*/*.log",
+  "sendToRoutes": true,
+  "preProcessPipeline": "ollama_classifier",
+  "staleChannelFlushMs": 10000,
+  "fields": [
+    {
+      "name": "index",
+      "value": "'docker_ops'"
+    },
+    {
+      "name": "sourcetype",
+      "value": "'docker:json'"
+    },
+    {
+      "name": "source",
+      "value": "'docker:all-containers'"
+    },
+    {
+      "name": "cribl_source",
+      "value": "'docker_all_containers'"
+    }
+  ]
+}

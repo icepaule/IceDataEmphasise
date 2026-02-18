@@ -1,0 +1,7 @@
+server.host: "0.0.0.0"
+server.shutdownTimeout: "5s"
+server.name: "icedataemphasise-kibana"
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+monitoring.ui.container.elasticsearch.enabled: true
+xpack.encryptedSavedObjects.encryptionKey: "a3FkL9mNp2qR7sT0uVwXyZ1bC4dE6fXY"
+telemetry.enabled: false

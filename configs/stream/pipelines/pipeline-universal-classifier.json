@@ -1,0 +1,697 @@
+{
+  "id": "universal_classifier",
+  "conf": {
+    "description": "Universal classifier for all log sources (Docker, Edge/Windows, Edge/Linux, Journal, Syslog). Stage 0: Format detection + field extraction, Stage 1: Rule-based classification (~85-95%), Stage 2: Ollama AI for unknowns, Fallback: operational",
+    "asyncFuncTimeout": 10000,
+    "functions": [
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 0: Source Type Detection based on __inputId ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "source_type",
+              "value": "__inputId ? (__inputId.startsWith('file_monitor:docker') ? 'docker' : __inputId.startsWith('cribl_tcp:') || __inputId.startsWith('cribl:') ? 'edge' : __inputId.startsWith('journal') ? 'journal' : __inputId.startsWith('syslog:') ? 'syslog' : __inputId.startsWith('file_monitor:') ? 'file' : 'unknown') : 'unknown'"
+            }
+          ]
+        },
+        "description": "Stage 0: Detect source_type from __inputId (docker/edge/journal/syslog/file)"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 0b: Docker JSON Parse (only for docker source_type) ==="
+        }
+      },
+      {
+        "id": "serde",
+        "filter": "source_type === 'docker'",
+        "disabled": false,
+        "conf": {
+          "mode": "extract",
+          "type": "json",
+          "srcField": "_raw"
+        },
+        "description": "Parse Docker JSON log format (only for Docker sources)"
+      },
+      {
+        "id": "eval",
+        "filter": "source_type === 'docker'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "log_message",
+              "value": "log || _raw"
+            },
+            {
+              "name": "container_id",
+              "value": "source ? (source.match(/\\/([a-f0-9]{64})\\//)||[])[1] : undefined"
+            },
+            {
+              "name": "docker_stream",
+              "value": "stream || 'stdout'"
+            }
+          ]
+        },
+        "description": "Extract container_id and log message from Docker log"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 0c: Edge field extraction (Windows Event Logs, Linux logs) ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "source_type === 'edge'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "log_message",
+              "value": "Message || message || _raw || ''"
+            },
+            {
+              "name": "edge_event_id",
+              "value": "EventID || eventId || (typeof _raw === 'string' && _raw.match(/EventID[\"\\s:=]+(\\d+)/i) ? parseInt(RegExp.$1) : undefined)"
+            },
+            {
+              "name": "edge_log_name",
+              "value": "LogName || Channel || logName || ''"
+            },
+            {
+              "name": "edge_hostname",
+              "value": "Computer || host || hostname || ''"
+            },
+            {
+              "name": "edge_source",
+              "value": "ProviderName || Provider || source_name || ''"
+            }
+          ]
+        },
+        "description": "Extract Edge fields: EventID, LogName, Message, hostname, provider"
+      },
+      {
+        "id": "eval",
+        "filter": "source_type === 'journal' || source_type === 'syslog' || source_type === 'file'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "log_message",
+              "value": "MESSAGE || message || _raw || ''"
+            }
+          ]
+        },
+        "description": "Extract log_message from journal/syslog/file sources"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 1: Rule-based classification (fast, handles ~85-95% of events) ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'unknown'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'pending'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'unclassified'"
+            }
+          ]
+        },
+        "description": "Initialize classification fields"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- Docker Container Rules (operational by container name) ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "container_name && /^(homeassistant|ha-|zigbee2mqtt|nodered|node-red|mosquitto|frigate|esphome|tasmota)/.test(container_name.toLowerCase())",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'iot_home_automation_container'"
+            }
+          ]
+        },
+        "description": "Rule: IoT/Home Automation containers -> operational"
+      },
+      {
+        "id": "eval",
+        "filter": "container_name && /^(paperless|nextcloud|vaultwarden|gitea|portainer|watchtower|traefik|nginx-proxy)/.test(container_name.toLowerCase())",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'infrastructure_service_container'"
+            }
+          ]
+        },
+        "description": "Rule: Infrastructure service containers -> operational"
+      },
+      {
+        "id": "eval",
+        "filter": "container_name && /^(tax-ai|ollama|open-webui|redis)/.test(container_name.toLowerCase())",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'ai_stack_container'"
+            }
+          ]
+        },
+        "description": "Rule: AI stack containers -> operational"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- Windows Security Event ID Rules (Edge) ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && edge_event_id && [4624,4625,4648,4672,4688,4720,4732,4738].includes(edge_event_id) && /Security/i.test(edge_log_name || '')",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'windows_security_event_id'"
+            }
+          ]
+        },
+        "description": "Rule: Windows Security Event IDs (4624/4625/4648/4672/4688/4720/4732/4738) -> siem"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && edge_event_id && edge_event_id === 7045 && /System/i.test(edge_log_name || '')",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'windows_service_install'"
+            }
+          ]
+        },
+        "description": "Rule: Windows System Event ID 7045 (new service installed) -> siem"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- Sysmon Detection Rules (Edge) ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && edge_event_id && [1,3,7,8,10,11,12,13,22].includes(edge_event_id) && /Sysmon/i.test(edge_log_name || edge_source || '')",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'sysmon_detection'"
+            }
+          ]
+        },
+        "description": "Rule: Sysmon Event IDs (1/3/7/8/10/11/12/13/22) -> siem"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- PowerShell Script Block Logging (Edge) ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && edge_event_id && edge_event_id === 4104 && /PowerShell/i.test(edge_log_name || edge_source || '')",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'powershell_scriptblock'"
+            }
+          ]
+        },
+        "description": "Rule: PowerShell Script Block Logging (Event ID 4104) -> siem"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && edge_event_id && [1116,1117].includes(edge_event_id) && /Defender/i.test(edge_log_name || edge_source || '')",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'windows_defender_alert'"
+            }
+          ]
+        },
+        "description": "Rule: Windows Defender malware detection (Event IDs 1116/1117) -> siem"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- Linux auditd Rules ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /^type=(EXECVE|SYSCALL|USER_AUTH|USER_LOGIN|USER_CMD|ANOM_|CRYPTO_KEY|USER_ACCT|ADD_USER|DEL_USER|ADD_GROUP|DEL_GROUP)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'auditd_security_event'"
+            }
+          ]
+        },
+        "description": "Rule: auditd security-relevant records (EXECVE/SYSCALL/USER_AUTH/etc.) -> siem"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- Linux SSH/sudo/fail2ban Rules ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /(sshd\\[.*\\]:\\s*(Accepted|Failed|Invalid|Disconnected|Connection closed)|sudo:\\s+\\S+\\s+:)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'linux_ssh_sudo_event'"
+            }
+          ]
+        },
+        "description": "Rule: SSH login attempts and sudo usage -> siem"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /fail2ban.*(Ban|Found|Unban)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'fail2ban_alert'"
+            }
+          ]
+        },
+        "description": "Rule: fail2ban Ban/Found/Unban events -> siem"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- General Security Keyword Rules (all sources) ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /(authentication failure|failed password|invalid user|unauthorized|brute.?force|exploit|injection|malware|intrusion|CVE-\\d{4})/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'security_keyword_match'"
+            }
+          ]
+        },
+        "description": "Rule: Security-relevant keywords -> siem"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /(permission denied|access denied|forbidden|ssl.?error|certificate.?expired|firewall|blocked|denied)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'access_control_keyword_match'"
+            }
+          ]
+        },
+        "description": "Rule: Access control events -> siem"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- Edge-specific: Regex match for EventID in log_message (string format) ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /EventID[\"\\s:=]+(4625|4648|4672|4720|4732|4738|7045|1102)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'windows_security_event_id_text'"
+            }
+          ]
+        },
+        "description": "Rule: Windows Security Event IDs in text form (fallback for string-based logs) -> siem"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /Microsoft-Windows-Sysmon.*(EventID[\"\\s:=]+(1|3|7|8|10|11|12|13|22|23|25))/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'siem'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'sysmon_detection_text'"
+            }
+          ]
+        },
+        "description": "Rule: Sysmon Event IDs in text form (fallback for string-based logs) -> siem"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "--- Operational classification rules ---"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "docker_stream === 'stderr' && log_message && /(error|critical|fatal|panic|emergency)/i.test(log_message) && classification === 'unknown'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'stderr_error_pattern'"
+            }
+          ]
+        },
+        "description": "Rule: stderr errors without security keywords -> operational"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && log_message && /(debug|trace|info|started|listening|connected|ready|healthy|heartbeat)/i.test(log_message)",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'rule_based'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'normal_operation_pattern'"
+            }
+          ]
+        },
+        "description": "Rule: Normal operational keywords -> operational"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Stage 2: Ollama AI classification for remaining 'unknown' events ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "__ollama_response",
+              "value": "C.Misc.fetch(`http://${C.vars.OLLAMA_HOST || '10.10.0.210'}:${C.vars.OLLAMA_PORT || '11434'}/api/generate`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ model: C.vars.OLLAMA_MODEL || 'qwen2.5:14b', prompt: `Classify this log line as either SIEM (security-relevant) or OPERATIONAL (normal operations). Context: source_type=${source_type || 'unknown'}, edge_event_id=${edge_event_id || 'none'}, log_name=${edge_log_name || 'none'}. Reply with exactly one word: SIEM or OPERATIONAL.\\nLog: ${(log_message || '').substring(0, 500)}`, stream: false, options: { num_predict: 10, temperature: 0.1 } }), timeout: 5000 }).then(r => r.json()).then(r => r.response || 'OPERATIONAL').catch(() => 'OPERATIONAL')"
+            }
+          ]
+        },
+        "description": "Ollama AI: Classify unknown events via qwen2.5 (5s timeout, fallback: operational)"
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown' && __ollama_response",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "/siem/i.test(__ollama_response) ? 'siem' : 'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'ollama_ai'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "`ollama_${C.vars.OLLAMA_MODEL || 'qwen2.5:14b'}_response`"
+            }
+          ],
+          "remove": [{"name": "__ollama_response"}]
+        },
+        "description": "Parse Ollama response and set classification"
+      },
+      {
+        "id": "comment",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "comment": "=== Fallback: Any remaining 'unknown' defaults to operational ==="
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "classification === 'unknown'",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "classification",
+              "value": "'operational'"
+            },
+            {
+              "name": "classification_method",
+              "value": "'fallback'"
+            },
+            {
+              "name": "classification_reason",
+              "value": "'default_safe_fallback'"
+            }
+          ]
+        },
+        "description": "Fallback: Any unclassified event -> operational (safe default)"
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "disabled": false,
+        "conf": {
+          "add": [
+            {
+              "name": "cribl_pipeline",
+              "value": "'universal_classifier'"
+            },
+            {
+              "name": "cribl_host",
+              "value": "C.os.hostname()"
+            },
+            {
+              "name": "cribl_classified_at",
+              "value": "Date.now()"
+            }
+          ]
+        },
+        "description": "Add Cribl metadata (pipeline name, host, timestamp)"
+      }
+    ]
+  }
+}
