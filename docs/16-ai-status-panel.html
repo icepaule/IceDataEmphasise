@@ -89,7 +89,30 @@
         .suggestion-card h4 { color: #2c5282; margin-bottom: 8px; }
         .suggestion-card .desc { font-size: 0.9em; color: #4a5568; margin-bottom: 10px; }
         .suggestion-card pre { font-size: 0.82em; margin: 8px 0; }
-        .suggestion-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .suggestion-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+
+        /* AI Suggestion enhancements */
+        .edit-area { width: 100%; min-height: 120px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85em; padding: 12px; border: 1px solid #805ad5; border-radius: 6px; resize: vertical; background: #1a202c; color: #e2e8f0; line-height: 1.5; }
+        .edit-area:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 2px rgba(43,108,176,0.3); }
+        .suggestion-type-tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 700; letter-spacing: 0.3px; }
+        .suggestion-type-tag.pipeline { background: #e9d8fd; color: #553c9a; }
+        .suggestion-type-tag.route { background: #fefcbf; color: #975a16; }
+        .suggestion-type-tag.reclass { background: #fed7d7; color: #c53030; }
+        .impact-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+        .impact-bar .bar-track { flex: 1; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+        .impact-bar .bar-fill { height: 100%; border-radius: 5px; transition: width 0.5s; }
+        .impact-bar .bar-label { font-size: 0.82em; font-weight: 600; min-width: 50px; text-align: right; }
+        .ai-progress { padding: 20px; text-align: center; }
+        .ai-progress .phase { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 0.9em; }
+        .ai-progress .phase.active { font-weight: 600; color: #2b6cb0; }
+        .ai-progress .phase.done { color: #38a169; }
+        .ai-progress .phase.pending { color: #a0aec0; }
+        .suggestion-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+        .suggestion-controls select { padding: 7px 10px; border: 1px solid #cbd5e0; border-radius: 5px; font-size: 0.88em; }
+        .context-box { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 14px; font-size: 0.88em; max-height: 250px; overflow-y: auto; }
+        .context-box h4 { color: #2c5282; margin-bottom: 8px; font-size: 0.95em; }
+        .context-box .ctx-item { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid #edf2f7; }
+        .context-box .ctx-label { font-weight: 600; min-width: 120px; color: #4a5568; }
 
         /* Code blocks */
         pre { background: #1a202c; color: #e2e8f0; padding: 14px; border-radius: 6px; overflow-x: auto; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85em; line-height: 1.5; position: relative; }
@@ -331,15 +354,33 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- 4. AI SUGGESTIONS -->
+<!-- 4. AI SUGGESTIONS (KI-gesteuerte Routing-Vorschlaege) -->
 <!-- ============================================================ -->
 <div class="panel">
     <div class="panel-header">
-        <h2>KI-Vorschlaege</h2>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="generateSuggestions()">Neu generieren</button>
+        <h2>KI-Vorschlaege (Routing &amp; Pipeline)</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Ollama analysiert Cribl-Kontext &rarr; Vorschlaege</span>
     </div>
-    <div class="panel-body" id="suggestionsContainer">
-        <div class="empty-state">Vorschlaege werden generiert...</div>
+    <div class="panel-body">
+        <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
+            Analysiert die aktuelle Cribl-Konfiguration (Routen, Pipelines, Destinations) zusammen mit der
+            Datenverteilung aus Elasticsearch und generiert konkrete Vorschlaege fuer Pipeline-Regeln und Route-Aenderungen.
+        </p>
+        <div class="suggestion-controls">
+            <select id="suggestionModel">
+                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                <option value="llama3.1:8b">llama3.1:8b</option>
+            </select>
+            <button class="btn btn-primary" onclick="generateAISuggestions()" id="aiSuggestBtn">KI-Analyse starten</button>
+            <button class="btn btn-outline" onclick="generateSuggestionsLegacy()" id="legacySuggestBtn">Schnellanalyse (ohne KI)</button>
+            <button class="btn btn-sm btn-outline" onclick="clearActivatedRules(); this.textContent='Zurueckgesetzt!'; setTimeout(()=>this.textContent='Verlauf loeschen',1500);" title="Loescht den Verlauf aktivierter Regeln, damit die KI diese erneut vorschlagen kann" style="font-size:0.8em;">Verlauf loeschen</button>
+            <span id="aiSuggestStatus" class="text-muted"></span>
+        </div>
+        <div id="suggestionContext" class="hidden"></div>
+        <div id="suggestionsContainer">
+            <div class="empty-state">Klicke "KI-Analyse starten" fuer kontextbasierte Vorschlaege oder "Schnellanalyse" fuer regelbasierte Auswertung.</div>
+        </div>
     </div>
 </div>
 
@@ -653,7 +694,7 @@ function refreshAll() {
     checkAllServices();
     fetchClassificationStats();
     fetchOllamaEvents(0);
-    generateSuggestions();
+    generateSuggestionsLegacy();
     fetchDataFlowStats();
     countdownValue = 30;
 }
@@ -915,9 +956,9 @@ function ollamaPagePrev() { if (ollamaPage > 0) fetchOllamaEvents(ollamaPage - 1
 function ollamaPageNext() { fetchOllamaEvents(ollamaPage + 1); }
 
 // ============================================================
-// AI SUGGESTIONS
+// AI SUGGESTIONS (Legacy - Schnellanalyse ohne KI)
 // ============================================================
-async function generateSuggestions() {
+async function generateSuggestionsLegacy() {
     const container = document.getElementById('suggestionsContainer');
     container.innerHTML = '<div class="empty-state">Analysiere klassifizierte Events...</div>';
     const esUrl = getConfig('ES_URL');
@@ -1048,6 +1089,9 @@ classification_reason = '${escHtml(s.reason || '')}'</code></pre>` : '';
             <div class="suggestion-actions">
                 <span class="badge ${badgeCls}" style="align-self:center;">${escHtml(s.classification)}</span>
                 <span class="text-muted" style="align-self:center;">${formatNum(s.count)} Events</span>
+                ${s.filter ? `<button class="btn btn-sm btn-success" onclick="activateRule(${i})">Aktivieren</button>` : ''}
+                ${s.filter ? `<button class="btn btn-sm btn-outline" onclick="previewRule(${i})">Vorschau</button>` : ''}
+                <button class="btn btn-sm btn-outline" onclick="copyText(this, ${i})">curl kopieren</button>
             </div>
         </div>`;
     }).join('');
@@ -1088,7 +1132,748 @@ ${JSON.stringify(newFunc, null, 2)}`;
 }
 
 // ============================================================
-// RULE ACTIVATION (5-step modal)
+// AI SUGGESTIONS (KI-gesteuert mit Cribl-Kontext + Ollama)
+// ============================================================
+let aiSuggestionsData = [];
+
+// Track activated suggestions to avoid duplicate proposals
+function getActivatedRules() {
+    try { return JSON.parse(localStorage.getItem('IDE_ACTIVATED_RULES') || '[]'); } catch { return []; }
+}
+function addActivatedRule(suggestion) {
+    const rules = getActivatedRules();
+    const cfg = suggestion.config?.[suggestion.type] || suggestion.config || {};
+    rules.push({
+        type: suggestion.type,
+        title: suggestion.title,
+        filter: cfg.filter || '',
+        pipeline: cfg.pipeline || '',
+        route_id: cfg.route_id || '',
+        ts: new Date().toISOString()
+    });
+    // Keep only last 50 entries
+    if (rules.length > 50) rules.splice(0, rules.length - 50);
+    localStorage.setItem('IDE_ACTIVATED_RULES', JSON.stringify(rules));
+}
+function clearActivatedRules() {
+    localStorage.removeItem('IDE_ACTIVATED_RULES');
+}
+// Check if a suggestion is a duplicate of an existing pipeline function
+function isDuplicateOfExistingRule(suggestion, pipelineFunctions) {
+    if (!pipelineFunctions || pipelineFunctions.length === 0) return false;
+    const cfg = suggestion.config?.pipeline_rule || suggestion.config || {};
+    const sugFilter = (cfg.filter || '').trim();
+    if (!sugFilter) return false;
+    return pipelineFunctions.some(f => {
+        const fFilter = (f.filter || '').trim();
+        return fFilter === sugFilter || (f.description && f.description.includes(suggestion.title));
+    });
+}
+
+async function ensureCriblAuth() {
+    if (criblAuthToken) return criblAuthToken;
+    if (!criblPassword) {
+        criblPassword = prompt('Cribl-Passwort eingeben (wird nur fuer diese Sitzung gespeichert):');
+        if (!criblPassword) throw new Error('Kein Passwort eingegeben');
+    }
+    const criblUrl = getConfig('CRIBL_URL');
+    const user = getConfig('CRIBL_USER');
+    const authResp = await apiFetch('POST', `${criblUrl}/api/v1/auth/login`, {
+        username: user, password: criblPassword
+    });
+    const contentType = authResp.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        const text = await authResp.text();
+        throw new Error(`Cribl API antwortet mit HTML statt JSON (HTTP ${authResp.status}). Ist die Cribl-URL korrekt? URL: ${criblUrl}`);
+    }
+    const authData = await authResp.json();
+    if (!authResp.ok) throw new Error('Cribl Auth fehlgeschlagen: ' + (authData.message || authResp.status));
+    criblAuthToken = authData.token;
+    return criblAuthToken;
+}
+
+async function safeJson(resp, label) {
+    const ct = resp.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+        const text = await resp.text();
+        throw new Error(`${label}: Antwort ist kein JSON (HTTP ${resp.status}, Content-Type: ${ct}). Prüfe Cribl-URL in den Einstellungen.`);
+    }
+    return resp.json();
+}
+
+function summarizePipeline(pipeline) {
+    const funcs = pipeline?.conf?.functions || [];
+    return funcs.map(f => ({
+        id: f.id,
+        filter: f.filter || 'true',
+        description: f.description || '',
+        disabled: !!f.disabled
+    }));
+}
+
+function renderContextSummary(ctx) {
+    const el = document.getElementById('suggestionContext');
+    el.classList.remove('hidden');
+    let html = '<div class="context-box"><h4>Gesammelter Cribl-Kontext</h4>';
+
+    if (ctx.routes) {
+        html += `<div class="ctx-item"><span class="ctx-label">Routen:</span><span>${ctx.routes.length} Routen geladen</span></div>`;
+        for (const r of ctx.routes.slice(0, 8)) {
+            html += `<div class="ctx-item" style="padding-left:20px;"><span class="ctx-label" style="min-width:160px;"><code>${escHtml(r.id || r.name || '?')}</code></span><span class="text-muted">${escHtml(r.filter || 'true')} &rarr; ${escHtml(r.output || r.pipeline || '?')}</span></div>`;
+        }
+        if (ctx.routes.length > 8) html += `<div class="ctx-item text-muted" style="padding-left:20px;">...und ${ctx.routes.length - 8} weitere</div>`;
+    }
+    if (ctx.pipelines) {
+        html += `<div class="ctx-item"><span class="ctx-label">Pipelines:</span><span>${Object.keys(ctx.pipelines).length} Pipelines geladen</span></div>`;
+        for (const [name, funcs] of Object.entries(ctx.pipelines)) {
+            html += `<div class="ctx-item" style="padding-left:20px;"><span class="ctx-label" style="min-width:160px;"><code>${escHtml(name)}</code></span><span class="text-muted">${funcs.length} Funktionen</span></div>`;
+        }
+    }
+    if (ctx.outputs) {
+        html += `<div class="ctx-item"><span class="ctx-label">Destinations:</span><span>${ctx.outputs.length} Outputs</span></div>`;
+        for (const o of ctx.outputs.slice(0, 6)) {
+            html += `<div class="ctx-item" style="padding-left:20px;"><span class="ctx-label" style="min-width:160px;"><code>${escHtml(o.id || '?')}</code></span><span class="text-muted">${escHtml(o.type || '?')}</span></div>`;
+        }
+    }
+    if (ctx.fallbackStats) {
+        html += `<div class="ctx-item"><span class="ctx-label">Fallback-Events:</span><span>${formatNum(ctx.fallbackStats.total)} in ${ctx.fallbackStats.containers} Containern</span></div>`;
+    }
+    if (ctx.distribution) {
+        html += `<div class="ctx-item"><span class="ctx-label">Verteilung:</span><span>SIEM: ${formatNum(ctx.distribution.siem)}, Ops: ${formatNum(ctx.distribution.operational)}, Fallback: ${formatNum(ctx.distribution.fallback)}</span></div>`;
+    }
+
+    html += '</div>';
+    el.innerHTML = html;
+}
+
+function buildProgressHtml(phases, activeIdx) {
+    return '<div class="ai-progress">' + phases.map((p, i) => {
+        const state = i < activeIdx ? 'done' : i === activeIdx ? 'active' : 'pending';
+        const icon = i < activeIdx ? '&#10003;' : i === activeIdx ? '<span class="analyzer-spinner"></span>' : '&#9679;';
+        return `<div class="phase ${state}">${icon} ${escHtml(p)}</div>`;
+    }).join('') + '</div>';
+}
+
+async function generateAISuggestions() {
+    const container = document.getElementById('suggestionsContainer');
+    const statusSpan = document.getElementById('aiSuggestStatus');
+    const btn = document.getElementById('aiSuggestBtn');
+    const model = document.getElementById('suggestionModel').value;
+    const esUrl = getConfig('ES_URL');
+    const criblUrl = getConfig('CRIBL_URL');
+    const ollamaUrl = getConfig('OLLAMA_URL');
+
+    const phases = [
+        'Cribl-Kontext sammeln (Routen, Pipelines, Outputs)',
+        'Elasticsearch-Daten aggregieren',
+        'Ollama-Analyse ausfuehren',
+        'Vorschlaege rendern'
+    ];
+
+    btn.disabled = true;
+    statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Kontext sammeln...';
+    container.innerHTML = buildProgressHtml(phases, 0);
+
+    const ctx = { routes: null, pipelines: {}, outputs: null, fallbackStats: null, distribution: null, fallbackSamples: [] };
+
+    try {
+        // Phase 1: Collect Cribl context
+        let token;
+        try {
+            token = await ensureCriblAuth();
+        } catch (authErr) {
+            // Continue without Cribl context if auth fails
+            statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Cribl Auth fehlgeschlagen, fahre mit ES-Daten fort...';
+        }
+
+        const criblHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        const criblFetches = [];
+        if (token) {
+            criblFetches.push(
+                apiFetch('GET', `${criblUrl}/api/v1/routes`, null, false, criblHeaders)
+                    .then(r => r.json()).then(d => { ctx.routes = d.items || d || []; }).catch(() => { ctx.routes = []; }),
+                apiFetch('GET', `${criblUrl}/api/v1/pipelines/universal_classifier`, null, true, criblHeaders)
+                    .then(r => r.json()).then(d => {
+                        const p = d.items ? d.items[0] : d;
+                        ctx.pipelines['universal_classifier'] = summarizePipeline(p);
+                    }).catch(() => {}),
+                apiFetch('GET', `${criblUrl}/api/v1/pipelines/ollama_classifier`, null, true, criblHeaders)
+                    .then(r => r.json()).then(d => {
+                        const p = d.items ? d.items[0] : d;
+                        ctx.pipelines['ollama_classifier'] = summarizePipeline(p);
+                    }).catch(() => {}),
+                apiFetch('GET', `${criblUrl}/api/v1/system/outputs`, null, true, criblHeaders)
+                    .then(r => r.json()).then(d => { ctx.outputs = d.items || d || []; }).catch(() => { ctx.outputs = []; })
+            );
+        }
+
+        // ES aggregations in parallel with Cribl
+        const esFetches = [
+            apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+                size: 0,
+                query: { term: { 'classification_method.keyword': 'fallback' } },
+                aggs: {
+                    by_container: {
+                        terms: { field: 'CONTAINER_NAME.keyword', size: 30 },
+                        aggs: { sample_logs: { top_hits: { size: 3, _source: ['message', 'log_message', 'CONTAINER_NAME', 'source_type'], sort: [{ '@timestamp': 'desc' }] } } }
+                    }
+                }
+            }).then(r => r.json()).then(d => {
+                const buckets = d.aggregations?.by_container?.buckets || [];
+                ctx.fallbackStats = { total: buckets.reduce((a, b) => a + b.doc_count, 0), containers: buckets.length };
+                ctx.fallbackSamples = buckets.map(b => ({
+                    container: b.key,
+                    count: b.doc_count,
+                    samples: (b.sample_logs?.hits?.hits || []).map(h => {
+                        const s = h._source || {};
+                        return (s.message || s.log_message || '').substring(0, 200);
+                    })
+                }));
+            }).catch(() => { ctx.fallbackStats = { total: 0, containers: 0 }; }),
+
+            apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+                size: 0,
+                aggs: {
+                    by_class: { terms: { field: 'classification.keyword', size: 5 } },
+                    by_method: { terms: { field: 'classification_method.keyword', size: 5 } }
+                }
+            }, true).then(r => r.json()).then(d => {
+                const classBuckets = d.aggregations?.by_class?.buckets || [];
+                const methodBuckets = d.aggregations?.by_method?.buckets || [];
+                ctx.distribution = {
+                    siem: classBuckets.find(b => b.key === 'siem')?.doc_count || 0,
+                    operational: classBuckets.find(b => b.key === 'operational')?.doc_count || 0,
+                    fallback: methodBuckets.find(b => b.key === 'fallback')?.doc_count || 0,
+                    total: d.hits?.total?.value || 0
+                };
+            }).catch(() => { ctx.distribution = { siem: 0, operational: 0, fallback: 0, total: 0 }; })
+        ];
+
+        await Promise.all([...criblFetches, ...esFetches]);
+
+        container.innerHTML = buildProgressHtml(phases, 1);
+        statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Kontext gesammelt, sende an Ollama...';
+
+        // Show context summary
+        renderContextSummary(ctx);
+
+        // Phase 2: Build Ollama prompt
+        container.innerHTML = buildProgressHtml(phases, 2);
+
+        const routesText = ctx.routes && ctx.routes.length > 0
+            ? ctx.routes.map(r => `  - ${r.id || r.name || '?'}: filter="${r.filter || 'true'}", pipeline="${r.pipeline || '?'}", output="${r.output || '?'}", enabled=${r.disabled === false || r.disabled === undefined}`).join('\n')
+            : '  (Keine Routen geladen - Cribl nicht erreichbar)';
+
+        const pipelinesText = Object.entries(ctx.pipelines).map(([name, funcs]) =>
+            `  Pipeline "${name}": ${funcs.length} Funktionen\n` +
+            funcs.map(f => `    - ${f.id}${f.disabled ? ' [DISABLED]' : ''}: filter="${f.filter}", desc="${f.description}"`).join('\n')
+        ).join('\n') || '  (Keine Pipelines geladen)';
+
+        const outputsText = ctx.outputs && ctx.outputs.length > 0
+            ? ctx.outputs.map(o => `  - ${o.id || '?'}: type=${o.type || '?'}${o.address ? ', address=' + o.address : ''}`).join('\n')
+            : '  (Keine Outputs geladen)';
+
+        const fallbackText = ctx.fallbackSamples.map(s =>
+            `  Container "${s.container}" (${s.count} Fallback-Events):\n` +
+            s.samples.map(l => `    > ${l}`).join('\n')
+        ).join('\n') || '  (Keine Fallback-Events)';
+
+        const distText = ctx.distribution
+            ? `Gesamt: ${ctx.distribution.total}, SIEM: ${ctx.distribution.siem}, Operational: ${ctx.distribution.operational}, Fallback-Methode: ${ctx.distribution.fallback}`
+            : '(Keine Verteilungsdaten)';
+
+        const prompt = `Du bist ein Cribl Stream Routing-Experte. Analysiere die aktuelle Konfiguration und Datenverteilung und schlage konkrete Verbesserungen vor.
+
+AKTUELLE CRIBL-ROUTEN:
+${routesText}
+
+AKTUELLE PIPELINES:
+${pipelinesText}
+
+VERFUEGBARE DESTINATIONS:
+${outputsText}
+
+DATENVERTEILUNG:
+${distText}
+
+FALLBACK-EVENTS (nicht korrekt geroutet):
+${fallbackText}
+
+BEREITS AKTIVIERTE REGELN (NICHT erneut vorschlagen!):
+${(() => {
+    const activated = getActivatedRules();
+    if (activated.length === 0) return '  (Keine - dies ist die erste Analyse)';
+    return activated.map(r => `  - [${r.type}] "${r.title}" filter="${r.filter}" (aktiviert ${r.ts})`).join('\n');
+})()}
+
+WICHTIG: Die obigen "bereits aktivierten Regeln" sind in der Pipeline SCHON AKTIV. Die Fallback-Events in Elasticsearch sind HISTORISCHE Daten, die VOR der Aktivierung gesammelt wurden. Schlage NUR Regeln vor, die noch NICHT in den aktuellen Pipelines oder in den bereits aktivierten Regeln existieren.
+
+AUFGABE:
+Analysiere welche Events in der Fallback-Route landen und schlage konkrete NEUE Aenderungen vor (keine Duplikate!):
+1. Pipeline-Regeln: Neue eval-Funktionen fuer die universal_classifier oder ollama_classifier Pipeline
+2. Route-Aenderungen: Neue Routen oder Aenderungen an bestehenden Routen
+3. Reklassifikationen: Events die falsch klassifiziert werden
+
+Antworte EXAKT im folgenden JSON-Format (kein Markdown, nur reines JSON):
+{
+  "analysis": "2-3 Saetze Zusammenfassung der Situation",
+  "suggestions": [
+    {
+      "type": "pipeline_rule | route_change | reclassification",
+      "title": "Kurzer Titel des Vorschlags",
+      "reason": "Ausfuehrliche Begruendung warum dieser Vorschlag sinnvoll ist",
+      "affected_containers": ["container1", "container2"],
+      "example_events": ["Beispiel-Log 1", "Beispiel-Log 2"],
+      "estimated_impact_pct": 0 bis 100,
+      "config": {
+        "pipeline_rule": {
+          "pipeline": "ollama_classifier oder universal_classifier",
+          "filter": "Cribl eval-Filter Ausdruck",
+          "fields": {"classification": "'siem' oder 'operational'", "classification_method": "'rule_based'", "classification_reason": "'reason_name'"},
+          "description": "Auto-Rule: Beschreibung",
+          "insert_before": "Ollama AI oder Stage 2 oder null"
+        },
+        "route_change": {
+          "action": "add oder modify",
+          "route_id": "route_name",
+          "filter": "Cribl Route-Filter",
+          "pipeline": "pipeline_name",
+          "output": "output_id",
+          "insert_before": "route_default oder andere route_id oder null",
+          "description": "Beschreibung der Route"
+        }
+      }
+    }
+  ]
+}
+
+Wichtig: Jeder Vorschlag muss genau EINEN type haben und die passende config-Struktur. Bei pipeline_rule den entsprechenden pipeline_rule-Block, bei route_change den route_change-Block.`;
+
+        const ollamaResp = await fetch(`${ollamaUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: model,
+                prompt: prompt,
+                stream: false,
+                options: { num_predict: 4096, temperature: 0.2 }
+            })
+        });
+
+        if (!ollamaResp.ok) throw new Error(`Ollama HTTP ${ollamaResp.status}`);
+        const ollamaData = await ollamaResp.json();
+        const raw = ollamaData.response || '';
+
+        // Phase 3: Parse response
+        container.innerHTML = buildProgressHtml(phases, 3);
+        statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Antwort parsen...';
+
+        let jsonStr = raw;
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        let aiResult;
+        try {
+            aiResult = JSON.parse(jsonStr);
+        } catch {
+            container.innerHTML = `<div class="config-card"><div class="config-card-header">KI-Rohantwort (JSON-Parse fehlgeschlagen)</div><div class="config-card-body"><pre><code>${escHtml(raw)}</code></pre><p class="text-muted mt-1">Die KI-Antwort konnte nicht als JSON geparst werden. Versuche es mit einem anderen Modell.</p></div></div>`;
+            btn.disabled = false;
+            statusSpan.textContent = 'Parse-Fehler';
+            return;
+        }
+
+        // Phase 4: Filter duplicates and render
+        const allSuggestions = aiResult.suggestions || [];
+        const activated = getActivatedRules();
+        const allPipelineFuncs = [
+            ...(ctx.pipelines['ollama_classifier'] || []),
+            ...(ctx.pipelines['universal_classifier'] || [])
+        ];
+
+        const filtered = allSuggestions.filter(s => {
+            // Check against activated rules (by filter or title match)
+            const cfg = s.config?.[s.type] || s.config || {};
+            const sugFilter = (cfg.filter || '').trim();
+            const isDuplActivated = activated.some(a =>
+                (sugFilter && a.filter && a.filter.trim() === sugFilter) ||
+                (a.title && s.title && a.title.toLowerCase() === s.title.toLowerCase())
+            );
+            if (isDuplActivated) return false;
+
+            // Check against existing pipeline functions
+            if (s.type === 'pipeline_rule' || s.type === 'reclassification') {
+                if (isDuplicateOfExistingRule(s, allPipelineFuncs)) return false;
+            }
+            return true;
+        });
+
+        const removedCount = allSuggestions.length - filtered.length;
+        aiResult.suggestions = filtered;
+        aiSuggestionsData = filtered;
+        renderAISuggestions(aiResult);
+
+        let statusMsg = `${filtered.length} Vorschlaege generiert (${model}, ${((ollamaData.total_duration || 0) / 1e9).toFixed(1)}s)`;
+        if (removedCount > 0) statusMsg += ` | ${removedCount} Duplikate entfernt`;
+        statusSpan.textContent = statusMsg;
+
+    } catch (e) {
+        container.innerHTML = `<div class="empty-state" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</div>`;
+        statusSpan.textContent = 'Fehler';
+    }
+    btn.disabled = false;
+}
+
+function renderAISuggestions(aiResult) {
+    const container = document.getElementById('suggestionsContainer');
+
+    let html = '';
+
+    // Analysis summary
+    if (aiResult.analysis) {
+        html += `<div style="padding:12px;background:#ebf8ff;border-radius:6px;margin-bottom:14px;border-left:4px solid #2b6cb0;">
+            <strong style="color:#2c5282;">KI-Analyse:</strong> ${escHtml(aiResult.analysis)}
+        </div>`;
+    }
+
+    const suggestions = aiResult.suggestions || [];
+    if (suggestions.length === 0) {
+        html += '<div class="empty-state">Die KI hat keine Verbesserungsvorschlaege gefunden. Die aktuelle Konfiguration scheint optimal.</div>';
+        container.innerHTML = html;
+        return;
+    }
+
+    html += suggestions.map((s, i) => {
+        const typeTag = s.type === 'pipeline_rule' ? '<span class="suggestion-type-tag pipeline">Pipeline-Regel</span>'
+            : s.type === 'route_change' ? '<span class="suggestion-type-tag route">Route</span>'
+            : '<span class="suggestion-type-tag reclass">Reklassifikation</span>';
+
+        const borderColor = s.type === 'pipeline_rule' ? '#805ad5' : s.type === 'route_change' ? '#d69e2e' : '#e53e3e';
+
+        const containersHtml = s.affected_containers && s.affected_containers.length > 0
+            ? `<div class="mt-1"><strong style="font-size:0.85em;">Betroffene Container:</strong> ${s.affected_containers.map(c => `<code>${escHtml(c)}</code>`).join(', ')}</div>`
+            : '';
+
+        const examplesHtml = s.example_events && s.example_events.length > 0
+            ? `<div class="mt-1"><strong style="font-size:0.85em;">Beispiel-Events:</strong><ul style="font-size:0.82em;color:#4a5568;margin:4px 0 0 16px;">${s.example_events.map(e => `<li><code>${escHtml(truncate(e, 150))}</code></li>`).join('')}</ul></div>`
+            : '';
+
+        const impactPct = s.estimated_impact_pct || 0;
+        const impactColor = impactPct >= 50 ? '#38a169' : impactPct >= 20 ? '#d69e2e' : '#a0aec0';
+        const impactHtml = `<div class="impact-bar">
+            <span style="font-size:0.85em;font-weight:600;">Impact:</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${impactPct}%;background:${impactColor};"></div></div>
+            <span class="bar-label" style="color:${impactColor};">~${impactPct}%</span>
+        </div>`;
+
+        const configJson = s.config ? JSON.stringify(s.config[s.type] || s.config, null, 2) : '{}';
+
+        return `<div class="suggestion-card" style="border-left:4px solid ${borderColor};" id="aiSugg-${i}">
+            <h4>${typeTag} ${escHtml(s.title)}</h4>
+            <div class="desc">${escHtml(s.reason)}</div>
+            ${containersHtml}
+            ${examplesHtml}
+            ${impactHtml}
+            <div class="mt-1"><strong style="font-size:0.85em;">Konfiguration:</strong></div>
+            <div id="aiSuggConfig-${i}">
+                <pre><code>${escHtml(configJson)}</code></pre>
+            </div>
+            <div class="suggestion-actions">
+                <button class="btn btn-sm btn-success" onclick="acceptSuggestion(${i})">Akzeptieren</button>
+                <button class="btn btn-sm btn-outline" onclick="toggleEditSuggestion(${i})" id="aiSuggEditBtn-${i}">Bearbeiten</button>
+                <button class="btn btn-sm btn-outline" onclick="previewAISuggestion(${i})">Vorschau</button>
+                <button class="btn btn-sm btn-danger" onclick="dismissSuggestion(${i})">Verwerfen</button>
+            </div>
+        </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+}
+
+function toggleEditSuggestion(idx) {
+    const configDiv = document.getElementById('aiSuggConfig-' + idx);
+    const editBtn = document.getElementById('aiSuggEditBtn-' + idx);
+    const s = aiSuggestionsData[idx];
+    if (!s || !configDiv) return;
+
+    const isEditing = configDiv.querySelector('.edit-area');
+    if (isEditing) {
+        // Save edit
+        const textarea = configDiv.querySelector('.edit-area');
+        try {
+            const edited = JSON.parse(textarea.value);
+            if (s.type === 'pipeline_rule') s.config.pipeline_rule = edited;
+            else if (s.type === 'route_change') s.config.route_change = edited;
+            else s.config = edited;
+            configDiv.innerHTML = `<pre><code>${escHtml(JSON.stringify(edited, null, 2))}</code></pre>`;
+            editBtn.textContent = 'Bearbeiten';
+        } catch (e) {
+            alert('Ungueltiges JSON: ' + e.message);
+            return;
+        }
+    } else {
+        // Enter edit mode
+        const configJson = s.config ? JSON.stringify(s.config[s.type] || s.config, null, 2) : '{}';
+        configDiv.innerHTML = `<textarea class="edit-area">${escHtml(configJson)}</textarea>`;
+        editBtn.textContent = 'Speichern';
+    }
+}
+
+function dismissSuggestion(idx) {
+    const card = document.getElementById('aiSugg-' + idx);
+    if (card) {
+        card.style.opacity = '0.4';
+        card.style.pointerEvents = 'none';
+        card.querySelector('h4').insertAdjacentHTML('afterbegin', '<span style="color:#e53e3e;margin-right:6px;">[Verworfen]</span>');
+    }
+}
+
+function previewAISuggestion(idx) {
+    const s = aiSuggestionsData[idx];
+    if (!s) return;
+    const modal = document.getElementById('activationModal');
+    document.getElementById('modalTitle').textContent = 'Vorschau: ' + s.title;
+    document.getElementById('modalConfirmBtn').classList.add('hidden');
+
+    const cfg = s.config ? s.config[s.type] || s.config : {};
+    document.getElementById('modalContent').innerHTML = `
+        <p style="margin-bottom:8px;"><strong>Typ:</strong> ${escHtml(s.type)}</p>
+        <p style="margin-bottom:8px;"><strong>Begruendung:</strong> ${escHtml(s.reason)}</p>
+        ${s.affected_containers ? `<p style="margin-bottom:8px;"><strong>Container:</strong> ${s.affected_containers.map(c => `<code>${escHtml(c)}</code>`).join(', ')}</p>` : ''}
+        <p style="margin-bottom:8px;"><strong>Geschaetzter Impact:</strong> ~${s.estimated_impact_pct || 0}% der Fallback-Events</p>
+        <div class="mt-1"><strong>Konfiguration:</strong></div>
+        <pre><code>${escHtml(JSON.stringify(cfg, null, 2))}</code></pre>
+        <p class="mt-2 text-muted">Klicke "Akzeptieren" auf der Karte, um diese Aenderung zu aktivieren.</p>
+    `;
+    modal.classList.add('active');
+}
+
+function acceptSuggestion(idx) {
+    const s = aiSuggestionsData[idx];
+    if (!s) return;
+
+    if (s.type === 'pipeline_rule') {
+        showPipelineRuleModal(idx, s);
+    } else if (s.type === 'route_change') {
+        showRouteChangeModal(idx, s);
+    } else if (s.type === 'reclassification') {
+        // Reclassification = pipeline rule with siem classification
+        showPipelineRuleModal(idx, s);
+    }
+}
+
+function showPipelineRuleModal(idx, s) {
+    const criblUrl = getConfig('CRIBL_URL');
+    const cfg = s.config?.pipeline_rule || s.config || {};
+    const pipelineName = cfg.pipeline || 'ollama_classifier';
+
+    const newFunc = {
+        id: 'eval',
+        filter: cfg.filter || 'true',
+        disabled: false,
+        conf: {
+            add: Object.entries(cfg.fields || {}).map(([name, value]) => ({ name, value }))
+        },
+        description: cfg.description || `AI-Suggestion: ${s.title}`
+    };
+
+    const modal = document.getElementById('activationModal');
+    const content = document.getElementById('modalContent');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    document.getElementById('modalTitle').textContent = 'Pipeline-Regel aktivieren: ' + s.title;
+
+    content.innerHTML = `
+        <p style="margin-bottom:12px;">Folgende API-Schritte werden ausgefuehrt:</p>
+        <div class="modal-step" id="step1"><span class="step-label">1. Authentifizierung bei Cribl API</span>
+            <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/auth/login</code></div></div>
+        <div class="modal-step" id="step2"><span class="step-label">2. Pipeline "${escHtml(pipelineName)}" laden</span>
+            <div class="step-detail"><code>GET ${escHtml(criblUrl)}/api/v1/pipelines/${escHtml(pipelineName)}</code></div></div>
+        <div class="modal-step" id="step3"><span class="step-label">3. Neue Regel einfuegen</span>
+            <div class="step-detail">eval-Funktion wird vor ${escHtml(cfg.insert_before || 'Ollama-Stufe')} eingefuegt</div></div>
+        <div class="modal-step" id="step4"><span class="step-label">4. Pipeline aktualisieren</span>
+            <div class="step-detail"><code>PATCH ${escHtml(criblUrl)}/api/v1/pipelines/${escHtml(pipelineName)}</code></div></div>
+        <div class="modal-step" id="step5"><span class="step-label">5. Konfiguration committen</span>
+            <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/version/commit</code></div></div>
+        <div class="mt-2"><strong>Einzufuegende Regel:</strong></div>
+        <pre><code>${escHtml(JSON.stringify(newFunc, null, 2))}</code></pre>
+    `;
+    confirmBtn.classList.remove('hidden');
+    confirmBtn.textContent = 'Bestaetigen & Aktivieren';
+    confirmBtn.onclick = modalConfirmAction;
+    pendingModalAction = { type: 'pipeline_rule', suggestion: s, suggestionIdx: idx, newFunc, pipelineName, criblUrl, user: getConfig('CRIBL_USER') };
+    modal.classList.add('active');
+}
+
+function showRouteChangeModal(idx, s) {
+    const criblUrl = getConfig('CRIBL_URL');
+    const cfg = s.config?.route_change || s.config || {};
+
+    const modal = document.getElementById('activationModal');
+    const content = document.getElementById('modalContent');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    document.getElementById('modalTitle').textContent = 'Route aendern: ' + s.title;
+
+    const actionText = cfg.action === 'modify' ? 'Route modifizieren' : 'Neue Route hinzufuegen';
+
+    content.innerHTML = `
+        <p style="margin-bottom:12px;">Folgende API-Schritte werden ausgefuehrt:</p>
+        <div class="modal-step" id="step1"><span class="step-label">1. Authentifizierung bei Cribl API</span>
+            <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/auth/login</code></div></div>
+        <div class="modal-step" id="step2"><span class="step-label">2. Aktuelle Route-Tabelle laden</span>
+            <div class="step-detail"><code>GET ${escHtml(criblUrl)}/api/v1/routes</code></div></div>
+        <div class="modal-step" id="step3"><span class="step-label">3. ${escHtml(actionText)}</span>
+            <div class="step-detail">Route "${escHtml(cfg.route_id || '?')}" ${cfg.action === 'modify' ? 'aktualisieren' : `vor "${escHtml(cfg.insert_before || 'route_default')}" einfuegen`}</div></div>
+        <div class="modal-step" id="step4"><span class="step-label">4. Route-Tabelle aktualisieren</span>
+            <div class="step-detail"><code>PUT ${escHtml(criblUrl)}/api/v1/routes</code></div></div>
+        <div class="modal-step" id="step5"><span class="step-label">5. Konfiguration committen</span>
+            <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/version/commit</code></div></div>
+        <div class="mt-2"><strong>Route-Konfiguration:</strong></div>
+        <pre><code>${escHtml(JSON.stringify(cfg, null, 2))}</code></pre>
+    `;
+    confirmBtn.classList.remove('hidden');
+    confirmBtn.textContent = 'Bestaetigen & Aktivieren';
+    confirmBtn.onclick = modalConfirmAction;
+    pendingModalAction = { type: 'route_change', suggestion: s, suggestionIdx: idx, routeConfig: cfg, criblUrl, user: getConfig('CRIBL_USER') };
+    modal.classList.add('active');
+}
+
+async function executePipelineRuleSteps(action) {
+    const { newFunc, pipelineName, criblUrl, user } = action;
+
+    // Step 1: Auth
+    markStep('step1', 'running');
+    const token = await ensureCriblAuth();
+    markStep('step1', 'done');
+
+    // Step 2: Get pipeline
+    markStep('step2', 'running');
+    const pipeResp = await apiFetch('GET', `${criblUrl}/api/v1/pipelines/${pipelineName}`, null, false, {
+        'Authorization': `Bearer ${token}`
+    });
+    const pipeData = await safeJson(pipeResp, 'Pipeline laden');
+    if (!pipeResp.ok) throw new Error('Pipeline laden fehlgeschlagen: ' + (pipeData.message || pipeResp.status));
+    const pipeline = pipeData.items ? pipeData.items[0] : pipeData;
+    markStep('step2', 'done');
+
+    // Step 3: Insert new rule
+    markStep('step3', 'running');
+    const functions = pipeline.conf?.functions || [];
+    const insertBefore = action.suggestion?.config?.pipeline_rule?.insert_before || null;
+    let insertIdx = -1;
+    if (insertBefore) {
+        insertIdx = functions.findIndex(f =>
+            (f.description && f.description.includes(insertBefore)) ||
+            (f.id === 'comment' && f.conf?.comment?.includes(insertBefore))
+        );
+    }
+    if (insertIdx === -1) {
+        insertIdx = functions.findIndex(f =>
+            f.description && f.description.includes('Ollama AI')
+        );
+    }
+    if (insertIdx === -1) {
+        insertIdx = functions.findIndex(f =>
+            f.id === 'comment' && f.conf?.comment?.includes('Stage 2')
+        );
+    }
+    if (insertIdx === -1) insertIdx = Math.max(0, functions.length - 3);
+    functions.splice(insertIdx, 0, newFunc);
+    pipeline.conf.functions = functions;
+    markStep('step3', 'done');
+
+    // Step 4: Update pipeline
+    markStep('step4', 'running');
+    const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/${pipelineName}`, pipeline, false, {
+        'Authorization': `Bearer ${token}`
+    });
+    const updateData = await safeJson(updateResp, 'Pipeline-Update');
+    if (!updateResp.ok) throw new Error('Pipeline-Update fehlgeschlagen: ' + (updateData.message || updateResp.status));
+    markStep('step4', 'done');
+
+    // Step 5: Commit
+    markStep('step5', 'running');
+    const commitResp = await apiFetch('POST', `${criblUrl}/api/v1/version/commit`, {
+        message: `AI-Suggestion: ${action.suggestion?.title || 'Pipeline rule'}`
+    }, false, { 'Authorization': `Bearer ${token}` });
+    const commitData = await safeJson(commitResp, 'Commit');
+    if (!commitResp.ok) throw new Error('Commit fehlgeschlagen: ' + (commitData.message || commitResp.status));
+    markStep('step5', 'done');
+}
+
+async function executeRouteChangeSteps(action) {
+    const { routeConfig, criblUrl } = action;
+
+    // Step 1: Auth
+    markStep('step1', 'running');
+    const token = await ensureCriblAuth();
+    markStep('step1', 'done');
+
+    // Step 2: Get current routes
+    markStep('step2', 'running');
+    const routesResp = await apiFetch('GET', `${criblUrl}/api/v1/routes`, null, false, {
+        'Authorization': `Bearer ${token}`
+    });
+    const routesData = await safeJson(routesResp, 'Routen laden');
+    if (!routesResp.ok) throw new Error('Routen laden fehlgeschlagen: ' + (routesData.message || routesResp.status));
+    const routeTable = routesData.items ? routesData.items[0] : routesData;
+    const routes = routeTable.conf?.routes || routeTable.routes || [];
+    markStep('step2', 'done');
+
+    // Step 3: Add or modify route
+    markStep('step3', 'running');
+    if (routeConfig.action === 'modify') {
+        const existingIdx = routes.findIndex(r => r.id === routeConfig.route_id);
+        if (existingIdx === -1) throw new Error(`Route "${routeConfig.route_id}" nicht gefunden`);
+        if (routeConfig.filter) routes[existingIdx].filter = routeConfig.filter;
+        if (routeConfig.pipeline) routes[existingIdx].pipeline = routeConfig.pipeline;
+        if (routeConfig.output) routes[existingIdx].output = routeConfig.output;
+        if (routeConfig.description) routes[existingIdx].description = routeConfig.description;
+    } else {
+        // action === 'add'
+        const newRoute = {
+            id: routeConfig.route_id || 'ai_route_' + Date.now(),
+            name: routeConfig.description || routeConfig.route_id || 'AI Route',
+            filter: routeConfig.filter || 'true',
+            pipeline: routeConfig.pipeline || 'default',
+            output: routeConfig.output || 'default',
+            enabled: true,
+            description: routeConfig.description || `AI-Suggestion: ${action.suggestion?.title || 'New route'}`
+        };
+        const insertBefore = routeConfig.insert_before || 'route_default';
+        const insertIdx = routes.findIndex(r => r.id === insertBefore);
+        if (insertIdx >= 0) {
+            routes.splice(insertIdx, 0, newRoute);
+        } else {
+            // Insert before last route (catch-all)
+            routes.splice(Math.max(0, routes.length - 1), 0, newRoute);
+        }
+    }
+
+    if (routeTable.conf?.routes) routeTable.conf.routes = routes;
+    else routeTable.routes = routes;
+    markStep('step3', 'done');
+
+    // Step 4: PATCH route table
+    markStep('step4', 'running');
+    const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/routes/default`, routeTable, false, {
+        'Authorization': `Bearer ${token}`
+    });
+    const updateData = await safeJson(updateResp, 'Route-Update');
+    if (!updateResp.ok) throw new Error('Route-Update fehlgeschlagen: ' + (updateData.message || updateResp.status));
+    markStep('step4', 'done');
+
+    // Step 5: Commit
+    markStep('step5', 'running');
+    const commitResp = await apiFetch('POST', `${criblUrl}/api/v1/version/commit`, {
+        message: `AI-Suggestion: ${action.suggestion?.title || 'Route change'}`
+    }, false, { 'Authorization': `Bearer ${token}` });
+    const commitData = await safeJson(commitResp, 'Commit');
+    if (!commitResp.ok) throw new Error('Commit fehlgeschlagen: ' + (commitData.message || commitResp.status));
+    markStep('step5', 'done');
+}
+
+// ============================================================
+// RULE ACTIVATION (5-step modal) - Legacy (einzelne Regeln)
 // ============================================================
 function previewRule(idx) {
     const s = currentSuggestions[idx];
@@ -1133,94 +1918,65 @@ async function activateRule(idx) {
         <div class="modal-step" id="step3"><span class="step-label">3. Neue Regel einfuegen (vor Ollama-Stufe)</span>
             <div class="step-detail">Neue eval-Funktion wird eingefuegt</div></div>
         <div class="modal-step" id="step4"><span class="step-label">4. Pipeline aktualisieren</span>
-            <div class="step-detail"><code>PUT ${escHtml(criblUrl)}/api/v1/pipelines/ollama_classifier</code></div></div>
+            <div class="step-detail"><code>PATCH ${escHtml(criblUrl)}/api/v1/pipelines/ollama_classifier</code></div></div>
         <div class="modal-step" id="step5"><span class="step-label">5. Konfiguration committen</span>
             <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/version/commit</code></div></div>
         <div class="mt-2"><strong>Einzufuegende Regel:</strong></div>
         <pre><code>${escHtml(JSON.stringify(newFunc, null, 2))}</code></pre>
     `;
     confirmBtn.classList.remove('hidden');
-    pendingModalAction = { suggestion: s, newFunc, criblUrl, user };
+    confirmBtn.textContent = 'Bestaetigen & Aktivieren';
+    confirmBtn.onclick = modalConfirmAction;
+    pendingModalAction = { type: 'legacy', suggestion: s, suggestionIdx: null, newFunc, criblUrl, user };
     modal.classList.add('active');
 }
 
 async function modalConfirmAction() {
     if (!pendingModalAction) return;
-    const { suggestion, newFunc, criblUrl, user } = pendingModalAction;
     const confirmBtn = document.getElementById('modalConfirmBtn');
     confirmBtn.disabled = true;
     confirmBtn.textContent = 'Wird ausgefuehrt...';
+    const action = pendingModalAction;
+    const actionType = action.type || 'legacy';
 
     try {
-        // Step 1: Auth
-        markStep('step1', 'running');
-        const authResp = await apiFetch('POST', `${criblUrl}/api/v1/auth/login`, {
-            username: user,
-            password: criblPassword
-        });
-        const authData = await authResp.json();
-        if (!authResp.ok) throw new Error('Auth fehlgeschlagen: ' + (authData.message || authResp.status));
-        criblAuthToken = authData.token;
-        markStep('step1', 'done');
-
-        // Step 2: Get pipeline
-        markStep('step2', 'running');
-        const pipeResp = await apiFetch('GET', `${criblUrl}/api/v1/pipelines/ollama_classifier`, null, false, {
-            'Authorization': `Bearer ${criblAuthToken}`
-        });
-        const pipeData = await pipeResp.json();
-        if (!pipeResp.ok) throw new Error('Pipeline laden fehlgeschlagen: ' + (pipeData.message || pipeResp.status));
-        const pipeline = pipeData.items ? pipeData.items[0] : pipeData;
-        markStep('step2', 'done');
-
-        // Step 3: Insert new rule before Ollama stage
-        markStep('step3', 'running');
-        const functions = pipeline.conf?.functions || [];
-        let insertIdx = functions.findIndex(f =>
-            f.description && f.description.includes('Ollama AI')
-        );
-        if (insertIdx === -1) {
-            // Fallback: insert before the comment about Stage 2
-            insertIdx = functions.findIndex(f =>
-                f.id === 'comment' && f.conf?.comment?.includes('Stage 2')
-            );
+        if (actionType === 'pipeline_rule' || actionType === 'reclassification') {
+            await executePipelineRuleSteps(action);
+        } else if (actionType === 'route_change') {
+            await executeRouteChangeSteps(action);
+        } else {
+            // Legacy path: original rule activation
+            await executeLegacyRuleSteps(action);
         }
-        if (insertIdx === -1) insertIdx = functions.length - 3; // before fallback
-        functions.splice(insertIdx, 0, newFunc);
-        pipeline.conf.functions = functions;
-        markStep('step3', 'done');
 
-        // Step 4: Update pipeline
-        markStep('step4', 'running');
-        const updateResp = await apiFetch('PUT', `${criblUrl}/api/v1/pipelines/ollama_classifier`, pipeline, false, {
-            'Authorization': `Bearer ${criblAuthToken}`
-        });
-        const updateData = await updateResp.json();
-        if (!updateResp.ok) throw new Error('Pipeline-Update fehlgeschlagen: ' + (updateData.message || updateResp.status));
-        markStep('step4', 'done');
+        // Success - track activated rule to prevent duplicate suggestions
+        if (action.suggestion) addActivatedRule(action.suggestion);
 
-        // Step 5: Commit
-        markStep('step5', 'running');
-        const commitResp = await apiFetch('POST', `${criblUrl}/api/v1/version/commit`, {
-            message: `Auto-rule: ${suggestion.title}`,
-            effective: true
-        }, false, {
-            'Authorization': `Bearer ${criblAuthToken}`
-        });
-        const commitData = await commitResp.json();
-        if (!commitResp.ok) throw new Error('Commit fehlgeschlagen: ' + (commitData.message || commitResp.status));
-        markStep('step5', 'done');
+        // Visually mark the suggestion card as activated
+        if (action.suggestionIdx != null) {
+            const card = document.getElementById('aiSugg-' + action.suggestionIdx);
+            if (card) {
+                card.style.opacity = '0.5';
+                card.style.borderLeftColor = '#38a169';
+                const badge = document.createElement('div');
+                badge.style.cssText = 'background:#f0fff4;color:#276749;padding:6px 10px;border-radius:4px;font-weight:600;margin-top:8px;text-align:center;';
+                badge.textContent = 'Aktiviert';
+                card.appendChild(badge);
+                // Disable action buttons
+                card.querySelectorAll('.suggestion-actions button').forEach(b => b.disabled = true);
+            }
+        }
 
-        // Success
         const content = document.getElementById('modalContent');
+        const successLabel = actionType === 'route_change' ? 'Route' : 'Regel';
         content.innerHTML += `<div style="margin-top:16px;padding:12px;background:#f0fff4;border-radius:6px;border-left:4px solid #38a169;">
-            <strong style="color:#276749;">Erfolg!</strong> Regel wurde aktiviert und committed. Die Pipeline verarbeitet nun Events von '${escHtml(suggestion.title)}' regelbasiert.
+            <strong style="color:#276749;">Erfolg!</strong> ${successLabel} wurde aktiviert und committed.
+            ${actionType === 'route_change' ? 'Die neue Route ist sofort aktiv.' : 'Die Pipeline verarbeitet nun Events regelbasiert.'}
         </div>`;
         confirmBtn.textContent = 'Fertig';
         confirmBtn.onclick = closeModal;
 
     } catch (e) {
-        // Mark current step as error
         for (let i = 1; i <= 5; i++) {
             const el = document.getElementById('step' + i);
             if (el && !el.classList.contains('done')) {
@@ -1238,6 +1994,69 @@ async function modalConfirmAction() {
 
     confirmBtn.disabled = false;
     pendingModalAction = null;
+}
+
+async function executeLegacyRuleSteps(action) {
+    const { suggestion, newFunc, criblUrl, user } = action;
+
+    // Step 1: Auth
+    markStep('step1', 'running');
+    if (!criblPassword) {
+        criblPassword = prompt('Cribl-Passwort eingeben:');
+        if (!criblPassword) throw new Error('Kein Passwort');
+    }
+    const authResp = await apiFetch('POST', `${criblUrl}/api/v1/auth/login`, {
+        username: user,
+        password: criblPassword
+    });
+    const authData = await safeJson(authResp, 'Cribl Auth');
+    if (!authResp.ok) throw new Error('Auth fehlgeschlagen: ' + (authData.message || authResp.status));
+    criblAuthToken = authData.token;
+    markStep('step1', 'done');
+
+    // Step 2: Get pipeline
+    markStep('step2', 'running');
+    const pipeResp = await apiFetch('GET', `${criblUrl}/api/v1/pipelines/ollama_classifier`, null, false, {
+        'Authorization': `Bearer ${criblAuthToken}`
+    });
+    const pipeData = await safeJson(pipeResp, 'Pipeline GET');
+    if (!pipeResp.ok) throw new Error('Pipeline laden fehlgeschlagen: ' + (pipeData.message || pipeResp.status));
+    const pipeline = pipeData.items ? pipeData.items[0] : pipeData;
+    markStep('step2', 'done');
+
+    // Step 3: Insert new rule before Ollama stage
+    markStep('step3', 'running');
+    const functions = pipeline.conf?.functions || [];
+    let insertIdx = functions.findIndex(f =>
+        f.description && f.description.includes('Ollama AI')
+    );
+    if (insertIdx === -1) {
+        insertIdx = functions.findIndex(f =>
+            f.id === 'comment' && f.conf?.comment?.includes('Stage 2')
+        );
+    }
+    if (insertIdx === -1) insertIdx = functions.length - 3;
+    functions.splice(insertIdx, 0, newFunc);
+    pipeline.conf.functions = functions;
+    markStep('step3', 'done');
+
+    // Step 4: Update pipeline
+    markStep('step4', 'running');
+    const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/ollama_classifier`, pipeline, false, {
+        'Authorization': `Bearer ${criblAuthToken}`
+    });
+    const updateData = await safeJson(updateResp, 'Pipeline PUT');
+    if (!updateResp.ok) throw new Error('Pipeline-Update fehlgeschlagen: ' + (updateData.message || updateResp.status));
+    markStep('step4', 'done');
+
+    // Step 5: Commit
+    markStep('step5', 'running');
+    const commitResp = await apiFetch('POST', `${criblUrl}/api/v1/version/commit`, {
+        message: `Auto-rule: ${suggestion.title}`
+    }, false, { 'Authorization': `Bearer ${criblAuthToken}` });
+    const commitData = await safeJson(commitResp, 'Commit');
+    if (!commitResp.ok) throw new Error('Commit fehlgeschlagen: ' + (commitData.message || commitResp.status));
+    markStep('step5', 'done');
 }
 
 function markStep(id, state) {

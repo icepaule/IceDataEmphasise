@@ -84,7 +84,9 @@ IceDataEmphasise/
 ├── windows/
 │   ├── install-cribl-edge.ps1      # Windows Edge Deployment (PowerShell)
 │   └── README-Windows.md           # Windows-Anleitung (deutsch)
-├── docs/                           # ITSO-Dokumentation (14 HTML-Seiten, deutsch)
+├── docs/                           # ITSO-Dokumentation (17 HTML-Seiten, deutsch)
+│   ├── index.html                  # GitHub Pages Landing Page
+│   ├── screenshots/                # Seitenvorschau-Bilder
 │   ├── 01-architektur.html         # Architekturuebersicht
 │   ├── 02-installation.html        # Installationshandbuch
 │   ├── 03-stream-konfiguration.html
@@ -92,13 +94,16 @@ IceDataEmphasise/
 │   ├── 05-quellen.html             # 12 Log-Quellen im Detail
 │   ├── 06-ziele.html               # HEC vs. S2S Destinations
 │   ├── 07-pipelines-routen.html    # Pipelines + Route-Tabelle
-│   ├── 08-splunk-integration.html  # Splunk-Anbindung
+│   ├── 08-splunk-integration.html  # Splunk Check & Fix Panel, Index-Mapping, Apps
 │   ├── 09-betriebshandbuch.html    # Tagesbetrieb, Start/Stop, Backup
 │   ├── 10-sicherheitshandbuch.html # RBAC, TLS, Haertung, DORA
 │   ├── 11-notfallhandbuch.html     # DR, Restore, Eskalation
 │   ├── 12-monitoring.html          # KPIs, Alerting, Dashboards
 │   ├── 13-compliance.html          # MaRisk, BAIT, DORA Mapping
-│   └── 14-troubleshooting.html     # Diagnose, FAQ
+│   ├── 14-troubleshooting.html     # Diagnose, FAQ
+│   ├── 15-phase2-uebungen.html     # Phase 2 Hands-on Uebungen
+│   ├── 16-ai-status-panel.html     # AI Status & Control Panel
+│   └── 17-edge-security-onboarding.html  # Edge Security Onboarding
 ├── .env.example                    # Umgebungsvariablen (Platzhalter)
 ├── .gitignore
 ├── CHANGELOG.md
@@ -131,6 +136,8 @@ IceDataEmphasise/
 | `pipeline_docker_json` | Docker JSON Log Parser | Docker/HA, Mosquitto |
 | `pipeline_security_auth` | SSH-Parser, MITRE ATT&CK Tags | SSH Auth |
 | `pipeline_generic_passthrough` | Minimal-Metadata | Samba, Tor, Default |
+| `pipeline_ollama_classifier` | KI-Klassifizierung (Ollama) | Alle Quellen |
+| `pipeline_universal_classifier` | Regelbasierter Fallback-Klassifizierer | Alle Quellen |
 
 ## Routing-Design
 
@@ -151,5 +158,11 @@ Echte Deployment-Credentials befinden sich ausschliesslich in der internen Confl
 
 ## Dokumentation
 
-Die vollstaendige ITSO-Dokumentation (deutsch, 14 HTML-Seiten) befindet sich im `docs/`-Verzeichnis.
-Oeffnen Sie `docs/01-architektur.html` als Einstiegspunkt.
+Die vollstaendige ITSO-Dokumentation (deutsch, 17 HTML-Seiten) befindet sich im `docs/`-Verzeichnis.
+
+**Online:** [icepaule.github.io/IceDataEmphasise](https://icepaule.github.io/IceDataEmphasise/)
+
+Highlights:
+- **Interaktiver Splunk Check & Fix** (08): Automatische REST-API-Pruefung aller Indexes, HEC-Tokens, S2S-Ports und Apps mit Ein-Klick-Fixes
+- **AI Status & Control Panel** (16): Live-Dashboard fuer KI-basierte Log-Klassifizierung mit Ollama
+- **Edge Security Onboarding** (17): Sysmon, auditd, MITRE ATT&CK Mapping fuer Windows und Linux

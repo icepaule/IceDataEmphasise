@@ -29,6 +29,74 @@
         .checklist { list-style: none; padding-left: 0; }
         .checklist li::before { content: "\2610 "; }
         .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+
+        /* Check & Fix Panel */
+        .check-panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); margin-bottom: 2em; overflow: hidden; }
+        .check-panel-header { background: #2b6cb0; color: white; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .check-panel-header h2 { color: white; border: none; margin: 0; padding: 0; font-size: 1.15em; }
+        .check-panel-body { padding: 20px; }
+
+        .credentials-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 18px; padding: 14px; background: #f7fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .credentials-bar label { font-size: 0.82em; font-weight: 600; color: #4a5568; display: block; margin-bottom: 3px; }
+        .credentials-bar input { padding: 7px 10px; border: 1px solid #cbd5e0; border-radius: 4px; font-size: 0.88em; font-family: inherit; }
+        .credentials-bar input[type="text"].url-input { width: 220px; }
+        .credentials-bar input[type="text"].user-input { width: 120px; }
+        .credentials-bar input[type="password"] { width: 140px; }
+
+        .btn-check { padding: 8px 18px; border: none; border-radius: 6px; font-size: 0.88em; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+        .btn-check:active { transform: scale(0.97); }
+        .btn-check-primary { background: #2b6cb0; color: white; }
+        .btn-check-primary:hover { background: #2c5282; }
+        .btn-check-success { background: #38a169; color: white; }
+        .btn-check-success:hover { background: #2f855a; }
+        .btn-check-sm { padding: 4px 10px; font-size: 0.8em; }
+        .btn-check:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-check-outline { background: transparent; border: 1px solid #2b6cb0; color: #2b6cb0; padding: 8px 18px; border-radius: 6px; font-size: 0.88em; font-weight: 600; cursor: pointer; }
+        .btn-check-outline:hover { background: #ebf8ff; }
+
+        .check-summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; padding: 12px 16px; background: #1a365d; color: white; border-radius: 6px; font-size: 0.92em; font-weight: 600; }
+        .check-summary .sum-ok { color: #68d391; }
+        .check-summary .sum-fail { color: #fc8181; }
+        .check-summary .sum-pending { color: #a0aec0; }
+
+        .check-category { margin-bottom: 18px; }
+        .check-category h3 { font-size: 0.95em; color: #2c5282; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
+
+        .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+        .check-card { border: 1px solid #e2e8f0; border-left: 4px solid #a0aec0; border-radius: 6px; padding: 12px 14px; background: #fff; transition: border-color 0.3s, box-shadow 0.2s; }
+        .check-card:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .check-card.ok { border-left-color: #38a169; }
+        .check-card.fail { border-left-color: #e53e3e; }
+        .check-card.checking { border-left-color: #d69e2e; }
+        .check-card-top { display: flex; align-items: center; gap: 10px; }
+        .status-icon { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; background: #a0aec0; }
+        .status-icon.green { background: #38a169; box-shadow: 0 0 6px rgba(56,161,105,0.5); }
+        .status-icon.red { background: #e53e3e; box-shadow: 0 0 6px rgba(229,62,62,0.4); }
+        .status-icon.yellow { background: #d69e2e; animation: chk-pulse 1s infinite; }
+        @keyframes chk-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .check-card-title { font-weight: 600; font-size: 0.88em; color: #2d3748; flex: 1; }
+        .fix-btn { padding: 3px 10px; font-size: 0.78em; font-weight: 600; border: none; border-radius: 4px; cursor: pointer; background: #e53e3e; color: white; white-space: nowrap; }
+        .fix-btn:hover { background: #c53030; }
+        .fix-btn.link-btn { background: #805ad5; }
+        .fix-btn.link-btn:hover { background: #6b46c1; }
+        .fix-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .check-detail { font-size: 0.8em; color: #718096; margin-top: 6px; display: none; }
+        .check-detail.open { display: block; }
+        .check-detail pre { font-size: 0.92em; margin-top: 6px; padding: 8px 10px; }
+        .check-detail code { font-size: 1em; }
+        .check-card-toggle { font-size: 0.75em; color: #2b6cb0; cursor: pointer; margin-top: 4px; display: inline-block; user-select: none; }
+        .check-card-toggle:hover { text-decoration: underline; }
+
+        .app-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .app-modal-overlay.visible { display: flex; }
+        .app-modal { background: #fff; border-radius: 8px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .app-modal h3 { color: #2c5282; margin-bottom: 12px; }
+        .app-modal pre { font-size: 0.85em; margin: 8px 0; }
+        .app-modal .close-modal { float: right; cursor: pointer; font-size: 1.3em; background: none; border: none; color: #718096; }
+        .app-modal .close-modal:hover { color: #e53e3e; }
+
+        .progress-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #e2e8f0; border-top-color: #2b6cb0; border-radius: 50%; animation: chk-spin 0.6s linear infinite; }
+        @keyframes chk-spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -36,8 +104,8 @@
 <div class="header">
     <h1>08 - Splunk-Integration</h1>
     <div class="meta">
-        <span>Version: 1.0</span>
-        <span>Datum: 2026-02-10</span>
+        <span>Version: 1.2</span>
+        <span>Datum: 2026-02-19</span>
         <span>Klassifikation: Vertraulich / Intern</span>
         <span>Projekt: IceDataEmphasise</span>
     </div>
@@ -48,10 +116,15 @@
 <table>
     <tr><th>Version</th><th>Datum</th><th>Autor</th><th>Beschreibung</th></tr>
     <tr><td>1.0</td><td>2026-02-10</td><td>Marcus Pauli</td><td>Erstversion: Splunk-Vorbereitung, Index-Mapping, Verifikation, Migration</td></tr>
+    <tr><td>1.1</td><td>2026-02-19</td><td>Marcus Pauli</td><td>Abschnitt 6: Benoetigte Splunk Apps und Add-ons (Pflicht/Empfohlen, Installation, Konfiguration). Abschnitt 9: Troubleshooting mit Diagnose-Befehlen.</td></tr>
+    <tr><td>1.2</td><td>2026-02-19</td><td>Marcus Pauli</td><td>Abschnitt 0: Interaktiver Splunk Check &amp; Fix Panel (Indexes, HEC, S2S, Apps via REST API pruefen und anlegen).</td></tr>
 </table>
 
 <!-- Inhaltsverzeichnis -->
 <h2 id="inhaltsverzeichnis">Inhaltsverzeichnis</h2>
+<ol start="0">
+    <li><a href="#check-fix-panel">Interaktiver Splunk Check &amp; Fix</a></li>
+</ol>
 <ol>
     <li><a href="#splunk-vorbereitung">Splunk-Vorbereitung</a>
         <ol>
@@ -64,9 +137,93 @@
     <li><a href="#sourcetype-zuordnung">Sourcetype-Zuordnung</a></li>
     <li><a href="#verifikation">Verifikation der Datenlieferung</a></li>
     <li><a href="#search-beispiele">Splunk Search Beispiele</a></li>
+    <li><a href="#splunk-apps">Benoetigte Splunk Apps und Add-ons</a>
+        <ol>
+            <li><a href="#apps-pflicht">Pflicht-Apps</a></li>
+            <li><a href="#apps-empfohlen">Empfohlene Apps</a></li>
+            <li><a href="#apps-installation">Installation</a></li>
+            <li><a href="#apps-konfiguration">Konfiguration der Add-ons</a></li>
+        </ol>
+    </li>
     <li><a href="#vergleich-uf">Vergleich: Cribl vs. Splunk Universal Forwarder</a></li>
     <li><a href="#migration">Migration von bestehenden UF-Installationen</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
 </ol>
+
+<!-- 0. Interaktiver Splunk Check & Fix -->
+<div class="check-panel" id="check-fix-panel">
+    <div class="check-panel-header">
+        <h2>0. Interaktiver Splunk Check &amp; Fix</h2>
+        <span style="font-size:0.8em;opacity:0.85">Automatische Pruefung der Splunk-Konfiguration via REST API</span>
+    </div>
+    <div class="check-panel-body">
+
+        <div class="credentials-bar">
+            <div>
+                <label for="splunk-url">Splunk API URL</label>
+                <input type="text" id="splunk-url" class="url-input" value="/proxy/splunk-api" placeholder="/proxy/splunk-api">
+            </div>
+            <div>
+                <label for="splunk-user">Benutzer</label>
+                <input type="text" id="splunk-user" class="user-input" value="admin" placeholder="admin">
+            </div>
+            <div>
+                <label for="splunk-pass">Passwort</label>
+                <input type="password" id="splunk-pass" placeholder="Passwort">
+            </div>
+            <div style="border-left:1px solid #cbd5e0;padding-left:10px">
+                <label for="splunkbase-user">Splunk.com User</label>
+                <input type="text" id="splunkbase-user" class="user-input" placeholder="(fuer App-Install)">
+            </div>
+            <div>
+                <label for="splunkbase-pass">Splunk.com PW</label>
+                <input type="password" id="splunkbase-pass" style="width:140px" placeholder="(fuer App-Install)">
+            </div>
+            <div style="display:flex;gap:8px;align-items:end">
+                <button class="btn-check btn-check-primary" onclick="runAllChecks()">Alle Checks ausfuehren</button>
+                <button class="btn-check btn-check-outline" onclick="resetAllChecks()">Zuruecksetzen</button>
+            </div>
+        </div>
+
+        <div class="check-summary" id="check-summary">
+            <span class="sum-pending">Noch keine Checks ausgefuehrt &mdash; Passwort eingeben und "Alle Checks ausfuehren" klicken</span>
+        </div>
+
+        <!-- Kategorie A: Indexes -->
+        <div class="check-category">
+            <h3>A &ndash; Indexes</h3>
+            <div class="check-grid" id="grid-indexes"></div>
+        </div>
+
+        <!-- Kategorie B: HEC -->
+        <div class="check-category">
+            <h3>B &ndash; HEC-Konfiguration</h3>
+            <div class="check-grid" id="grid-hec"></div>
+        </div>
+
+        <!-- Kategorie C: S2S Receiving -->
+        <div class="check-category">
+            <h3>C &ndash; S2S Receiving</h3>
+            <div class="check-grid" id="grid-s2s"></div>
+        </div>
+
+        <!-- Kategorie D: Apps / TAs -->
+        <div class="check-category">
+            <h3>D &ndash; Installierte Apps &amp; Add-ons</h3>
+            <div class="check-grid" id="grid-apps"></div>
+        </div>
+
+    </div>
+</div>
+
+<!-- App-Install Modal -->
+<div class="app-modal-overlay" id="app-modal-overlay" onclick="if(event.target===this)closeAppModal()">
+    <div class="app-modal">
+        <button class="close-modal" onclick="closeAppModal()">&times;</button>
+        <h3 id="app-modal-title">App installieren</h3>
+        <div id="app-modal-content"></div>
+    </div>
+</div>
 
 <!-- 1. Splunk-Vorbereitung -->
 <h2 id="splunk-vorbereitung">1. Splunk-Vorbereitung</h2>
@@ -319,8 +476,168 @@ index=* cribl_pipeline=*
 index=* cribl_pipeline=*
 | timechart span=1h count by cribl_pipeline</code></pre>
 
-<!-- 6. Vergleich Cribl vs. UF -->
-<h2 id="vergleich-uf">6. Vergleich: Cribl vs. Splunk Universal Forwarder</h2>
+<!-- 6. Splunk Apps und Add-ons -->
+<h2 id="splunk-apps">6. Benoetigte Splunk Apps und Add-ons</h2>
+<p>
+    Damit Splunk die von Cribl gelieferten Daten korrekt parsen, normalisieren und in Dashboards
+    darstellen kann, muessen bestimmte Apps und Technology Add-ons (TAs) installiert werden.
+    Die TAs stellen Sourcetype-Definitionen, Feld-Extraktionen und CIM-Mappings bereit.
+</p>
+
+<h3 id="apps-pflicht">6.1 Pflicht-Apps</h3>
+<p>Diese Apps sind fuer den korrekten Betrieb <strong>zwingend erforderlich</strong>:</p>
+
+<table>
+    <tr><th>App / Add-on</th><th>Splunkbase-ID</th><th>Zweck</th><th>Betroffene Sourcetypes</th></tr>
+    <tr>
+        <td><strong>Splunk Common Information Model (CIM)</strong></td>
+        <td><a href="https://splunkbase.splunk.com/app/1621" target="_blank">1621</a></td>
+        <td>Stellt das CIM-Datenmodell bereit. Voraussetzung fuer alle TA-basierten Feld-Normalisierungen und fuer Splunk Enterprise Security.</td>
+        <td><em>alle</em></td>
+    </tr>
+    <tr>
+        <td><strong>Splunk Add-on for Unix and Linux</strong><br>(TA-nix / Splunk_TA_nix)</td>
+        <td><a href="https://splunkbase.splunk.com/app/833" target="_blank">833</a></td>
+        <td>Feld-Extraktionen fuer <code>linux_secure</code>, <code>syslog</code>, <code>linux:boot</code>. Stellt CIM-Mappings fuer Authentication, Change und Endpoint bereit.</td>
+        <td><code>linux_secure</code>, <code>syslog</code>, <code>linux:boot</code>, <code>dpkg</code></td>
+    </tr>
+    <tr>
+        <td><strong>Splunk Add-on for Apache Web Server</strong><br>(Splunk_TA_apache)</td>
+        <td><a href="https://splunkbase.splunk.com/app/3186" target="_blank">3186</a></td>
+        <td>Parsing und Feld-Extraktionen fuer Apache Access- und Error-Logs. CIM-Mapping fuer Web-Datenmodell.</td>
+        <td><code>access_combined</code>, <code>apache:error</code></td>
+    </tr>
+</table>
+
+<h3 id="apps-empfohlen">6.2 Empfohlene Apps</h3>
+<p>Diese Apps erweitern die Analysefaehigkeiten und werden <strong>dringend empfohlen</strong>:</p>
+
+<table>
+    <tr><th>App / Add-on</th><th>Splunkbase-ID</th><th>Zweck</th><th>Betroffene Sourcetypes</th></tr>
+    <tr>
+        <td><strong>Sophos XG Firewall Add-on for Splunk</strong><br>(TA-sophos-xg)</td>
+        <td><a href="https://splunkbase.splunk.com/app/3724" target="_blank">3724</a></td>
+        <td>Parsing der Key=Value-Paare aus Sophos XG/XGS Firewall-Syslog. CIM-Mapping fuer Network Traffic, IDS, Authentication.</td>
+        <td><code>sophos:xg:firewall</code>, <code>sophos:xg:idp</code>, <code>sophos:xg:atp</code></td>
+    </tr>
+    <tr>
+        <td><strong>Splunk Add-on for Docker</strong><br>(splunk-add-on-for-docker)</td>
+        <td><a href="https://splunkbase.splunk.com/app/5765" target="_blank">5765</a></td>
+        <td>Feld-Extraktionen fuer Docker JSON Logs, Container-Metadaten.</td>
+        <td><code>docker:json</code>, <code>docker:daemon</code></td>
+    </tr>
+    <tr>
+        <td><strong>Splunk Add-on for Samba</strong><br>(TA-samba)</td>
+        <td><a href="https://splunkbase.splunk.com/app/3218" target="_blank">3218</a></td>
+        <td>Parsing und Feld-Extraktionen fuer Samba/SMB-Logs.</td>
+        <td><code>samba</code></td>
+    </tr>
+    <tr>
+        <td><strong>MITRE ATT&amp;CK Framework App for Splunk</strong></td>
+        <td><a href="https://splunkbase.splunk.com/app/4617" target="_blank">4617</a></td>
+        <td>Visualisierung der MITRE ATT&amp;CK-Annotationen, die Cribl in der Security-Pipeline hinzufuegt. ATT&amp;CK-Matrix Dashboard.</td>
+        <td><em>alle mit <code>mitre_*</code>-Feldern</em></td>
+    </tr>
+    <tr>
+        <td><strong>Cribl Add-on for Splunk</strong></td>
+        <td><a href="https://splunkbase.splunk.com/app/5556" target="_blank">5556</a></td>
+        <td>Erkennung und Darstellung von Cribl-Metadaten (<code>cribl_host</code>, <code>cribl_pipeline</code>). Durchsatz-Dashboards fuer Cribl-Pipeline-Monitoring.</td>
+        <td><em>alle von Cribl gelieferten Events</em></td>
+    </tr>
+    <tr>
+        <td><strong>Splunk Security Essentials</strong></td>
+        <td><a href="https://splunkbase.splunk.com/app/3435" target="_blank">3435</a></td>
+        <td>Vorgefertigte Security-Use-Cases und -Detektionen. Nutzt CIM-kompatible Daten aus den TAs.</td>
+        <td><em>alle CIM-konformen Daten</em></td>
+    </tr>
+</table>
+
+<h3 id="apps-installation">6.3 Installation</h3>
+
+<h4>Variante A: Ueber Splunk Web (empfohlen)</h4>
+<ol>
+    <li>In Splunk Web anmelden als Administrator</li>
+    <li>Navigieren zu <em>Apps &rarr; Find More Apps</em></li>
+    <li>Nach dem App-Namen suchen (z.B. "Splunk Add-on for Unix")</li>
+    <li>Auf <em>Install</em> klicken und Splunk.com-Credentials eingeben</li>
+    <li>Splunk-Neustart nur durchfuehren, wenn ausdruecklich angefordert</li>
+</ol>
+
+<h4>Variante B: Ueber CLI (fuer Offline-Installationen)</h4>
+<pre><code># 1. App-Paket (.tgz) von splunkbase.splunk.com herunterladen
+
+# 2. Installation ueber Splunk CLI
+/opt/splunk/bin/splunk install app /tmp/splunk-add-on-for-unix-and-linux_920.tgz -auth admin:&lt;password&gt;
+
+# 3. Splunk neu starten (falls erforderlich)
+/opt/splunk/bin/splunk restart</code></pre>
+
+<h4>Variante C: Ueber REST API</h4>
+<pre><code># App direkt von Splunkbase installieren
+curl -k -u admin:&lt;password&gt; \
+  https://localhost:8089/services/apps/local \
+  -d name=Splunk_TA_nix \
+  -d filename=true \
+  -d update=true</code></pre>
+
+<div class="info">
+    <strong>Reihenfolge beachten:</strong> Das <strong>Splunk CIM</strong> muss <em>zuerst</em> installiert werden,
+    da alle anderen TAs davon abhaengen. Anschliessend die TAs in beliebiger Reihenfolge installieren.
+</div>
+
+<h3 id="apps-konfiguration">6.4 Konfiguration der Add-ons</h3>
+
+<h4>Splunk Add-on for Unix and Linux (Splunk_TA_nix)</h4>
+<p>
+    Da die Daten nicht ueber den lokalen UF-Input, sondern ueber Cribl geliefert werden,
+    muessen die Inputs des TA <strong>deaktiviert</strong> bleiben. Nur die Feld-Extraktionen
+    (<code>props.conf</code>, <code>transforms.conf</code>) werden benoetigt.
+</p>
+<pre><code># Pruefen, ob Inputs deaktiviert sind (Standard bei reiner Indexer-Installation)
+cat $SPLUNK_HOME/etc/apps/Splunk_TA_nix/local/inputs.conf
+# Sollte leer sein oder alle Stanzas auf disabled=1 haben
+
+# Falls Inputs aktiv sind, deaktivieren:
+cat &gt; $SPLUNK_HOME/etc/apps/Splunk_TA_nix/local/inputs.conf &lt;&lt; 'EOF'
+[default]
+disabled = 1
+EOF</code></pre>
+
+<h4>Sophos XG Firewall Add-on</h4>
+<p>
+    Die Cribl-Pipeline <code>pipeline_sophos_fw</code> fuehrt bereits eine KVP-Extraktion
+    und CIM-Normalisierung durch. Das Sophos TA ergaenzt zusaetzliche Lookups und
+    Feld-Alias-Definitionen fuer die vollstaendige CIM-Kompatibilitaet.
+</p>
+<div class="info">
+    <strong>Hinweis:</strong> Wenn Cribl die Events bereits mit <code>sourcetype=sophos:xg:firewall</code>
+    liefert, greift das TA automatisch. Sicherstellen, dass der Sourcetype in der Cribl-Pipeline
+    korrekt gesetzt wird (Feld <code>_sourcetype</code> oder HEC-Payload <code>sourcetype</code>).
+</div>
+
+<h4>Cribl Add-on for Splunk</h4>
+<p>
+    Nach der Installation ist keine zusaetzliche Konfiguration erforderlich. Das Add-on erkennt
+    automatisch alle Events mit <code>cribl_*</code>-Feldern und stellt Dashboards fuer
+    Pipeline-Monitoring bereit.
+</p>
+
+<h4>Uebersicht: Installationsreihenfolge</h4>
+<table>
+    <tr><th>Schritt</th><th>App</th><th>Neustart?</th><th>Konfiguration</th></tr>
+    <tr><td>1</td><td>Splunk CIM</td><td>Nein</td><td>Keine</td></tr>
+    <tr><td>2</td><td>Splunk_TA_nix</td><td>Nein</td><td>Inputs deaktiviert lassen</td></tr>
+    <tr><td>3</td><td>Splunk_TA_apache</td><td>Nein</td><td>Keine</td></tr>
+    <tr><td>4</td><td>TA-sophos-xg</td><td>Nein</td><td>Sourcetype-Mapping pruefen</td></tr>
+    <tr><td>5</td><td>Splunk Add-on for Docker</td><td>Nein</td><td>Keine</td></tr>
+    <tr><td>6</td><td>Cribl Add-on for Splunk</td><td>Nein</td><td>Keine</td></tr>
+    <tr><td>7</td><td>MITRE ATT&amp;CK App</td><td>Nein</td><td>Macro-Setup bei Erststart</td></tr>
+    <tr><td>8</td><td>Security Essentials</td><td>Nein</td><td>Guided Setup bei Erststart</td></tr>
+    <tr><td>-</td><td colspan="3"><strong>Splunk-Neustart empfohlen nach Installation aller Apps</strong></td></tr>
+</table>
+
+<!-- 7. Vergleich Cribl vs. UF -->
+<h2 id="vergleich-uf">7. Vergleich: Cribl vs. Splunk Universal Forwarder</h2>
 
 <table>
     <tr><th>Kriterium</th><th>Cribl Stream + Edge</th><th>Splunk Universal Forwarder</th></tr>
@@ -343,10 +660,10 @@ index=* cribl_pipeline=*
     Splunk-Lizenzvolumens relevant.
 </div>
 
-<!-- 7. Migration -->
-<h2 id="migration">7. Migration von bestehenden UF-Installationen</h2>
+<!-- 8. Migration -->
+<h2 id="migration">8. Migration von bestehenden UF-Installationen</h2>
 
-<h3>7.1 Migrationsstrategie</h3>
+<h3>8.1 Migrationsstrategie</h3>
 <p>
     Die Migration von bestehenden Splunk Universal Forwarders (UF) zu Cribl Edge erfolgt schrittweise
     nach dem Blue-Green-Prinzip:
@@ -383,7 +700,7 @@ index=* cribl_pipeline=*
     </li>
 </ol>
 
-<h3>7.2 Mapping: UF-Konfiguration zu Cribl</h3>
+<h3>8.2 Mapping: UF-Konfiguration zu Cribl</h3>
 <table>
     <tr><th>UF-Konfiguration</th><th>Cribl-Aequivalent</th><th>Hinweis</th></tr>
     <tr><td><code>inputs.conf</code> (monitor://)</td><td>File Monitor Source</td><td>Pfade 1:1 uebernehmen</td></tr>
@@ -393,7 +710,7 @@ index=* cribl_pipeline=*
     <tr><td><code>serverclass.conf</code></td><td>Fleet Management</td><td>Gruppen und Policies migrieren</td></tr>
 </table>
 
-<h3>7.3 Verifikations-Search fuer Migration</h3>
+<h3>8.3 Verifikations-Search fuer Migration</h3>
 <pre><code># Event-Count-Vergleich: UF vs. Cribl (letzten 24h)
 index=* host=migrierter_host
 | eval source_system=if(isnotnull(cribl_pipeline),"Cribl","UF")
@@ -406,6 +723,106 @@ index=* host=migrierter_host
     dem Splunk-Lizenzmanagement abgestimmt werden.
 </div>
 
+<!-- 9. Troubleshooting -->
+<h2 id="troubleshooting">9. Troubleshooting</h2>
+
+<h3>9.1 Keine Daten in Splunk</h3>
+<table>
+    <tr><th>Symptom</th><th>Ursache</th><th>Loesung</th></tr>
+    <tr>
+        <td>Cribl HEC Output: Health "Green", aber keine Events in Splunk</td>
+        <td>HEC-Token in Cribl stimmt nicht mit dem in Splunk angelegten Token ueberein</td>
+        <td>Token in Cribl pruefen: <em>Manage &rarr; Destinations &rarr; splunk_hec</em>. Muss identisch mit dem Token in <code>.env</code> und in Splunk sein.
+            <pre><code># Token in Cribl via API pruefen
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://10.10.0.100:9000/api/v1/system/outputs/splunk_hec \
+  | jq '.items[0].token'</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td>Cribl HEC Output: Health "Red"</td>
+        <td>Splunk HEC-Port (8088) nicht erreichbar oder HEC Global Settings deaktiviert</td>
+        <td>
+            <pre><code># HEC Health pruefen
+curl -s http://10.10.0.66:8088/services/collector/health
+# Erwartet: {"text":"HEC is healthy","code":17}
+
+# Falls Fehler: In Splunk Web pruefen:
+# Settings &rarr; Data Inputs &rarr; HTTP Event Collector
+# &rarr; Global Settings &rarr; All Tokens: Enabled</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td>Events kommen an, aber im falschen Index</td>
+        <td>HEC-Token hat keine Berechtigung fuer den Ziel-Index, oder der Index fehlt in "Allowed Indexes"</td>
+        <td>In Splunk: <em>Settings &rarr; Data Inputs &rarr; HTTP Event Collector</em> &rarr; Token bearbeiten &rarr; alle benoetigten Indexes unter "Allowed Indexes" hinzufuegen.</td>
+    </tr>
+    <tr>
+        <td>Events kommen an, aber Felder fehlen</td>
+        <td>Benoetigtes TA ist nicht installiert</td>
+        <td>Pruefen, ob alle Pflicht-Apps installiert sind (siehe <a href="#splunk-apps">Abschnitt 6</a>). Insbesondere <code>Splunk_TA_nix</code> fuer <code>linux_secure</code>.</td>
+    </tr>
+    <tr>
+        <td>Cribl S2S Output: Health "Red"</td>
+        <td>Splunk Receiving Port (9997) nicht konfiguriert oder Firewall blockiert</td>
+        <td>
+            <pre><code># Port pruefen
+nc -zv 10.10.0.66 9997
+
+# In Splunk Web pruefen:
+# Settings &rarr; Forwarding and Receiving &rarr; Receive data
+# Port 9997 muss gelistet sein</code></pre>
+        </td>
+    </tr>
+    <tr>
+        <td><code>sourcetype</code> wird als <code>httpevent</code> angezeigt</td>
+        <td>Cribl setzt den Sourcetype nicht im HEC-Payload</td>
+        <td>In der Cribl-Pipeline sicherstellen, dass das Feld <code>sourcetype</code> gesetzt wird (z.B. ueber <code>eval</code>-Funktion: <code>sourcetype = 'linux_secure'</code>)</td>
+    </tr>
+</table>
+
+<h3>9.2 Diagnose-Befehle</h3>
+<pre><code># === Cribl-seitig ===
+
+# Alle Output-Health-Status
+TOKEN=$(curl -s -X POST "http://10.10.0.100:9000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"***"}' | jq -r '.token')
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://10.10.0.100:9000/api/v1/system/outputs" \
+  | jq '.items[] | {id, type, health: .status.health, sent: .status.metrics.sentCount}'
+
+# === Splunk-seitig ===
+
+# Letzte 15 Minuten: Events pro Index zaehlen
+curl -sk -u admin:&lt;password&gt; "https://10.10.0.66:8089/services/search/jobs/export" \
+  -d 'search=search index=* earliest=-15m | stats count by index, sourcetype' \
+  -d output_mode=json
+
+# HEC-Token-Status pruefen
+curl -sk -u admin:&lt;password&gt; \
+  "https://10.10.0.66:8089/services/data/inputs/http" \
+  | python3 -c "import sys,json; [print(f'{e[\"name\"]}: disabled={e[\"content\"][\"disabled\"]}') for e in json.load(sys.stdin)[\"entry\"]]"
+
+# Index-Groesse pruefen
+curl -sk -u admin:&lt;password&gt; \
+  "https://10.10.0.66:8089/services/data/indexes?output_mode=json&count=0" \
+  | jq '.entry[] | select(.content.totalEventCount != "0") | {name: .name, events: .content.totalEventCount, size_mb: .content.currentDBSizeMB}'</code></pre>
+
+<h3>9.3 Haeufige Fehler nach Erstinstallation</h3>
+<div class="warning">
+    <strong>Checkliste "Keine Daten":</strong>
+    <ol>
+        <li>Ist der HEC in Splunk <strong>global aktiviert</strong>? (<em>Settings &rarr; HTTP Event Collector &rarr; Global Settings &rarr; All Tokens: Enabled</em>)</li>
+        <li>Stimmt der <strong>HEC-Token</strong> in Cribl mit dem in Splunk ueberein?</li>
+        <li>Ist <strong>SSL korrekt</strong> konfiguriert? (Wenn Splunk HEC SSL deaktiviert hat, muss Cribl <code>http://</code> verwenden, nicht <code>https://</code>)</li>
+        <li>Sind die <strong>Ziel-Indexes</strong> im HEC-Token unter "Allowed Indexes" eingetragen?</li>
+        <li>Existieren die <strong>Indexes</strong> in Splunk? (<em>Settings &rarr; Indexes</em>)</li>
+        <li>Ist Port <strong>8088 (HEC)</strong> und/oder <strong>9997 (S2S)</strong> von NUC-HA (10.10.0.100) aus erreichbar?</li>
+        <li>Laeuft eine <strong>Firewall</strong> auf dem Splunk-Host, die die Ports blockiert?</li>
+    </ol>
+</div>
+
 <div class="nav">
     <a href="07-pipelines-routen.html">&larr; 07 - Pipelines und Routen</a>
     <a href="09-betriebshandbuch.html">09 - Betriebshandbuch &rarr;</a>
@@ -415,6 +832,657 @@ index=* host=migrierter_host
     IceDataEmphasise &ndash; Cribl Stream &amp; Edge PoC &ndash; Vertraulich / Intern<br>
     Regulierte Umgebung: Deutsche Bankenaufsicht (BaFin) &ndash; MaRisk / BAIT / DORA
 </div>
+
+<script>
+// === Splunk Check & Fix Configuration ===
+
+const CRIBL_TOKEN_PATTERN = /cribl/i; // Match any HEC token with "cribl" in the name
+
+const INDEX_CHECKS = [
+    { name: 'idx_web',             retention: 7776000,  desc: 'Apache Access/Error Logs (90d)' },
+    { name: 'idx_security',        retention: 31536000, desc: 'SSH-Auth, Security-Events (365d)' },
+    { name: 'idx_infrastructure',  retention: 7776000,  desc: 'Systemd Journal, Samba (90d)' },
+    { name: 'idx_containers',      retention: 2592000,  desc: 'Docker/HA, Mosquitto (30d)' },
+    { name: 'os_journal',          retention: 7776000,  desc: 'OS Journal (PoC, 90d)' },
+    { name: 'web_apache',          retention: 7776000,  desc: 'Apache Web (PoC, 90d)' },
+    { name: 'infra_samba',         retention: 7776000,  desc: 'Samba (PoC, 90d)' },
+    { name: 'iot_homeassistant',   retention: 2592000,  desc: 'Home Assistant (PoC, 30d)' },
+    { name: 'iot_mqtt',            retention: 2592000,  desc: 'MQTT (PoC, 30d)' },
+    { name: 'sec_auth',            retention: 31536000, desc: 'Auth Security (PoC, 365d)' },
+    { name: 'sec_tor',             retention: 31536000, desc: 'Tor Security (PoC, 365d)' },
+    { name: 'infra_dns',           retention: 7776000,  desc: 'DNS (PoC, 90d)' },
+    { name: 'infra_cups',          retention: 7776000,  desc: 'CUPS (PoC, 90d)' },
+    { name: 'os_boot',             retention: 7776000,  desc: 'Boot Logs (PoC, 90d)' },
+    { name: 'os_packages',         retention: 7776000,  desc: 'Package Logs (PoC, 90d)' },
+];
+
+const ALL_INDEX_NAMES = INDEX_CHECKS.map(i => i.name);
+
+const APP_CHECKS = [
+    { appName: 'Splunk_SA_CIM',                  displayName: 'Splunk Common Information Model (CIM)', splunkbaseId: 1621, required: true },
+    { appName: 'Splunk_TA_nix',                   displayName: 'Splunk Add-on for Unix and Linux',      splunkbaseId: 833,  required: true },
+    { appName: 'Splunk_TA_apache',                displayName: 'Splunk Add-on for Apache Web Server',   splunkbaseId: 3186, required: true },
+    { appName: 'TA-sophos-xg',                    displayName: 'Sophos XG Firewall Add-on',             splunkbaseId: 3724, required: false },
+    { appName: 'splunk-add-on-for-docker',        displayName: 'Splunk Add-on for Docker',              splunkbaseId: 5765, required: false },
+    { appName: 'cribl-add-on-for-splunk',         displayName: 'Cribl Add-on for Splunk',               splunkbaseId: 5556, required: false },
+    { appName: 'SA-attck_nav',                    displayName: 'MITRE ATT&CK Framework App',            splunkbaseId: 4617, required: false },
+    { appName: 'Splunk_Security_Essentials',      displayName: 'Splunk Security Essentials',             splunkbaseId: 3435, required: false },
+];
+
+// State tracking
+let checkResults = {};
+
+// === Auth & Fetch Helpers ===
+
+function getSplunkAuth() {
+    const user = document.getElementById('splunk-user').value;
+    const pass = document.getElementById('splunk-pass').value;
+    return 'Basic ' + btoa(user + ':' + pass);
+}
+
+function getBaseUrl() {
+    return document.getElementById('splunk-url').value.replace(/\/+$/, '');
+}
+
+async function splunkFetch(method, path, body) {
+    const url = getBaseUrl() + path;
+    const opts = {
+        method: method,
+        headers: {
+            'Authorization': getSplunkAuth(),
+        },
+    };
+    if (body && method === 'POST') {
+        opts.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        opts.body = body;
+    }
+    const resp = await fetch(url, opts);
+    return resp;
+}
+
+// === Check Functions ===
+
+async function checkIndex(name) {
+    try {
+        const resp = await splunkFetch('GET', '/services/data/indexes/' + encodeURIComponent(name) + '?output_mode=json');
+        if (resp.ok) {
+            const data = await resp.json();
+            const entry = data.entry && data.entry[0];
+            const c = entry ? entry.content : {};
+            return {
+                ok: true,
+                events: c.totalEventCount || '0',
+                sizeMB: c.currentDBSizeMB || '0',
+                retention: c.frozenTimePeriodInSecs || '?',
+            };
+        }
+        return { ok: false, error: 'HTTP ' + resp.status };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function checkHecGlobal() {
+    try {
+        const resp = await splunkFetch('GET', '/services/data/inputs/http?output_mode=json&count=0');
+        if (!resp.ok) return { ok: false, error: 'HTTP ' + resp.status };
+        const data = await resp.json();
+        // Check if HEC is globally enabled via the http input settings
+        const disabled = data.entry && data.entry.some(e => e.name === 'http' && e.content && e.content.disabled === true);
+        // Also try the global settings endpoint
+        const resp2 = await splunkFetch('GET', '/servicesNS/nobody/splunk_httpinput/data/inputs/http/http?output_mode=json');
+        let globalEnabled = true;
+        if (resp2.ok) {
+            const data2 = await resp2.json();
+            if (data2.entry && data2.entry[0] && data2.entry[0].content) {
+                globalEnabled = !data2.entry[0].content.disabled;
+            }
+        }
+        return { ok: !disabled && globalEnabled, tokens: data.entry ? data.entry.length : 0 };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function checkHecToken() {
+    try {
+        const resp = await splunkFetch('GET', '/services/data/inputs/http?output_mode=json&count=0');
+        if (!resp.ok) return { ok: false, error: 'HTTP ' + resp.status };
+        const data = await resp.json();
+        const entries = data.entry || [];
+        // Find ALL tokens matching cribl pattern
+        const criblTokens = entries.filter(e => e.name && CRIBL_TOKEN_PATTERN.test(e.name));
+        if (criblTokens.length === 0) return { ok: false, error: 'Kein Token mit "cribl" im Namen gefunden' };
+        // Merge allowed indexes from all cribl tokens
+        const allAllowed = new Set();
+        const tokenInfos = [];
+        for (const t of criblTokens) {
+            const c = t.content || {};
+            const idxList = c.indexes ? (Array.isArray(c.indexes) ? c.indexes : String(c.indexes).split(',').map(s=>s.trim())) : [];
+            idxList.forEach(i => allAllowed.add(i));
+            // Extract edit link to get the correct servicesNS path
+            const editLink = (t.links && t.links.edit) || '';
+            tokenInfos.push({
+                name: t.name,
+                token: (c.token || '').substring(0, 8) + '...',
+                disabled: c.disabled,
+                defaultIndex: c.index || 'main',
+                indexes: idxList,
+                editLink: editLink,
+            });
+        }
+        return {
+            ok: true,
+            tokenName: criblTokens[0].name,
+            token: tokenInfos.map(t => t.name.replace('http://', '') + ' (' + t.token + ')').join(', '),
+            disabled: tokenInfos.some(t => t.disabled),
+            allowedIndexes: [...allAllowed],
+            defaultIndex: tokenInfos[0].defaultIndex,
+            criblTokens: tokenInfos,
+        };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function checkHecAllowedIndexes() {
+    try {
+        const tokenResult = await checkHecToken();
+        if (!tokenResult.ok) return { ok: false, error: 'Token-Check fehlgeschlagen: ' + tokenResult.error };
+        const allowed = tokenResult.allowedIndexes || [];
+        const missing = ALL_INDEX_NAMES.filter(idx => !allowed.includes(idx));
+        return {
+            ok: missing.length === 0,
+            allowed: allowed,
+            missing: missing,
+            tokenName: tokenResult.tokenName,
+        };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function checkS2SReceiving() {
+    try {
+        const resp = await splunkFetch('GET', '/services/data/inputs/tcp/cooked?output_mode=json&count=0');
+        if (!resp.ok) return { ok: false, error: 'HTTP ' + resp.status };
+        const data = await resp.json();
+        const entries = data.entry || [];
+        const port9997 = entries.find(e => e.name && e.name.includes('9997'));
+        if (!port9997) return { ok: false, error: 'Port 9997 nicht konfiguriert' };
+        return { ok: true, disabled: port9997.content ? port9997.content.disabled : false };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function checkApp(appName) {
+    try {
+        const resp = await splunkFetch('GET', '/services/apps/local/' + encodeURIComponent(appName) + '?output_mode=json');
+        if (resp.ok) {
+            const data = await resp.json();
+            const entry = data.entry && data.entry[0];
+            const c = entry ? entry.content : {};
+            // Detect stub apps: v1.0.0 with no author/build = empty placeholder from failed REST install
+            const isStub = (c.version === '1.0.0' && !c.author && !c.build);
+            if (isStub) {
+                return { ok: false, error: 'Stub-App (leere Platzhalter-Installation, keine Inhalte). Bitte manuell von Splunkbase installieren.', isStub: true };
+            }
+            return { ok: true, version: c.version || '?', disabled: c.disabled, label: c.label || appName };
+        }
+        if (resp.status === 404) return { ok: false, error: 'Nicht installiert' };
+        return { ok: false, error: 'HTTP ' + resp.status };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+// === Fix Functions ===
+
+async function fixIndex(name, retention) {
+    try {
+        const params = new URLSearchParams({
+            name: name,
+            datatype: 'event',
+            frozenTimePeriodInSecs: String(retention),
+        });
+        const resp = await splunkFetch('POST', '/services/data/indexes', params.toString());
+        if (resp.ok || resp.status === 201) return { ok: true };
+        const text = await resp.text();
+        return { ok: false, error: 'HTTP ' + resp.status + ': ' + text.substring(0, 200) };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function fixHecToken() {
+    try {
+        // Create a new cribl HEC token with all required indexes
+        const params = new URLSearchParams();
+        params.append('name', 'cribl_hec');
+        params.append('index', 'main');
+        for (const idx of ALL_INDEX_NAMES) {
+            params.append('indexes', idx);
+        }
+        params.append('useACK', '0');
+        params.append('disabled', '0');
+        const resp = await splunkFetch('POST', '/services/data/inputs/http', params.toString());
+        if (resp.ok || resp.status === 201) return { ok: true };
+        const text = await resp.text();
+        return { ok: false, error: 'HTTP ' + resp.status + ': ' + text.substring(0, 200) };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function fixHecAllowedIndexes(tokenInfos, missingIndexes) {
+    try {
+        // Update each cribl token to include all required indexes
+        const currentResult = await checkHecToken();
+        if (!currentResult.ok) return { ok: false, error: 'Token nicht gefunden' };
+        const tokens = currentResult.criblTokens || [];
+        if (tokens.length === 0) return { ok: false, error: 'Keine Cribl-Tokens gefunden' };
+        const errors = [];
+        for (const t of tokens) {
+            // Merge current + missing indexes for this token
+            const allIndexes = [...new Set([...t.indexes, ...missingIndexes])];
+            // Build params with repeated "indexes" keys (Splunk requires this format)
+            const params = new URLSearchParams();
+            params.append('index', t.defaultIndex);
+            for (const idx of allIndexes) {
+                params.append('indexes', idx);
+            }
+            // Extract app namespace from edit link, use simple name (not URL-encoded http://)
+            let appNs = 'splunk_httpinput';
+            if (t.editLink) {
+                const m = t.editLink.match(/\/servicesNS\/nobody\/([^/]+)\//);
+                if (m) appNs = m[1];
+            }
+            const simpleName = t.name.replace('http://', '');
+            const editPath = '/servicesNS/nobody/' + appNs + '/data/inputs/http/' + encodeURIComponent(simpleName);
+            const resp = await splunkFetch('POST', editPath, params.toString());
+            if (!resp.ok) {
+                const text = await resp.text();
+                errors.push(t.name.replace('http://', '') + ': HTTP ' + resp.status + ' ' + text.substring(0, 100));
+            }
+        }
+        if (errors.length > 0) return { ok: false, error: errors.join('; ') };
+        return { ok: true };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+async function fixS2SReceiving() {
+    try {
+        const params = new URLSearchParams({ name: '9997' });
+        const resp = await splunkFetch('POST', '/services/data/inputs/tcp/cooked', params.toString());
+        if (resp.ok || resp.status === 201) return { ok: true };
+        const text = await resp.text();
+        return { ok: false, error: 'HTTP ' + resp.status + ': ' + text.substring(0, 200) };
+    } catch (e) {
+        return { ok: false, error: e.message };
+    }
+}
+
+// === App Install ===
+
+function getSplunkbaseAuth() {
+    const user = document.getElementById('splunkbase-user').value;
+    const pass = document.getElementById('splunkbase-pass').value;
+    if (!user || !pass) return null;
+    return user + ':' + pass;
+}
+
+async function fixAppInstall(appName, splunkbaseId) {
+    const sbAuth = getSplunkbaseAuth();
+    if (!sbAuth) {
+        showAppInstallHelp(appName, splunkbaseId, appName);
+        return;
+    }
+    const id = 'app-' + appName;
+    setCardState(id, 'checking', '<span class="progress-spinner"></span> App wird von Splunkbase installiert...');
+    try {
+        // Remove stub app first if it exists (empty placeholder from failed previous install)
+        const preCheck = await checkApp(appName);
+        if (preCheck.isStub) {
+            await splunkFetch('DELETE', '/services/apps/local/' + encodeURIComponent(appName));
+        }
+        const params = new URLSearchParams();
+        params.append('name', appName);
+        params.append('update', 'true');
+        params.append('auth', sbAuth);
+        const resp = await splunkFetch('POST', '/services/apps/local', params.toString());
+        if (resp.ok || resp.status === 201) {
+            // Verify it's not a stub
+            const r = await checkApp(appName);
+            if (r.ok) {
+                setCardState(id, 'ok', 'Installiert! Version: <strong>' + escapeHtml(r.version) + '</strong><br>Label: ' + escapeHtml(r.label));
+            } else if (r.isStub) {
+                // REST API created a stub - Splunkbase download failed
+                await splunkFetch('DELETE', '/services/apps/local/' + encodeURIComponent(appName));
+                setCardState(id, 'fail',
+                    'Splunkbase-Download fehlgeschlagen (Stub erstellt). Moegliche Ursachen: Splunk.com-Credentials falsch, kein Internet, oder App-Name stimmt nicht mit Splunkbase ueberein.',
+                    '<button class="fix-btn link-btn" onclick="showAppInstallHelp(\'' + appName + '\',' + splunkbaseId + ',\'' + escapeHtml(appName) + '\')">Manuell...</button>');
+            } else {
+                setCardState(id, 'fail', 'Installation unklar: ' + escapeHtml(r.error),
+                    '<button class="fix-btn link-btn" onclick="showAppInstallHelp(\'' + appName + '\',' + splunkbaseId + ',\'' + escapeHtml(appName) + '\')">Manuell...</button>');
+            }
+            return;
+        }
+        if (resp.status === 409) {
+            const r = await checkApp(appName);
+            if (r.ok) {
+                setCardState(id, 'ok', 'Bereits installiert: v' + escapeHtml(r.version));
+            } else {
+                setCardState(id, 'fail', 'App existiert aber ist fehlerhaft. Bitte manuell neu installieren.',
+                    '<button class="fix-btn link-btn" onclick="showAppInstallHelp(\'' + appName + '\',' + splunkbaseId + ',\'' + escapeHtml(appName) + '\')">Manuell...</button>');
+            }
+            return;
+        }
+        const data = await resp.json().catch(() => ({}));
+        const msg = (data.messages && data.messages[0] && data.messages[0].text) || 'HTTP ' + resp.status;
+        setCardState(id, 'fail', 'Installation fehlgeschlagen: ' + escapeHtml(msg),
+            '<button class="fix-btn link-btn" onclick="showAppInstallHelp(\'' + appName + '\',' + splunkbaseId + ',\'' + escapeHtml(appName) + '\')">Manuell...</button>');
+    } catch (e) {
+        setCardState(id, 'fail', 'Fehler: ' + escapeHtml(e.message),
+            '<button class="fix-btn link-btn" onclick="showAppInstallHelp(\'' + appName + '\',' + splunkbaseId + ',\'' + escapeHtml(appName) + '\')">Manuell...</button>');
+    }
+}
+
+// === Rendering ===
+
+function renderCard(id, title, statusClass, iconClass, detailHtml, fixHtml) {
+    return '<div class="check-card ' + statusClass + '" id="card-' + id + '">'
+        + '<div class="check-card-top">'
+        + '<span class="status-icon ' + iconClass + '"></span>'
+        + '<span class="check-card-title">' + escapeHtml(title) + '</span>'
+        + (fixHtml || '')
+        + '</div>'
+        + '<span class="check-card-toggle" onclick="toggleDetail(\'' + id + '\')">Details</span>'
+        + '<div class="check-detail" id="detail-' + id + '">' + detailHtml + '</div>'
+        + '</div>';
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function toggleDetail(id) {
+    const el = document.getElementById('detail-' + id);
+    if (el) el.classList.toggle('open');
+}
+
+function updateSummary() {
+    const keys = Object.keys(checkResults);
+    const ok = keys.filter(k => checkResults[k] === 'ok').length;
+    const fail = keys.filter(k => checkResults[k] === 'fail').length;
+    const checking = keys.filter(k => checkResults[k] === 'checking').length;
+    const total = INDEX_CHECKS.length + 3 + 1 + APP_CHECKS.length; // indexes + HEC(3) + S2S(1) + apps
+    const pending = total - ok - fail - checking;
+    const el = document.getElementById('check-summary');
+    el.innerHTML = '<span class="sum-ok">' + ok + ' bestanden</span>'
+        + '<span class="sum-fail">' + fail + ' fehlgeschlagen</span>'
+        + (checking > 0 ? '<span class="sum-pending"><span class="progress-spinner"></span> ' + checking + ' laufend</span>' : '')
+        + (pending > 0 ? '<span class="sum-pending">' + pending + ' ausstehend</span>' : '');
+}
+
+function setCardState(id, state, detailHtml, fixHtml) {
+    checkResults[id] = state;
+    const card = document.getElementById('card-' + id);
+    if (!card) return;
+    card.className = 'check-card ' + (state === 'ok' ? 'ok' : state === 'fail' ? 'fail' : state === 'checking' ? 'checking' : '');
+    const icon = card.querySelector('.status-icon');
+    if (icon) icon.className = 'status-icon ' + (state === 'ok' ? 'green' : state === 'fail' ? 'red' : state === 'checking' ? 'yellow' : '');
+    if (detailHtml !== undefined) {
+        const det = document.getElementById('detail-' + id);
+        if (det) det.innerHTML = detailHtml;
+    }
+    // Update fix button area
+    const top = card.querySelector('.check-card-top');
+    const oldFix = top.querySelector('.fix-btn');
+    if (oldFix) oldFix.remove();
+    if (fixHtml && state === 'fail') {
+        top.insertAdjacentHTML('beforeend', fixHtml);
+    }
+    updateSummary();
+}
+
+// === Initial Render ===
+
+function renderInitialCards() {
+    // Indexes
+    const gridIdx = document.getElementById('grid-indexes');
+    gridIdx.innerHTML = INDEX_CHECKS.map(idx => {
+        const id = 'idx-' + idx.name;
+        return renderCard(id, idx.name, '', '', '<em>' + escapeHtml(idx.desc) + '</em>', '');
+    }).join('');
+
+    // HEC
+    const gridHec = document.getElementById('grid-hec');
+    gridHec.innerHTML = renderCard('hec-global', 'HEC Global aktiviert', '', '', 'Prueft ob HTTP Event Collector global eingeschaltet ist.', '')
+        + renderCard('hec-token', 'HEC Token vorhanden', '', '', 'Sucht nach Tokens mit "cribl" im Namen.', '')
+        + renderCard('hec-indexes', 'HEC Allowed Indexes', '', '', 'Prueft ob alle benoetigten Indexes im Token erlaubt sind.', '');
+
+    // S2S
+    const gridS2s = document.getElementById('grid-s2s');
+    gridS2s.innerHTML = renderCard('s2s-9997', 'S2S Port 9997', '', '', 'Prueft ob Splunk auf Port 9997 Daten empfaengt.', '');
+
+    // Apps
+    const gridApps = document.getElementById('grid-apps');
+    gridApps.innerHTML = APP_CHECKS.map(app => {
+        const id = 'app-' + app.appName;
+        const tag = app.required ? ' (Pflicht)' : ' (Empfohlen)';
+        return renderCard(id, app.displayName + tag, '', '', 'Splunkbase-ID: ' + app.splunkbaseId, '');
+    }).join('');
+}
+
+// === Run All Checks ===
+
+async function runAllChecks() {
+    const pass = document.getElementById('splunk-pass').value;
+    if (!pass) {
+        alert('Bitte Splunk-Passwort eingeben.');
+        return;
+    }
+
+    // Mark all as checking
+    const allIds = [
+        ...INDEX_CHECKS.map(i => 'idx-' + i.name),
+        'hec-global', 'hec-token', 'hec-indexes',
+        's2s-9997',
+        ...APP_CHECKS.map(a => 'app-' + a.appName),
+    ];
+    allIds.forEach(id => setCardState(id, 'checking', '<span class="progress-spinner"></span> Pruefe...'));
+
+    // Run all checks in parallel
+    const promises = [];
+
+    // Index checks
+    for (const idx of INDEX_CHECKS) {
+        const id = 'idx-' + idx.name;
+        promises.push(checkIndex(idx.name).then(r => {
+            if (r.ok) {
+                setCardState(id, 'ok',
+                    '<em>' + escapeHtml(idx.desc) + '</em><br>Events: <strong>' + r.events + '</strong>, Groesse: <strong>' + r.sizeMB + ' MB</strong>, Aufbewahrung: ' + formatRetention(r.retention));
+            } else {
+                setCardState(id, 'fail',
+                    '<em>' + escapeHtml(idx.desc) + '</em><br>Fehler: ' + escapeHtml(r.error),
+                    '<button class="fix-btn" onclick="doFixIndex(\'' + idx.name + '\',' + idx.retention + ')">Anlegen</button>');
+            }
+        }));
+    }
+
+    // HEC Global
+    promises.push(checkHecGlobal().then(r => {
+        if (r.ok) {
+            setCardState('hec-global', 'ok', 'HEC ist global aktiviert. Tokens: ' + (r.tokens || '?'));
+        } else {
+            setCardState('hec-global', 'fail', 'HEC ist <strong>nicht aktiviert</strong>: ' + escapeHtml(r.error || '') + '<br>In Splunk Web: <em>Settings &rarr; HTTP Event Collector &rarr; Global Settings &rarr; All Tokens: Enabled</em>');
+        }
+    }));
+
+    // HEC Token
+    promises.push(checkHecToken().then(r => {
+        if (r.ok) {
+            setCardState('hec-token', 'ok',
+                'Token: <strong>' + escapeHtml(r.tokenName) + '</strong> (' + r.token + ')<br>Default Index: ' + escapeHtml(r.defaultIndex) + '<br>Disabled: ' + r.disabled);
+        } else {
+            setCardState('hec-token', 'fail',
+                'Fehler: ' + escapeHtml(r.error),
+                '<button class="fix-btn" onclick="doFixHecToken()">Token erstellen</button>');
+        }
+    }));
+
+    // HEC Allowed Indexes
+    promises.push(checkHecAllowedIndexes().then(r => {
+        if (r.ok) {
+            setCardState('hec-indexes', 'ok', 'Alle ' + ALL_INDEX_NAMES.length + ' Indexes im Token erlaubt.<br>Allowed: ' + r.allowed.join(', '));
+        } else if (r.missing) {
+            setCardState('hec-indexes', 'fail',
+                'Fehlende Indexes im Token: <strong>' + r.missing.join(', ') + '</strong><br>Erlaubt: ' + (r.allowed.length ? r.allowed.join(', ') : '<em>keine</em>'),
+                '<button class="fix-btn" onclick="doFixHecIndexes()">Indexes hinzufuegen</button>');
+        } else {
+            setCardState('hec-indexes', 'fail', 'Fehler: ' + escapeHtml(r.error));
+        }
+    }));
+
+    // S2S
+    promises.push(checkS2SReceiving().then(r => {
+        if (r.ok) {
+            setCardState('s2s-9997', 'ok', 'Port 9997 ist konfiguriert. Disabled: ' + r.disabled);
+        } else {
+            setCardState('s2s-9997', 'fail',
+                'Fehler: ' + escapeHtml(r.error),
+                '<button class="fix-btn" onclick="doFixS2S()">Port 9997 anlegen</button>');
+        }
+    }));
+
+    // App checks
+    for (const app of APP_CHECKS) {
+        const id = 'app-' + app.appName;
+        promises.push(checkApp(app.appName).then(r => {
+            if (r.ok) {
+                setCardState(id, 'ok', 'Version: <strong>' + escapeHtml(r.version) + '</strong>, Disabled: ' + r.disabled + '<br>Label: ' + escapeHtml(r.label));
+            } else {
+                setCardState(id, 'fail',
+                    'Fehler: ' + escapeHtml(r.error),
+                    '<button class="fix-btn link-btn" onclick="fixAppInstall(\'' + app.appName + '\',' + app.splunkbaseId + ')">Installieren</button>');
+            }
+        }));
+    }
+
+    await Promise.allSettled(promises);
+    updateSummary();
+}
+
+function resetAllChecks() {
+    checkResults = {};
+    renderInitialCards();
+    document.getElementById('check-summary').innerHTML = '<span class="sum-pending">Zurueckgesetzt &mdash; Checks erneut ausfuehren</span>';
+}
+
+// === Fix Handlers ===
+
+async function doFixIndex(name, retention) {
+    const id = 'idx-' + name;
+    setCardState(id, 'checking', '<span class="progress-spinner"></span> Index wird angelegt...');
+    const result = await fixIndex(name, retention);
+    if (result.ok) {
+        // Re-check
+        const r = await checkIndex(name);
+        setCardState(id, 'ok', 'Index erfolgreich angelegt!<br>Events: ' + (r.events || '0') + ', Groesse: ' + (r.sizeMB || '0') + ' MB');
+    } else {
+        setCardState(id, 'fail', 'Anlegen fehlgeschlagen: ' + escapeHtml(result.error));
+    }
+}
+
+async function doFixHecToken() {
+    setCardState('hec-token', 'checking', '<span class="progress-spinner"></span> Token wird erstellt...');
+    const result = await fixHecToken();
+    if (result.ok) {
+        const r = await checkHecToken();
+        if (r.ok) {
+            setCardState('hec-token', 'ok', 'Token erstellt: <strong>' + escapeHtml(r.tokenName) + '</strong> (' + r.token + ')');
+        } else {
+            setCardState('hec-token', 'ok', 'Token erfolgreich erstellt.');
+        }
+    } else {
+        setCardState('hec-token', 'fail', 'Erstellen fehlgeschlagen: ' + escapeHtml(result.error));
+    }
+}
+
+async function doFixHecIndexes() {
+    setCardState('hec-indexes', 'checking', '<span class="progress-spinner"></span> Indexes werden hinzugefuegt...');
+    const tokenResult = await checkHecToken();
+    if (!tokenResult.ok) {
+        setCardState('hec-indexes', 'fail', 'Kann Token nicht finden. Bitte erst Token erstellen.');
+        return;
+    }
+    const r = await checkHecAllowedIndexes();
+    if (r.ok) {
+        setCardState('hec-indexes', 'ok', 'Alle Indexes bereits erlaubt.');
+        return;
+    }
+    const result = await fixHecAllowedIndexes(tokenResult.criblTokens, r.missing);
+    if (result.ok) {
+        const r2 = await checkHecAllowedIndexes();
+        if (r2.ok) {
+            setCardState('hec-indexes', 'ok', 'Alle ' + ALL_INDEX_NAMES.length + ' Indexes in allen Cribl-Tokens erlaubt.<br>Allowed: ' + r2.allowed.sort().join(', '));
+        } else {
+            setCardState('hec-indexes', 'fail', 'Noch fehlend nach Update: ' + r2.missing.join(', '));
+        }
+    } else {
+        setCardState('hec-indexes', 'fail', 'Hinzufuegen fehlgeschlagen: ' + escapeHtml(result.error));
+    }
+}
+
+async function doFixS2S() {
+    setCardState('s2s-9997', 'checking', '<span class="progress-spinner"></span> Port wird angelegt...');
+    const result = await fixS2SReceiving();
+    if (result.ok) {
+        setCardState('s2s-9997', 'ok', 'Port 9997 erfolgreich angelegt.');
+    } else {
+        setCardState('s2s-9997', 'fail', 'Anlegen fehlgeschlagen: ' + escapeHtml(result.error));
+    }
+}
+
+// === App Install Modal ===
+
+function showAppInstallHelp(appName, splunkbaseId, displayName) {
+    document.getElementById('app-modal-title').textContent = displayName + ' installieren';
+    const splunkbaseUrl = 'https://splunkbase.splunk.com/app/' + splunkbaseId;
+    document.getElementById('app-modal-content').innerHTML =
+        '<p><strong>1. Download von Splunkbase:</strong></p>'
+        + '<p><a href="' + splunkbaseUrl + '" target="_blank" style="color:#2b6cb0;font-weight:600">'
+        + splunkbaseUrl + '</a></p>'
+        + '<p><strong>2. Installation via CLI:</strong></p>'
+        + '<pre><code>/opt/splunk/bin/splunk install app /tmp/' + escapeHtml(appName) + '.tgz \\\n  -auth admin:&lt;password&gt;\n/opt/splunk/bin/splunk restart</code></pre>'
+        + '<p><strong>3. Installation via REST API:</strong></p>'
+        + '<pre><code>curl -k -u admin:&lt;password&gt; \\\n  https://localhost:8089/services/apps/local \\\n  -d name=' + escapeHtml(appName) + ' \\\n  -d filename=true \\\n  -d update=true</code></pre>'
+        + '<p style="font-size:0.85em;color:#718096;margin-top:12px"><em>Hinweis: Fuer die automatische Installation via REST API ist ein Splunk.com-Login erforderlich (auth_token). Fuer den PoC wird die manuelle Installation ueber CLI empfohlen.</em></p>';
+    document.getElementById('app-modal-overlay').classList.add('visible');
+}
+
+function closeAppModal() {
+    document.getElementById('app-modal-overlay').classList.remove('visible');
+}
+
+// === Utility ===
+
+function formatRetention(secs) {
+    const n = parseInt(secs);
+    if (isNaN(n)) return secs;
+    if (n >= 31536000) return Math.round(n / 31536000) + ' Jahr(e)';
+    if (n >= 86400) return Math.round(n / 86400) + ' Tag(e)';
+    return n + 's';
+}
+
+// === Initialize on load ===
+document.addEventListener('DOMContentLoaded', renderInitialCards);
+</script>
 
 </body>
 </html>
