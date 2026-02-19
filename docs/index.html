@@ -27,14 +27,51 @@
 
 <div class="header">
     <h1>IceDataEmphasise</h1>
-    <p>Cribl Stream &amp; Edge PoC - ITSO-Dokumentation</p>
-    <p>Log-Pipeline-Infrastruktur fuer regulierte Umgebungen (MaRisk / BAIT / DORA)</p>
-    <p style="margin-top: 15px; font-size: 0.85em;">Version 1.1 | Stand: 2026-02-19 | Klassifikation: INTERN</p>
+    <p>Intelligente Log-Pipeline-Infrastruktur mit lokaler KI-Klassifizierung</p>
+    <p>Cribl Stream &amp; Edge PoC fuer regulierte Umgebungen (MaRisk / BAIT / DORA)</p>
+    <p style="margin-top: 15px; font-size: 0.85em;">Version 1.2 | Stand: 2026-02-19 | Klassifikation: INTERN</p>
 </div>
 
 <div class="info">
     <strong>Hinweis:</strong> Diese Dokumentation ist die oeffentliche, bereinigte Version.
     Sensible Daten (IP-Adressen, Tokens, Passwoerter) befinden sich ausschliesslich in der internen Confluence-Dokumentation.
+</div>
+
+<!-- Executive Abstract -->
+<div style="background:#f7fafc; border:1px solid #e2e8f0; border-radius:8px; padding:24px; margin-bottom:2em;">
+    <h2 style="margin-top:0; border:none; padding:0;">Projektuebersicht</h2>
+    <p>
+        IceDataEmphasise demonstriert, wie <strong>Cribl Stream &amp; Edge</strong> zusammen mit einer
+        <strong>lokal betriebenen KI (Ollama)</strong> die Log-Analyse in regulierten Bankenumgebungen
+        grundlegend verbessern kann &ndash; bei gleichzeitiger Reduktion der Splunk-Lizenzkosten um
+        <strong>40&ndash;60 %</strong>.
+    </p>
+    <p>
+        Eine dreistufige Verarbeitungskette &ndash; Edge-Sammlung, Pipeline-Verarbeitung mit
+        MITRE&nbsp;ATT&amp;CK-Anreicherung und KI-gestuetzte Klassifizierung &ndash; entscheidet
+        <em>vor</em> der Indexierung, ob ein Ereignis sicherheitsrelevant (SIEM) oder
+        operativ ist. Nur relevante Daten gehen an den teuren Splunk-Indexer;
+        operationale Telemetrie wird an guenstigere Speicher (S3, Elasticsearch) geroutet.
+    </p>
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:12px; margin-top:16px;">
+        <div style="background:#fff; border-left:4px solid #38a169; padding:12px; border-radius:4px;">
+            <strong style="color:#276749;">Lokale KI</strong><br>
+            <span style="font-size:0.88em;">Zweistufig: 40+ Regeln (&lt;1ms) + Qwen2.5-14B Sprachmodell als Fallback. Kein Cloud-Abfluss &ndash; alle Daten bleiben on-premise.</span>
+        </div>
+        <div style="background:#fff; border-left:4px solid #2b6cb0; padding:12px; border-radius:4px;">
+            <strong style="color:#2c5282;">7 Pipelines</strong><br>
+            <span style="font-size:0.88em;">Syslog-Enrichment, Apache CLF, Docker JSON, Security Auth mit MITRE ATT&amp;CK, PII-Maskierung, Universal Classifier.</span>
+        </div>
+        <div style="background:#fff; border-left:4px solid #805ad5; padding:12px; border-radius:4px;">
+            <strong style="color:#553c9a;">Interaktive Panels</strong><br>
+            <span style="font-size:0.88em;">Splunk Check &amp; Fix, AI Status Dashboard, Ein-Klick-Konfiguration ueber REST API direkt aus dem Browser.</span>
+        </div>
+        <div style="background:#fff; border-left:4px solid #d69e2e; padding:12px; border-radius:4px;">
+            <strong style="color:#975a16;">Compliance</strong><br>
+            <span style="font-size:0.88em;">17 ITSO-konforme Dokumente. Explizites Mapping auf MaRisk AT 7.2, BAIT, DORA und DSGVO.</span>
+        </div>
+    </div>
 </div>
 
 <h2>Grundlagen</h2>

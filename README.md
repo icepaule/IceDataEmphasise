@@ -1,8 +1,69 @@
 # IceDataEmphasise
 
-**Cribl Stream & Edge PoC** - Log-Pipeline-Infrastruktur als Alternative zum Splunk Universal Forwarder.
+**Cribl Stream & Edge PoC** -- Intelligente Log-Pipeline-Infrastruktur mit lokaler KI-Klassifizierung fuer regulierte Umgebungen.
 
-Evaluierung von Cribl Stream 4.16.0 und Cribl Edge fuer den Einsatz in regulierten Umgebungen (ITSO-konforme Dokumentation fuer deutsche Banken nach MaRisk/BAIT/DORA).
+> **[Live-Dokumentation auf GitHub Pages](https://icepaule.github.io/IceDataEmphasise/)**
+
+---
+
+## Kurzfassung
+
+IceDataEmphasise ist ein Proof of Concept, der zeigt, wie **Cribl Stream & Edge** zusammen mit einer **lokal betriebenen KI (Ollama)** die Log-Analyse in regulierten Bankenumgebungen grundlegend verbessern kann -- bei gleichzeitiger **Reduktion der Splunk-Lizenzkosten um 40--60 %**.
+
+### Das Problem
+
+In regulierten Umgebungen (MaRisk, BAIT, DORA) muessen alle sicherheitsrelevanten Ereignisse lueckenlos erfasst, aufbewahrt und auswertbar sein. Der klassische Ansatz -- Splunk Universal Forwarder schickt *alles* an den Indexer -- fuehrt zu hohen Lizenzkosten, weil auch operationale Massentelemetrie (Health-Checks, Debug-Logs, Container-Noise) das teure Splunk-Lizenzvolumen belastet. Gleichzeitig fehlt eine fruehe Datenklassifizierung: Sicherheitsrelevante Events sind erst nach der Indexierung identifizierbar.
+
+### Die Loesung
+
+IceDataEmphasise setzt eine **dreistufige Verarbeitungskette** vor den Splunk-Indexer:
+
+1. **Cribl Edge** sammelt Logs direkt auf den Endpunkten (Linux + Windows) -- als Drop-in-Ersatz fuer den Splunk Universal Forwarder, mit voller Unterstuetzung fuer Sysmon, auditd, PowerShell Script Block Logging und fail2ban.
+
+2. **Cribl Stream** verarbeitet, normalisiert und klassifiziert die Daten in Echtzeit ueber 7 spezialisierte Pipelines:
+   - **MITRE ATT&CK-Anreicherung** -- SSH Brute-Force (T1110), verdaechtige Prozesse und Netzwerkverbindungen werden automatisch mit ATT&CK-Techniken annotiert
+   - **PII-Maskierung** -- E-Mail-Adressen, IP-Adressen und API-Tokens werden DSGVO-konform reduziert, bevor sie den Endpunkt verlassen
+   - **Intelligentes Sampling** -- 100 % der ERROR/CRITICAL-Events bleiben erhalten, DEBUG-Logs werden auf 10 % reduziert, ohne Informationsverlust bei sicherheitsrelevanten Daten
+   - **Multi-Destination-Routing** -- Sicherheitsdaten gehen an Splunk, operationale Daten an guenstigere Speicher (S3, Elasticsearch)
+
+3. **Lokale KI-Klassifizierung (Ollama)** entscheidet fuer jedes Ereignis: *SIEM-relevant* oder *operativ*?
+   - **Stufe 1 (Regelbasiert):** 40+ Regeln fuer bekannte Muster (Windows Security Event IDs, Sysmon, auditd, SSH) -- unter 1 ms Latenz, 85--95 % Trefferquote
+   - **Stufe 2 (KI-Fallback):** Unbekannte Events werden an ein lokal laufendes **Qwen2.5-14B-Sprachmodell** uebergeben, das den Kontext analysiert und eine Klassifizierung mit Begruendung liefert
+   - **Kein Cloud-Abfluss:** Das KI-Modell laeuft vollstaendig on-premise -- keine Log-Daten verlassen das Netzwerk
+
+### Konkrete Analysefaehigkeiten
+
+| Faehigkeit | Beschreibung |
+|---|---|
+| **Interaktiver Splunk Check & Fix** | Browser-Panel prueft ueber die Splunk REST API automatisch alle Indexes, HEC-Tokens, S2S-Ports und Apps -- fehlende Konfigurationen werden per Klick angelegt |
+| **AI Status Dashboard** | Echtzeit-Visualisierung der KI-Klassifizierung: SIEM/Operational-Verteilung, Regel- vs. Ollama-Anteile, Konfidenzwerte, Durchsatzmetriken |
+| **MITRE ATT&CK Mapping** | Sicherheitsevents werden automatisch mit Technik-IDs und Taktiken annotiert -- direkt in Splunk durchsuchbar |
+| **A/B-Test Regel vs. KI** | Uebung 10 vergleicht systematisch Latenzen und Trefferquoten beider Methoden fuer datenbasierte Entscheidungen |
+| **PII-Compliance-Report** | Nachweis der DSGVO-konformen Datenreduktion vor Indexierung (E-Mail, IP, Token-Redaktion) |
+| **Persistent Queues** | Kein Datenverlust bei Splunk-Ausfaellen -- Events werden gepuffert und nach Wiederherstellung automatisch nachgeliefert |
+| **Fleet Management** | Zentrale Verwaltung von bis zu 100 Edge-Agenten (Windows + Linux) ueber eine Oberflaeche |
+
+### Regulatorischer Mehrwert
+
+Die gesamte Dokumentation (17 HTML-Seiten) ist **ITSO-konform** aufgebaut und adressiert explizit:
+
+- **MaRisk AT 7.2** -- Integritaet, Verfuegbarkeit, Authentizitaet der Log-Daten; Change-Management ueber Git
+- **BAIT** -- IT-Governance (RBAC in Cribl), Informationsrisikomanagement, IT-Betrieb (Monitoring, Alerting, Backup)
+- **DORA** -- IKT-Risikomanagement, IKT-Vorfallmanagement (Log-Daten als forensische Grundlage), Resilienz-Tests (PQ-Ausfallsimulation)
+- **DSGVO** -- Datenminimierung durch Pipeline-Filterung, PII-Maskierung, Aufbewahrungsbegrenzung, Rechenschaftspflicht
+
+### Wirtschaftlichkeit
+
+| Aspekt | Splunk UF (Ist-Zustand) | Cribl Stream + Edge (PoC) |
+|---|---|---|
+| Datenreduktion | Keine (100 % gehen an Indexer) | 40--60 % durch Sampling, Filterung, Routing |
+| Lizenzmodell | Pro GB indexiertes Volumen | Cribl Free Tier: 1 TB/Tag, 100 Edge Nodes |
+| Datenklassifizierung | Erst nach Indexierung (in Splunk ES) | Vor Indexierung (in Pipeline + lokale KI) |
+| MITRE-Anreicherung | Nur mit Splunk Enterprise Security | In Cribl-Pipeline (kostenlos) |
+| Multi-Destination | Nur Splunk | Splunk, S3, Elasticsearch, Kafka, ... |
+| PII-Maskierung | Manuell in Splunk | Automatisch in Pipeline vor Indexierung |
+
+---
 
 ## Architektur
 
