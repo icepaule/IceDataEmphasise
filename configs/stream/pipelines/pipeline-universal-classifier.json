@@ -606,21 +606,21 @@
       {
         "id": "eval",
         "filter": "classification === 'unknown'",
-        "disabled": false,
+        "disabled": true,
         "conf": {
           "add": [
             {
               "name": "__ollama_response",
-              "value": "C.Misc.fetch(`http://${C.vars.OLLAMA_HOST || '10.10.0.210'}:${C.vars.OLLAMA_PORT || '11434'}/api/generate`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ model: C.vars.OLLAMA_MODEL || 'qwen2.5:14b', prompt: `Classify this log line as either SIEM (security-relevant) or OPERATIONAL (normal operations). Context: source_type=${source_type || 'unknown'}, edge_event_id=${edge_event_id || 'none'}, log_name=${edge_log_name || 'none'}. Reply with exactly one word: SIEM or OPERATIONAL.\\nLog: ${(log_message || '').substring(0, 500)}`, stream: false, options: { num_predict: 10, temperature: 0.1 } }), timeout: 5000 }).then(r => r.json()).then(r => r.response || 'OPERATIONAL').catch(() => 'OPERATIONAL')"
+              "value": "'OPERATIONAL'"
             }
           ]
         },
-        "description": "Ollama AI: Classify unknown events via qwen2.5 (5s timeout, fallback: operational)"
+        "description": "Ollama AI: Classify unknown events via qwen2.5 (5s timeout, fallback: operational) [disabled for API compat — full version in YAML via deploy script 15]"
       },
       {
         "id": "eval",
         "filter": "classification === 'unknown' && __ollama_response",
-        "disabled": false,
+        "disabled": true,
         "conf": {
           "add": [
             {
@@ -635,10 +635,9 @@
               "name": "classification_reason",
               "value": "`ollama_${C.vars.OLLAMA_MODEL || 'qwen2.5:14b'}_response`"
             }
-          ],
-          "remove": [{"name": "__ollama_response"}]
+          ]
         },
-        "description": "Parse Ollama response and set classification"
+        "description": "Parse Ollama response and set classification [disabled for API compat — full version in YAML via deploy script 15]"
       },
       {
         "id": "comment",

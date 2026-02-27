@@ -226,6 +226,34 @@
         .config-card .tag.destination { background: #e53e3e; }
         .analyzer-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #cbd5e0; border-top-color: #2b6cb0; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* CIM Panel */
+        .cim-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; }
+        .cim-tab { padding: 10px 20px; font-weight: 600; font-size: 0.9em; cursor: pointer; border-bottom: 3px solid transparent; color: #718096; transition: color 0.2s, border-color 0.2s; background: none; border-top: none; border-left: none; border-right: none; }
+        .cim-tab.active { color: #2b6cb0; border-bottom-color: #2b6cb0; }
+        .cim-tab:hover { color: #2c5282; }
+        .cim-result-card { border: 2px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+        .cim-result-card h4 { color: #2c5282; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .cim-result-card table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin: 10px 0; }
+        .cim-result-card th, .cim-result-card td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .cim-result-card th { background: #f7fafc; font-weight: 600; }
+        .cim-model-card { border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s; }
+        .cim-model-card:hover { border-color: #805ad5; }
+        .cim-model-header { padding: 14px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #faf5ff; }
+        .cim-model-header h4 { margin: 0; color: #553c9a; font-size: 0.95em; }
+        .cim-model-body { display: none; padding: 16px; border-top: 1px solid #e2e8f0; }
+        .cim-model-card.open .cim-model-body { display: block; }
+        .cim-model-card.open .cim-chevron { transform: rotate(180deg); }
+        .cim-chevron { transition: transform 0.2s; font-size: 0.8em; color: #805ad5; }
+        .cim-deploy-step { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 4px 0; border-radius: 6px; font-size: 0.9em; background: #f7fafc; color: #a0aec0; }
+        .cim-deploy-step.running { background: #ebf8ff; color: #2b6cb0; font-weight: 600; }
+        .cim-deploy-step.done { background: #f0fff4; color: #276749; }
+        .cim-deploy-step.error { background: #fff5f5; color: #c53030; }
+        .cim-deploy-step .step-icon { width: 20px; text-align: center; }
+        .cim-tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 700; background: #e9d8fd; color: #553c9a; margin-right: 4px; }
+        .cim-field-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        .cim-field-table th, .cim-field-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .cim-field-table th { background: #faf5ff; font-weight: 600; color: #553c9a; }
     </style>
 </head>
 <body>
@@ -689,6 +717,53 @@
     </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- CIM-ANALYSE & DATENMODELLE -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header" style="background:#553c9a;">
+        <h2>CIM-ANALYSE &amp; DATENMODELLE</h2>
+        <span style="font-size:0.8em;opacity:0.85;">KI-gestuetzte Feldextraktion &amp; CIM-Mapping</span>
+    </div>
+    <div class="panel-body">
+        <div class="cim-tabs">
+            <button class="cim-tab active" onclick="switchCimTab('analysis')">KI-Analyse</button>
+            <button class="cim-tab" onclick="switchCimTab('explorer')">Datenmodell-Explorer</button>
+        </div>
+
+        <!-- Tab 1: KI-Analyse -->
+        <div id="cimTabAnalysis">
+            <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
+                Analysiert Sample-Events aus Elasticsearch per Ollama-KI und schlaegt CIM-konforme Feldextraktionen vor.
+                Die erkannten Felder koennen direkt als Splunk-Konfiguration (props/transforms/eventtypes/tags) deployed werden.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                <select id="cimModel">
+                    <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                    <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                    <option value="llama3.1:8b">llama3.1:8b</option>
+                    <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
+                </select>
+                <button class="btn btn-primary" onclick="startCimAnalysis()" id="cimAnalyzeBtn">CIM-Analyse starten</button>
+                <span id="cimAnalysisStatus" class="text-muted"></span>
+            </div>
+            <div id="cimAnalysisResults">
+                <div class="empty-state">Noch keine Analyse durchgefuehrt. Klicke &quot;CIM-Analyse starten&quot;.</div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Datenmodell-Explorer -->
+        <div id="cimTabExplorer" class="hidden">
+            <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
+                Interaktive Uebersicht der wichtigsten Splunk CIM-Datenmodelle mit Felddefinitionen und Beispiel-Queries.
+            </p>
+            <div id="cimExplorerContent">
+                <div class="empty-state">Lade Datenmodelle...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Navigation -->
 <div class="container" style="padding:0;">
     <div class="nav">
@@ -710,6 +785,25 @@
         <div class="modal-footer" id="modalFooter">
             <button class="btn btn-outline" onclick="closeModal()">Schliessen</button>
             <button class="btn btn-success" id="modalConfirmBtn" onclick="modalConfirmAction()">Bestaetigen &amp; Aktivieren</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- CIM DEPLOYMENT MODAL -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="cimDeploymentModal">
+    <div class="modal">
+        <h3>CIM-Konfiguration deployen</h3>
+        <div id="cimDeployContent">
+            <div class="cim-deploy-step" id="cim-step-1"><span class="step-icon">&#9679;</span> <span class="step-label">transforms.conf — Feldextraktionen</span><div class="step-detail" id="cim-step-1-detail"></div></div>
+            <div class="cim-deploy-step" id="cim-step-2"><span class="step-icon">&#9679;</span> <span class="step-label">props.conf — Sourcetype-Zuweisung</span><div class="step-detail" id="cim-step-2-detail"></div></div>
+            <div class="cim-deploy-step" id="cim-step-3"><span class="step-icon">&#9679;</span> <span class="step-label">eventtypes.conf — Event-Typen</span><div class="step-detail" id="cim-step-3-detail"></div></div>
+            <div class="cim-deploy-step" id="cim-step-4"><span class="step-icon">&#9679;</span> <span class="step-label">tags.conf — CIM-Tags</span><div class="step-detail" id="cim-step-4-detail"></div></div>
+        </div>
+        <div id="cimDeploySummary" style="display:none;margin-top:12px;padding:12px;background:#f0fff4;border-radius:6px;border-left:4px solid #38a169;font-size:0.9em;"></div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeCimDeployModal()">Schliessen</button>
         </div>
     </div>
 </div>
@@ -767,6 +861,78 @@ const PAGE_SIZE = 20;
 let currentSuggestions = [];
 let pendingModalAction = null;
 let criblAuthToken = null;
+
+// CIM Analysis state
+let cimAnalysisData = {};
+
+const CIM_MODELS = {
+    Authentication: {
+        description: 'Login/Logout/Authentifizierungs-Events',
+        icon: '&#128274;',
+        fields: [
+            { name: 'action', type: 'string', desc: 'Aktion (success, failure, lockout)' },
+            { name: 'user', type: 'string', desc: 'Benutzername' },
+            { name: 'src', type: 'string', desc: 'Quell-IP/Host' },
+            { name: 'dest', type: 'string', desc: 'Ziel-IP/Host' },
+            { name: 'app', type: 'string', desc: 'Anwendung/Dienst' }
+        ],
+        example_search: 'index=cribl_siem tag=authentication | stats count by action, user, src'
+    },
+    Network_Traffic: {
+        description: 'Netzwerk-Verbindungen und Flows',
+        icon: '&#127760;',
+        fields: [
+            { name: 'action', type: 'string', desc: 'Aktion (allowed, blocked, dropped)' },
+            { name: 'src', type: 'string', desc: 'Quell-IP' },
+            { name: 'dest', type: 'string', desc: 'Ziel-IP' },
+            { name: 'src_port', type: 'number', desc: 'Quell-Port' },
+            { name: 'dest_port', type: 'number', desc: 'Ziel-Port' },
+            { name: 'transport', type: 'string', desc: 'Protokoll (tcp, udp, icmp)' },
+            { name: 'bytes_in', type: 'number', desc: 'Eingehende Bytes' },
+            { name: 'bytes_out', type: 'number', desc: 'Ausgehende Bytes' }
+        ],
+        example_search: 'index=cribl_siem tag=network tag=communicate | stats sum(bytes_in) as total_in by src, dest'
+    },
+    Intrusion_Detection: {
+        description: 'IDS/IPS-Alarme und Signaturen',
+        icon: '&#128680;',
+        fields: [
+            { name: 'action', type: 'string', desc: 'Aktion (allowed, blocked)' },
+            { name: 'severity', type: 'string', desc: 'Schweregrad (critical, high, medium, low, informational)' },
+            { name: 'signature', type: 'string', desc: 'Signaturname oder Regel-ID' },
+            { name: 'src', type: 'string', desc: 'Angreifer-IP' },
+            { name: 'dest', type: 'string', desc: 'Ziel-IP' },
+            { name: 'category', type: 'string', desc: 'Angriffskategorie' }
+        ],
+        example_search: 'index=cribl_siem tag=ids tag=attack | stats count by signature, severity, src'
+    },
+    Change: {
+        description: 'Aenderungs-Events (Konfiguration, Dateien, Benutzer)',
+        icon: '&#128221;',
+        fields: [
+            { name: 'action', type: 'string', desc: 'Aktion (created, modified, deleted)' },
+            { name: 'object', type: 'string', desc: 'Geaendertes Objekt' },
+            { name: 'object_category', type: 'string', desc: 'Kategorie (file, user, registry)' },
+            { name: 'user', type: 'string', desc: 'Ausfuehrender Benutzer' },
+            { name: 'result', type: 'string', desc: 'Ergebnis (success, failure)' },
+            { name: 'command', type: 'string', desc: 'Ausgefuehrter Befehl' }
+        ],
+        example_search: 'index=cribl_siem tag=change | stats count by action, object_category, user'
+    },
+    Endpoint_Processes: {
+        description: 'Prozess-Ausfuehrung auf Endpunkten',
+        icon: '&#128187;',
+        fields: [
+            { name: 'process_name', type: 'string', desc: 'Prozessname' },
+            { name: 'process_id', type: 'number', desc: 'Prozess-ID (PID)' },
+            { name: 'parent_process', type: 'string', desc: 'Eltern-Prozessname' },
+            { name: 'user', type: 'string', desc: 'Ausfuehrender Benutzer' },
+            { name: 'action', type: 'string', desc: 'Aktion (allowed, blocked, created)' },
+            { name: 'dest', type: 'string', desc: 'Hostname des Endpunkts' }
+        ],
+        example_search: 'index=cribl_siem tag=process tag=report | stats count by process_name, user, dest'
+    }
+};
 
 // ============================================================
 // INIT
@@ -1116,14 +1282,18 @@ async function generateSuggestionsLegacy() {
         for (const ob of overviewBuckets) {
             const siemCount = ob.siem_events?.doc_count || 0;
             if (siemCount > 0) {
+                const containerName = ob.key;
                 suggestions.push({
                     type: 'siem_alert',
-                    title: `${siemCount} SIEM-Events von '${ob.key}'`,
-                    description: `Container '${ob.key}' hat ${siemCount} sicherheitsrelevante Events generiert. Diese sollten ueberprueft und ggf. in ein SIEM-System weitergeleitet werden.`,
+                    title: `${siemCount} SIEM-Events von '${containerName}'`,
+                    description: `Container '${containerName}' hat ${siemCount} sicherheitsrelevante Events generiert. Diese sollten ueberprueft und ggf. in ein SIEM-System weitergeleitet werden.`,
                     classification: 'siem',
                     count: siemCount,
                     samples: [],
-                    filter: ''
+                    filter: '',
+                    source: containerName,
+                    suggested_filter: `CONTAINER_NAME && /^${containerName.replace(/[.*+?^${}()|[\]\\]/g, '\\\\$&')}/i.test(CONTAINER_NAME)`,
+                    suggested_reason: `siem_discovery_${containerName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
                 });
             }
         }
@@ -1153,12 +1323,26 @@ async function generateSuggestionsLegacy() {
 
 function renderSuggestions(suggestions) {
     const container = document.getElementById('suggestionsContainer');
-    if (suggestions.length === 0) {
+
+    // Filter out already-activated sources (from SIEM-Discovery or inline activation)
+    const activatedRules = getActivatedRules();
+    const filtered = suggestions.filter(s => {
+        // Check discoveryActivatedSources (SIEM-Discovery)
+        if (s.source && discoveryActivatedSources.includes(s.source)) return false;
+        // Check localStorage activated rules by title match
+        if (activatedRules.some(r => r.title === s.title)) return false;
+        return true;
+    });
+
+    if (filtered.length === 0) {
         container.innerHTML = '<div class="empty-state">Keine Vorschlaege: Alle Events werden durch bestehende Regeln abgedeckt.</div>';
         return;
     }
 
-    container.innerHTML = suggestions.map((s, i) => {
+    // Update currentSuggestions to match filtered list
+    currentSuggestions = filtered;
+
+    container.innerHTML = filtered.map((s, i) => {
         const badgeCls = s.classification === 'siem' ? 'badge-siem' : s.classification === 'info' ? 'badge-unknown' : 'badge-operational';
         const typeIcon = s.type === 'siem_alert' ? '&#9888;' : s.type === 'optimization' ? '&#9881;' : '&#10148;';
         const typeLabel = s.type === 'siem_alert' ? 'Sicherheit' : s.type === 'optimization' ? 'Optimierung' : 'Neue Regel';
@@ -1183,11 +1367,36 @@ classification_reason = '${escHtml(s.reason || '')}'</code></pre>` : '';
                 <span class="badge ${badgeCls}" style="align-self:center;">${escHtml(s.classification)}</span>
                 <span class="text-muted" style="align-self:center;">${formatNum(s.count)} Events</span>
                 ${s.filter ? `<button class="btn btn-sm btn-success" onclick="activateRule(${i})">Aktivieren</button>` : ''}
+                ${s.type === 'siem_alert' && s.source ? `<button class="btn btn-sm" style="background:#c53030;color:white;" onclick="activateFromSuggestion(${i})">SIEM aktivieren</button>` : ''}
                 ${s.filter ? `<button class="btn btn-sm btn-outline" onclick="previewRule(${i})">Vorschau</button>` : ''}
                 <button class="btn btn-sm btn-outline" onclick="copyText(this, ${i})">curl kopieren</button>
             </div>
         </div>`;
     }).join('');
+}
+
+// Bridge: Activate SIEM source directly from AI suggestion card
+function activateFromSuggestion(suggestionIdx) {
+    const s = currentSuggestions[suggestionIdx];
+    if (!s || !s.source) return;
+
+    // Create a discovery-style candidate from the suggestion
+    const candidate = {
+        source: s.source,
+        confidence_pct: 85,
+        siem_event_types: ['security_event'],
+        suggested_filter: s.suggested_filter || `CONTAINER_NAME && /^${s.source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i.test(CONTAINER_NAME)`,
+        suggested_reason: s.suggested_reason || `siem_discovery_${s.source.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+        splunk_sourcetype: s.source.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+        dashboard_panels: []
+    };
+
+    // Inject into discoveryResults so executeSiemActivation can find it
+    const injectedIdx = discoveryResults.length;
+    discoveryResults.push(candidate);
+
+    // Open the activation modal directly
+    activateSiemSource(injectedIdx);
 }
 
 function buildCurlPreview(suggestion) {
@@ -1211,11 +1420,11 @@ curl -s -X POST ${criblUrl}/api/v1/auth/login \\
   -d '{"username":"admin","password":"***"}'
 
 # 2. Get current pipeline
-curl -s -X GET ${criblUrl}/api/v1/pipelines/ollama_classifier \\
+curl -s -X GET ${criblUrl}/api/v1/pipelines/universal_classifier \\
   -H "Authorization: Bearer <TOKEN>"
 
 # 3. Update pipeline (insert new rule)
-curl -s -X PATCH ${criblUrl}/api/v1/pipelines/ollama_classifier \\
+curl -s -X PATCH ${criblUrl}/api/v1/pipelines/universal_classifier \\
   -H "Authorization: Bearer <TOKEN>" \\
   -H "Content-Type: application/json" \\
   -d '${JSON.stringify({ functions: ['<existing_functions + new_rule>'] })}'
@@ -1391,10 +1600,10 @@ async function generateAISuggestions() {
                         const p = d.items ? d.items[0] : d;
                         ctx.pipelines['universal_classifier'] = summarizePipeline(p);
                     }).catch(() => {}),
-                apiFetch('GET', `${criblUrl}/api/v1/pipelines/ollama_classifier`, null, true, criblHeaders)
+                apiFetch('GET', `${criblUrl}/api/v1/pipelines/universal_classifier`, null, true, criblHeaders)
                     .then(r => r.json()).then(d => {
                         const p = d.items ? d.items[0] : d;
-                        ctx.pipelines['ollama_classifier'] = summarizePipeline(p);
+                        ctx.pipelines['universal_classifier_full'] = summarizePipeline(p);
                     }).catch(() => {}),
                 apiFetch('GET', `${criblUrl}/api/v1/system/outputs`, null, true, criblHeaders)
                     .then(r => r.json()).then(d => { ctx.outputs = d.items || d || []; }).catch(() => { ctx.outputs = []; })
@@ -1504,7 +1713,7 @@ WICHTIG: Die obigen "bereits aktivierten Regeln" sind in der Pipeline SCHON AKTI
 
 AUFGABE:
 Analysiere welche Events in der Fallback-Route landen und schlage konkrete NEUE Aenderungen vor (keine Duplikate!):
-1. Pipeline-Regeln: Neue eval-Funktionen fuer die universal_classifier oder ollama_classifier Pipeline
+1. Pipeline-Regeln: Neue eval-Funktionen fuer die universal_classifier Pipeline
 2. Route-Aenderungen: Neue Routen oder Aenderungen an bestehenden Routen
 3. Reklassifikationen: Events die falsch klassifiziert werden
 
@@ -1521,7 +1730,7 @@ Antworte EXAKT im folgenden JSON-Format (kein Markdown, nur reines JSON):
       "estimated_impact_pct": 0 bis 100,
       "config": {
         "pipeline_rule": {
-          "pipeline": "ollama_classifier oder universal_classifier",
+          "pipeline": "universal_classifier",
           "filter": "Cribl eval-Filter Ausdruck",
           "fields": {"classification": "'siem' oder 'operational'", "classification_method": "'rule_based'", "classification_reason": "'reason_name'"},
           "description": "Auto-Rule: Beschreibung",
@@ -1580,7 +1789,7 @@ Wichtig: Jeder Vorschlag muss genau EINEN type haben und die passende config-Str
         const allSuggestions = aiResult.suggestions || [];
         const activated = getActivatedRules();
         const allPipelineFuncs = [
-            ...(ctx.pipelines['ollama_classifier'] || []),
+            ...(ctx.pipelines['universal_classifier_full'] || []),
             ...(ctx.pipelines['universal_classifier'] || [])
         ];
 
@@ -1758,7 +1967,7 @@ function acceptSuggestion(idx) {
 function showPipelineRuleModal(idx, s) {
     const criblUrl = getConfig('CRIBL_URL');
     const cfg = s.config?.pipeline_rule || s.config || {};
-    const pipelineName = cfg.pipeline || 'ollama_classifier';
+    const pipelineName = cfg.pipeline || 'universal_classifier';
 
     const newFunc = {
         id: 'eval',
@@ -1977,7 +2186,7 @@ function previewRule(idx) {
 
     const newFunc = buildNewFunction(s);
     document.getElementById('modalContent').innerHTML = `
-        <p style="margin-bottom:12px;">Diese Regel wuerde VOR der Ollama-Stufe in die Pipeline <code>ollama_classifier</code> eingefuegt:</p>
+        <p style="margin-bottom:12px;">Diese Regel wuerde VOR der Ollama-Stufe in die Pipeline <code>universal_classifier</code> eingefuegt:</p>
         <pre><code>${escHtml(JSON.stringify(newFunc, null, 2))}</code></pre>
         <p class="mt-2 text-muted">Klicken Sie "Aktivieren" auf der Vorschlags-Karte, um diese Regel tatsaechlich zu installieren.</p>
     `;
@@ -2007,11 +2216,11 @@ async function activateRule(idx) {
         <div class="modal-step" id="step1"><span class="step-label">1. Authentifizierung bei Cribl API</span>
             <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/auth/login</code></div></div>
         <div class="modal-step" id="step2"><span class="step-label">2. Aktuelle Pipeline laden</span>
-            <div class="step-detail"><code>GET ${escHtml(criblUrl)}/api/v1/pipelines/ollama_classifier</code></div></div>
+            <div class="step-detail"><code>GET ${escHtml(criblUrl)}/api/v1/pipelines/universal_classifier</code></div></div>
         <div class="modal-step" id="step3"><span class="step-label">3. Neue Regel einfuegen (vor Ollama-Stufe)</span>
             <div class="step-detail">Neue eval-Funktion wird eingefuegt</div></div>
         <div class="modal-step" id="step4"><span class="step-label">4. Pipeline aktualisieren</span>
-            <div class="step-detail"><code>PATCH ${escHtml(criblUrl)}/api/v1/pipelines/ollama_classifier</code></div></div>
+            <div class="step-detail"><code>PATCH ${escHtml(criblUrl)}/api/v1/pipelines/universal_classifier</code></div></div>
         <div class="modal-step" id="step5"><span class="step-label">5. Konfiguration committen</span>
             <div class="step-detail"><code>POST ${escHtml(criblUrl)}/api/v1/version/commit</code></div></div>
         <div class="mt-2"><strong>Einzufuegende Regel:</strong></div>
@@ -2109,7 +2318,7 @@ async function executeLegacyRuleSteps(action) {
 
     // Step 2: Get pipeline
     markStep('step2', 'running');
-    const pipeResp = await apiFetch('GET', `${criblUrl}/api/v1/pipelines/ollama_classifier`, null, false, {
+    const pipeResp = await apiFetch('GET', `${criblUrl}/api/v1/pipelines/universal_classifier`, null, false, {
         'Authorization': `Bearer ${criblAuthToken}`
     });
     const pipeData = await safeJson(pipeResp, 'Pipeline GET');
@@ -2135,7 +2344,7 @@ async function executeLegacyRuleSteps(action) {
 
     // Step 4: Update pipeline
     markStep('step4', 'running');
-    const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/ollama_classifier`, pipeline, false, {
+    const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/universal_classifier`, pipeline, false, {
         'Authorization': `Bearer ${criblAuthToken}`
     });
     const updateData = await safeJson(updateResp, 'Pipeline PUT');
@@ -2184,6 +2393,9 @@ function closeModal() {
     confirmBtn.textContent = 'Bestaetigen & Aktivieren';
     confirmBtn.onclick = modalConfirmAction;
     confirmBtn.disabled = false;
+
+    // Auto-refresh suggestions to remove activated entries
+    setTimeout(() => generateSuggestionsLegacy(), 500);
 }
 
 // ============================================================
@@ -3744,7 +3956,7 @@ function renderDiscoveryResults(aiResult, sourceSummary, model, duration) {
                     </div>
                 </td>
                 <td>
-                    <button class="btn-activate${isActivated ? ' activated' : ''}" id="disc-btn-${i}" onclick="event.stopPropagation();activateSiemSource(${i})"${isActivated ? ' disabled' : ''}>${isActivated ? 'Aktiviert' : 'SIEM aktivieren'}</button>
+                    <button class="btn-activate${isActivated ? ' activated' : ''}" id="disc-btn-${i}" onclick="event.stopPropagation();activateSiemSource(${i})"${isActivated ? ' disabled' : ''}>${isActivated ? 'Aktiviert' : 'Aktivieren'}</button>
                 </td>
             </tr>
             <tr class="detail-row" id="disc-detail-${i}">
@@ -3784,27 +3996,59 @@ async function activateSiemSource(idx) {
     const modal = document.getElementById('siemActivationModal');
     const content = document.getElementById('siemModalContent');
     const footer = document.getElementById('siemModalFooter');
-    document.getElementById('siemModalTitle').textContent = 'SIEM aktivieren: ' + candidate.source;
-
-    const steps = [
-        { id: 'siem-step-1', label: '1. Pipeline-Regel hinzufuegen', detail: 'eval-Function in universal_classifier einfuegen' },
-        { id: 'siem-step-2', label: '2. Cribl committen & deployen', detail: 'Konfiguration committen und Worker deployen' },
-        { id: 'siem-step-3', label: '3. Splunk-Dashboard erstellen', detail: `SOC-Dashboard soc_overview_ide erweitern (${candidate.splunk_sourcetype || 'auto'})` },
-        { id: 'siem-step-4', label: '4. Kibana-Dashboard erstellen', detail: 'SOC-Dashboard ide-soc-overview erweitern' },
-        { id: 'siem-step-5', label: '5. Verifizierung', detail: 'Neue SIEM-Events in ES pruefen (5min Fenster)' }
-    ];
+    document.getElementById('siemModalTitle').textContent = 'Quelle aktivieren: ' + candidate.source;
 
     content.innerHTML = `
+        <div style="margin-bottom:14px;padding:10px;background:#f7fafc;border-radius:8px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;margin-bottom:8px;font-size:0.92em;">Modus waehlen:</div>
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;font-size:0.9em;">
+                <input type="radio" name="activationMode" value="ops" checked>
+                <span><strong>Betriebsmonitoring (nur Kibana)</strong> — Events als <code>operational</code> klassifiziert, Kibana-Dashboard</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.9em;">
+                <input type="radio" name="activationMode" value="siem">
+                <span><strong>SIEM (Kibana + Splunk)</strong> — Events als <code>siem</code> klassifiziert, Kibana + Splunk Dashboards</span>
+            </label>
+        </div>
         <p style="margin-bottom:12px;font-size:0.9em;">Folgende 5 Schritte werden automatisch ausgefuehrt:</p>
-        ${steps.map(s => `<div class="activation-step pending" id="${s.id}">
+        <div class="activation-step pending" id="siem-step-1">
             <span class="step-icon">&#9679;</span>
-            <div><div style="font-weight:600;">${escHtml(s.label)}</div><div style="font-size:0.82em;color:#718096;">${escHtml(s.detail)}</div></div>
-        </div>`).join('')}
+            <div><div style="font-weight:600;">1. Pipeline-Regel hinzufuegen</div><div style="font-size:0.82em;color:#718096;">eval-Function in universal_classifier einfuegen</div></div>
+        </div>
+        <div class="activation-step pending" id="siem-step-2">
+            <span class="step-icon">&#9679;</span>
+            <div><div style="font-weight:600;">2. Cribl committen</div><div style="font-size:0.82em;color:#718096;">Konfiguration committen (Single-Instance: sofort live)</div></div>
+        </div>
+        <div class="activation-step pending" id="siem-step-3">
+            <span class="step-icon">&#9679;</span>
+            <div><div style="font-weight:600;">3. Splunk-Dashboard erstellen</div><div id="siem-step-3-detail" style="font-size:0.82em;color:#718096;">SOC-Dashboard soc_overview_ide erweitern (${escHtml(candidate.splunk_sourcetype || 'auto')})</div></div>
+        </div>
+        <div class="activation-step pending" id="siem-step-4">
+            <span class="step-icon">&#9679;</span>
+            <div><div style="font-weight:600;">4. Kibana-Dashboard erstellen</div><div style="font-size:0.82em;color:#718096;">SOC-Dashboard ide-soc-overview erweitern</div></div>
+        </div>
+        <div class="activation-step pending" id="siem-step-5">
+            <span class="step-icon">&#9679;</span>
+            <div><div style="font-weight:600;">5. Verifizierung</div><div style="font-size:0.82em;color:#718096;">Datenqualitaet, Dashboard-Checks und Event-Verifizierung</div></div>
+        </div>
         <div class="mt-2"><strong>Einzufuegende Regel:</strong></div>
-        <pre style="font-size:0.82em;"><code>filter: ${escHtml(candidate.suggested_filter || 'true')}
-classification = 'siem'
+        <pre style="font-size:0.82em;" id="siem-rule-preview"><code>filter: ${escHtml(candidate.suggested_filter || 'true')}
+classification = <span id="siem-class-preview">'operational'</span>
 classification_reason = '${escHtml(candidate.suggested_reason || '')}'</code></pre>
     `;
+
+    // Dynamic updates when mode changes
+    document.querySelectorAll('input[name="activationMode"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const isSiem = radio.value === 'siem';
+            const classPreview = document.getElementById('siem-class-preview');
+            if (classPreview) classPreview.textContent = isSiem ? "'siem'" : "'operational'";
+            const step3Detail = document.getElementById('siem-step-3-detail');
+            if (step3Detail) step3Detail.textContent = isSiem
+                ? 'SOC-Dashboard soc_overview_ide erweitern (' + (candidate.splunk_sourcetype || 'auto') + ')'
+                : 'Uebersprungen (nur bei SIEM-Modus)';
+        });
+    });
     footer.innerHTML = `
         <button class="btn btn-outline" onclick="closeSiemModal()">Abbrechen</button>
         <button class="btn" style="background:#c53030;color:white;" id="siemConfirmBtn" onclick="executeSiemActivation(${idx})">Aktivierung starten</button>
@@ -3828,6 +4072,12 @@ async function executeSiemActivation(idx) {
     confirmBtn.disabled = true;
     confirmBtn.textContent = 'Wird ausgefuehrt...';
 
+    // Read Ops/SIEM mode selection
+    const mode = document.querySelector('input[name="activationMode"]:checked')?.value || 'siem';
+    const isSiem = mode === 'siem';
+    const classificationValue = isSiem ? "'siem'" : "'operational'";
+    const modeLabel = isSiem ? 'SIEM' : 'Ops';
+
     try {
         // Step 1: Add pipeline rule
         markSiemStep('siem-step-1', 'running');
@@ -3841,28 +4091,43 @@ async function executeSiemActivation(idx) {
         const pipeline = pipeData.items ? pipeData.items[0] : pipeData;
         const functions = pipeline.conf?.functions || [];
 
+        // Sanitize: Cribl API rejects .then() chains and 'remove' in eval conf
+        const sanitizedFunctions = functions.map(f => {
+            const confStr = JSON.stringify(f.conf || {});
+            const hasPromiseChain = confStr.includes('.then(');
+            const hasRemove = f.conf?.remove && f.conf.remove.length > 0;
+            if (hasPromiseChain || hasRemove) {
+                const safeAdd = (f.conf?.add || []).map(a => {
+                    const valStr = String(a.value || '');
+                    return valStr.includes('.then(') ? { ...a, value: "'OPERATIONAL'" } : a;
+                });
+                return { ...f, disabled: true, conf: { add: safeAdd } };
+            }
+            return f;
+        });
+
         const newFunc = {
             id: 'eval',
             filter: candidate.suggested_filter || 'true',
             disabled: false,
             conf: {
                 add: [
-                    { name: 'classification', value: "'siem'" },
+                    { name: 'classification', value: classificationValue },
                     { name: 'classification_method', value: "'rule_based'" },
                     { name: 'classification_reason', value: `'${candidate.suggested_reason || 'siem_discovery'}'` }
                 ]
             },
-            description: `SIEM-Discovery: ${candidate.source} → ${(candidate.siem_event_types || []).join(', ')}`
+            description: `SIEM-Discovery: ${candidate.source} → ${modeLabel} (${(candidate.siem_event_types || []).join(', ')})`
         };
 
         // Insert before Stage 2 (Ollama AI)
-        let insertIdx = functions.findIndex(f =>
+        let insertIdx = sanitizedFunctions.findIndex(f =>
             (f.description && f.description.includes('Ollama AI')) ||
             (f.id === 'comment' && f.conf?.comment?.includes('Stage 2'))
         );
-        if (insertIdx === -1) insertIdx = Math.max(0, functions.length - 3);
-        functions.splice(insertIdx, 0, newFunc);
-        pipeline.conf.functions = functions;
+        if (insertIdx === -1) insertIdx = Math.max(0, sanitizedFunctions.length - 3);
+        sanitizedFunctions.splice(insertIdx, 0, newFunc);
+        pipeline.conf.functions = sanitizedFunctions;
 
         const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/universal_classifier`, pipeline, false, {
             'Authorization': `Bearer ${token}`
@@ -3870,30 +4135,41 @@ async function executeSiemActivation(idx) {
         if (!updateResp.ok) throw new Error('Pipeline-Update fehlgeschlagen');
         markSiemStep('siem-step-1', 'done');
 
-        // Step 2: Commit & Deploy
+        // Step 2: Commit (single-instance: commit macht config sofort live)
         markSiemStep('siem-step-2', 'running');
         await apiFetch('POST', `${criblUrl}/api/v1/version/commit`, {
-            message: `SIEM-Discovery: ${candidate.source} als SIEM-Quelle aktiviert`
+            message: `SIEM-Discovery: ${candidate.source} als ${modeLabel}-Quelle aktiviert`
         }, false, { 'Authorization': `Bearer ${token}` });
 
+        // Optional: Worker-Neustart damit Pipeline sofort greift
         try {
-            await apiFetch('POST', `${criblUrl}/api/v1/master/groups/default/deploy`, { version: 'current' }, true, {
-                'Authorization': `Bearer ${token}`
-            });
-        } catch { /* deploy may timeout but still succeed */ }
+            await apiFetch('POST', `${criblUrl}/api/v1/system/instance/restart-workers`,
+                null, true, { 'Authorization': `Bearer ${token}` });
+        } catch { /* Commit allein reicht meist */ }
         markSiemStep('siem-step-2', 'done');
 
-        // Step 3: Splunk Dashboard
-        markSiemStep('siem-step-3', 'running');
-        try {
-            await createOrUpdateSplunkDashboard(candidate);
-            markSiemStep('siem-step-3', 'done');
-        } catch (e) {
-            markSiemStep('siem-step-3', 'error');
-            appendSiemModalMsg(`Splunk-Dashboard Fehler: ${e.message}`, true);
+        // Step 3: Splunk Dashboard (nur bei SIEM-Modus)
+        if (isSiem) {
+            markSiemStep('siem-step-3', 'running');
+            try {
+                await createOrUpdateSplunkDashboard(candidate);
+                markSiemStep('siem-step-3', 'done');
+            } catch (e) {
+                markSiemStep('siem-step-3', 'error');
+                appendSiemModalMsg(`Splunk-Dashboard Fehler: ${e.message}`, true);
+            }
+        } else {
+            // Ops mode: Splunk step skipped
+            const step3El = document.getElementById('siem-step-3');
+            if (step3El) {
+                step3El.className = 'activation-step done';
+                step3El.querySelector('.step-icon').innerHTML = '&#8212;';
+                const detailEl = document.getElementById('siem-step-3-detail');
+                if (detailEl) detailEl.textContent = 'Uebersprungen (Ops-Modus)';
+            }
         }
 
-        // Step 4: Kibana Dashboard
+        // Step 4: Kibana Dashboard (immer)
         markSiemStep('siem-step-4', 'running');
         try {
             await createOrUpdateKibanaDashboard(candidate);
@@ -3903,28 +4179,94 @@ async function executeSiemActivation(idx) {
             appendSiemModalMsg(`Kibana-Dashboard Fehler: ${e.message}`, true);
         }
 
-        // Step 5: Verify
+        // Step 5: Enhanced Verification (3-phase)
         markSiemStep('siem-step-5', 'running');
         const esUrl = getConfig('ES_URL');
+        const classificationLabel = isSiem ? 'siem' : 'operational';
+        const verifyMessages = [];
+
         // Wait briefly for new events to appear
         await new Promise(r => setTimeout(r, 3000));
-        const verifyResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_count`, {
-            query: {
-                bool: {
-                    must: [
-                        { term: { 'classification.keyword': 'siem' } },
-                        { range: { '@timestamp': { gte: 'now-5m' } } }
-                    ],
-                    should: [
-                        { match_phrase: { 'CONTAINER_NAME': candidate.source } },
-                        { term: { 'classification_reason.keyword': candidate.suggested_reason || '' } }
-                    ],
-                    minimum_should_match: 1
+
+        // 5a. ES Data Quality Check — fetch sample events
+        let newEventCount = 0;
+        try {
+            const sampleResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+                size: 3,
+                query: {
+                    bool: {
+                        must: [
+                            { term: { 'classification.keyword': classificationLabel } },
+                            { range: { '@timestamp': { gte: 'now-5m' } } }
+                        ],
+                        should: [
+                            { match_phrase: { 'CONTAINER_NAME': candidate.source } },
+                            { term: { 'classification_reason.keyword': candidate.suggested_reason || '' } }
+                        ],
+                        minimum_should_match: 1
+                    }
+                },
+                _source: ['classification', 'classification_reason', 'classification_method', '@timestamp', 'CONTAINER_NAME', 'source_type']
+            }, true);
+            const sampleData = await sampleResp.json();
+            const hits = sampleData.hits?.hits || [];
+            newEventCount = sampleData.hits?.total?.value || hits.length;
+
+            if (hits.length > 0) {
+                const sample = hits[0]._source || {};
+                const missing = [];
+                if (!sample.classification) missing.push('classification');
+                if (!sample.classification_reason) missing.push('classification_reason');
+                if (!sample['@timestamp']) missing.push('@timestamp');
+                if (missing.length > 0) {
+                    verifyMessages.push(`Warnung: Felder fehlen in Sample-Events: ${missing.join(', ')}`);
+                } else {
+                    verifyMessages.push(`ES: ${newEventCount} Events gefunden, Datenqualitaet OK`);
                 }
+            } else {
+                verifyMessages.push('ES: Noch keine neuen Events (kann einige Minuten dauern)');
             }
-        }, true);
-        const verifyData = await verifyResp.json();
-        const newSiemCount = verifyData.count || 0;
+        } catch (e) {
+            verifyMessages.push(`ES-Pruefung fehlgeschlagen: ${e.message}`);
+        }
+
+        // 5b. Splunk Verification (nur SIEM-Modus)
+        if (isSiem) {
+            try {
+                const splunkUrl = getConfig('SPLUNK_URL');
+                const splunkUser = getConfig('SPLUNK_USER') || 'admin';
+                const splunkPass = getConfig('SPLUNK_PASS') || '';
+                const splunkResp = await apiFetch('POST', `${splunkUrl}/services/search/jobs/export`,
+                    'search=' + encodeURIComponent('search index=cribl_siem earliest=-5m | head 1') + '&output_mode=json',
+                    true, {
+                        'Authorization': 'Basic ' + btoa(splunkUser + ':' + splunkPass),
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    });
+                if (splunkResp.ok) {
+                    const splunkText = await splunkResp.text();
+                    verifyMessages.push(splunkText.trim().length > 10 ? 'Splunk: Events in cribl_siem vorhanden' : 'Splunk: Noch keine Events in cribl_siem');
+                } else {
+                    verifyMessages.push('Splunk: Verbindung fehlgeschlagen (Status ' + splunkResp.status + ')');
+                }
+            } catch (e) {
+                verifyMessages.push(`Splunk-Pruefung: ${e.message}`);
+            }
+        }
+
+        // 5c. Kibana Dashboard Check
+        try {
+            const kibanaUrl = getConfig('KIBANA_URL');
+            const dashResp = await apiFetch('GET', `${kibanaUrl}/api/saved_objects/dashboard/ide-soc-overview`,
+                null, true, { 'kbn-xsrf': 'true' });
+            if (dashResp.ok) {
+                verifyMessages.push('Kibana: Dashboard ide-soc-overview vorhanden');
+            } else {
+                verifyMessages.push('Kibana: Dashboard ide-soc-overview nicht gefunden');
+            }
+        } catch (e) {
+            verifyMessages.push(`Kibana-Dashboard-Pruefung: ${e.message}`);
+        }
+
         markSiemStep('siem-step-5', 'done');
 
         // Success
@@ -3936,8 +4278,25 @@ async function executeSiemActivation(idx) {
 
         const splunkUrl = getConfig('SPLUNK_URL');
         const kibanaUrl = getConfig('KIBANA_URL');
-        appendSiemModalMsg(`Erfolg! ${newSiemCount > 0 ? newSiemCount + ' neue SIEM-Events gefunden.' : 'Verifizierung laeuft (Events benoetigen ggf. einige Minuten).'}`, false);
-        appendSiemModalLinks(splunkUrl, kibanaUrl);
+        const summaryMsg = newEventCount > 0
+            ? `Erfolg! ${newEventCount} neue ${modeLabel}-Events gefunden.`
+            : `Aktivierung abgeschlossen. Events benoetigen ggf. einige Minuten.`;
+        appendSiemModalMsg(summaryMsg, false);
+
+        // Show verification details
+        if (verifyMessages.length > 0) {
+            appendSiemModalMsg('Verifizierung:\n' + verifyMessages.map(m => '  ' + m).join('\n'), false);
+        }
+
+        if (isSiem) {
+            appendSiemModalLinks(splunkUrl, kibanaUrl);
+        } else {
+            // Ops mode: only Kibana link
+            const content = document.getElementById('siemModalContent');
+            content.insertAdjacentHTML('beforeend', `<div style="margin-top:8px;display:flex;gap:10px;">
+                <a href="${escHtml(kibanaUrl)}/app/dashboards#/view/ide-soc-overview" target="_blank" class="btn btn-sm btn-success" style="text-decoration:none;">Kibana Dashboard</a>
+            </div>`);
+        }
 
         confirmBtn.textContent = 'Fertig';
         confirmBtn.onclick = closeSiemModal;
@@ -3972,6 +4331,320 @@ function appendSiemModalLinks(splunkUrl, kibanaUrl) {
 
 function closeSiemModal() {
     document.getElementById('siemActivationModal').classList.remove('active');
+
+    // Auto-refresh suggestions to remove activated entries
+    setTimeout(() => generateSuggestionsLegacy(), 500);
+}
+
+// ============================================================
+// CIM-ANALYSE & DATENMODELLE
+// ============================================================
+function switchCimTab(tab) {
+    document.querySelectorAll('.cim-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('cimTabAnalysis').classList.add('hidden');
+    document.getElementById('cimTabExplorer').classList.add('hidden');
+    if (tab === 'analysis') {
+        document.getElementById('cimTabAnalysis').classList.remove('hidden');
+        document.querySelectorAll('.cim-tab')[0].classList.add('active');
+    } else {
+        document.getElementById('cimTabExplorer').classList.remove('hidden');
+        document.querySelectorAll('.cim-tab')[1].classList.add('active');
+        renderCimExplorer();
+    }
+}
+
+async function startCimAnalysis() {
+    const btn = document.getElementById('cimAnalyzeBtn');
+    const status = document.getElementById('cimAnalysisStatus');
+    const results = document.getElementById('cimAnalysisResults');
+    const model = document.getElementById('cimModel').value;
+    const esUrl = getConfig('ES_URL');
+    const ollamaUrl = getConfig('OLLAMA_URL');
+
+    btn.disabled = true;
+    status.innerHTML = '<span class="analyzer-spinner"></span>Lade SIEM-Events nach classification_reason...';
+    results.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 1/2: Events aus Elasticsearch aggregieren...</div>';
+
+    try {
+        // Step 1: Aggregate by classification_reason, get 3 samples per group
+        const aggResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+            size: 0,
+            query: { bool: { must: [
+                { term: { 'classification.keyword': 'siem' } },
+                { range: { '@timestamp': { gte: 'now-24h' } } }
+            ]}},
+            aggs: {
+                reasons: {
+                    terms: { field: 'classification_reason.keyword', size: 10 },
+                    aggs: {
+                        samples: {
+                            top_hits: { size: 3, _source: ['message', 'classification_reason', 'source_type', 'CONTAINER_NAME'] }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!aggResp.ok) throw new Error(`ES HTTP ${aggResp.status}`);
+        const aggData = await aggResp.json();
+        const buckets = aggData.aggregations?.reasons?.buckets || [];
+
+        if (buckets.length === 0) {
+            results.innerHTML = '<div class="empty-state">Keine SIEM-Events mit classification_reason gefunden. Stelle sicher, dass Events klassifiziert werden.</div>';
+            btn.disabled = false;
+            status.textContent = '';
+            return;
+        }
+
+        // Step 2: Send each group to Ollama for CIM analysis
+        status.innerHTML = `<span class="analyzer-spinner"></span>Analysiere ${buckets.length} Gruppen mit Ollama...`;
+        results.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 2/2: KI-Analyse laeuft...</div>';
+
+        const analysisResults = [];
+
+        for (let i = 0; i < buckets.length; i++) {
+            const bucket = buckets[i];
+            const reasonKey = bucket.key;
+            const samples = bucket.samples.hits.hits.map(h => h._source?.message || '').filter(m => m);
+
+            if (samples.length === 0) continue;
+
+            status.innerHTML = `<span class="analyzer-spinner"></span>Analysiere Gruppe ${i + 1}/${buckets.length}: ${reasonKey}...`;
+
+            const prompt = `Analysiere diese Log-Messages aus der Gruppe "${reasonKey}". Bestimme welches Splunk CIM-Datenmodell am besten passt und extrahiere die relevanten Felder mit Regex-Patterns.
+
+Log-Samples:
+${samples.map((s, j) => `[${j + 1}] ${s}`).join('\n')}
+
+Antworte NUR mit validem JSON in diesem Format:
+{
+  "model": "Authentication|Network_Traffic|Intrusion_Detection|Change|Endpoint_Processes",
+  "confidence": 85,
+  "fields": [
+    { "cim_field": "user", "regex": "user[=:]\\\\s*(\\\\S+)", "sample_value": "admin" },
+    { "cim_field": "src", "regex": "src[=:]\\\\s*(\\\\S+)", "sample_value": "10.0.0.1" }
+  ]
+}`;
+
+            try {
+                const ollamaResp = await fetch(`${ollamaUrl}/api/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: model, prompt: prompt, stream: false,
+                        options: { num_predict: 2048, temperature: 0.1 }
+                    })
+                });
+
+                if (!ollamaResp.ok) throw new Error(`Ollama HTTP ${ollamaResp.status}`);
+                const ollamaData = await ollamaResp.json();
+                const raw = ollamaData.response || '';
+                const jsonMatch = raw.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    analysisResults.push({
+                        reasonKey,
+                        count: bucket.doc_count,
+                        samples,
+                        cimModel: parsed.model || 'Unknown',
+                        confidence: parsed.confidence || 0,
+                        fields: parsed.fields || []
+                    });
+                }
+            } catch (e) {
+                analysisResults.push({
+                    reasonKey,
+                    count: bucket.doc_count,
+                    samples,
+                    cimModel: 'Fehler',
+                    confidence: 0,
+                    fields: [],
+                    error: e.message
+                });
+            }
+        }
+
+        // Store for deployment
+        cimAnalysisData = {};
+        analysisResults.forEach(r => { cimAnalysisData[r.reasonKey] = r; });
+
+        // Render results
+        renderCimResults(analysisResults);
+        status.textContent = `Analyse abgeschlossen: ${analysisResults.length} Gruppen analysiert.`;
+
+    } catch (e) {
+        results.innerHTML = `<div class="empty-state" style="color:#c53030;">Fehler: ${escHtml(e.message)}</div>`;
+        status.textContent = 'Fehler bei der Analyse.';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function renderCimResults(results) {
+    const container = document.getElementById('cimAnalysisResults');
+    if (results.length === 0) {
+        container.innerHTML = '<div class="empty-state">Keine Ergebnisse.</div>';
+        return;
+    }
+
+    container.innerHTML = results.map(r => {
+        const modelInfo = CIM_MODELS[r.cimModel];
+        const modelLabel = modelInfo ? r.cimModel : (r.cimModel || 'Unknown');
+        const hasError = r.error;
+
+        const fieldsHtml = r.fields.length > 0 ? `
+            <table>
+                <thead><tr><th>CIM-Feld</th><th>Regex</th><th>Beispielwert</th></tr></thead>
+                <tbody>${r.fields.map(f => `
+                    <tr><td><code>${escHtml(f.cim_field)}</code></td><td><code style="font-size:0.85em;">${escHtml(f.regex)}</code></td><td>${escHtml(f.sample_value || '-')}</td></tr>
+                `).join('')}</tbody>
+            </table>` : '<p class="text-muted">Keine Felder erkannt.</p>';
+
+        return `<div class="cim-result-card" style="${hasError ? 'border-color:#fed7d7;' : ''}">
+            <h4>
+                <span class="cim-tag">${escHtml(modelLabel)}</span>
+                ${escHtml(r.reasonKey)}
+                <span class="text-muted" style="margin-left:auto;font-weight:400;">${r.count} Events</span>
+            </h4>
+            ${hasError ? `<p style="color:#c53030;font-size:0.9em;">Fehler: ${escHtml(r.error)}</p>` : ''}
+            ${r.confidence ? `<p style="font-size:0.85em;color:#4a5568;">Confidence: <strong>${r.confidence}%</strong></p>` : ''}
+            ${fieldsHtml}
+            ${!hasError && r.fields.length > 0 ? `<div style="margin-top:10px;">
+                <button class="btn btn-success btn-sm" onclick="deployCimToSplunk('${escHtml(r.reasonKey)}')">Deploy to Splunk</button>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+async function deployCimToSplunk(reasonKey) {
+    const data = cimAnalysisData[reasonKey];
+    if (!data || data.fields.length === 0) return;
+
+    const modal = document.getElementById('cimDeploymentModal');
+    const summary = document.getElementById('cimDeploySummary');
+    summary.style.display = 'none';
+
+    // Reset steps
+    for (let i = 1; i <= 4; i++) {
+        const step = document.getElementById('cim-step-' + i);
+        step.className = 'cim-deploy-step';
+        const detail = document.getElementById('cim-step-' + i + '-detail');
+        if (detail) detail.textContent = '';
+    }
+    modal.classList.add('active');
+
+    const splunkRestUrl = getConfig('SPLUNK_REST_URL');
+    const authB64 = await ensureSplunkAuth();
+    const headers = {
+        'Authorization': `Basic ${authB64}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+    };
+    const reasonSafe = reasonKey.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+    const cimModel = data.cimModel;
+
+    function markCimStep(id, state) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = 'cim-deploy-step ' + state;
+        const icon = el.querySelector('.step-icon');
+        if (state === 'running') icon.innerHTML = '<span class="analyzer-spinner"></span>';
+        else if (state === 'done') icon.innerHTML = '&#10003;';
+        else if (state === 'error') icon.innerHTML = '&#10007;';
+    }
+
+    try {
+        // Step 1: transforms.conf
+        markCimStep('cim-step-1', 'running');
+        for (const field of data.fields) {
+            const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
+            const body = `name=cribl_siem_${reasonSafe}_extract_${fieldSafe}&REGEX=${encodeURIComponent(field.regex)}&FORMAT=${encodeURIComponent(field.cim_field + '::$1')}`;
+            await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-transforms`, body, false, headers);
+        }
+        document.getElementById('cim-step-1-detail').textContent = `${data.fields.length} Extraktionen erstellt`;
+        markCimStep('cim-step-1', 'done');
+
+        // Step 2: props.conf
+        markCimStep('cim-step-2', 'running');
+        for (const field of data.fields) {
+            const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
+            const body = `name=cribl%3Asiem&REPORT-${reasonSafe}_${fieldSafe}=${encodeURIComponent(`cribl_siem_${reasonSafe}_extract_${fieldSafe}`)}`;
+            await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-props`, body, false, headers);
+        }
+        document.getElementById('cim-step-2-detail').textContent = `props.conf fuer cribl:siem aktualisiert`;
+        markCimStep('cim-step-2', 'done');
+
+        // Step 3: eventtypes.conf
+        markCimStep('cim-step-3', 'running');
+        const etBody = `name=cribl_siem_${reasonSafe}&search=${encodeURIComponent(`index=cribl_siem classification_reason="${reasonKey}"`)}`;
+        await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-eventtypes`, etBody, false, headers);
+        document.getElementById('cim-step-3-detail').textContent = `Eventtype cribl_siem_${reasonSafe} erstellt`;
+        markCimStep('cim-step-3', 'done');
+
+        // Step 4: tags.conf
+        markCimStep('cim-step-4', 'running');
+        const tagBody = `name=${encodeURIComponent(`eventtype=cribl_siem_${reasonSafe}`)}&${encodeURIComponent(cimModel)}=enabled`;
+        await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-tags`, tagBody, false, headers);
+        document.getElementById('cim-step-4-detail').textContent = `Tag ${cimModel} aktiviert`;
+        markCimStep('cim-step-4', 'done');
+
+        // Summary
+        const fieldNames = data.fields.map(f => f.cim_field).join(', ');
+        summary.innerHTML = `<strong>Deployment erfolgreich!</strong><br>
+            CIM-Modell: <span class="cim-tag">${escHtml(cimModel)}</span><br>
+            Extrahierte Felder: <code>${escHtml(fieldNames)}</code><br>
+            Eventtype: <code>cribl_siem_${escHtml(reasonSafe)}</code><br>
+            <div style="margin-top:8px;">
+                <strong>Verifizierung in Splunk:</strong><br>
+                <code style="font-size:0.85em;">index=cribl_siem classification_reason="${escHtml(reasonKey)}" | head 5 | table ${escHtml(fieldNames)}</code>
+            </div>`;
+        summary.style.display = 'block';
+
+    } catch (e) {
+        for (let i = 1; i <= 4; i++) {
+            const el = document.getElementById('cim-step-' + i);
+            if (el && el.classList.contains('running')) { markCimStep('cim-step-' + i, 'error'); break; }
+        }
+        summary.innerHTML = `<strong style="color:#c53030;">Fehler:</strong> ${escHtml(e.message)}`;
+        summary.style.display = 'block';
+        summary.style.background = '#fff5f5';
+        summary.style.borderLeftColor = '#e53e3e';
+    }
+}
+
+function closeCimDeployModal() {
+    document.getElementById('cimDeploymentModal').classList.remove('active');
+}
+
+function renderCimExplorer() {
+    const container = document.getElementById('cimExplorerContent');
+    const models = Object.entries(CIM_MODELS);
+
+    container.innerHTML = models.map(([name, model]) => {
+        const fieldsHtml = model.fields.map(f => `
+            <tr><td><code>${escHtml(f.name)}</code></td><td>${escHtml(f.type)}</td><td>${escHtml(f.desc)}</td></tr>
+        `).join('');
+
+        return `<div class="cim-model-card" onclick="this.classList.toggle('open')">
+            <div class="cim-model-header">
+                <h4>${model.icon} ${escHtml(name.replace(/_/g, ' '))}</h4>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:0.85em;color:#805ad5;">${model.fields.length} Felder</span>
+                    <span class="cim-chevron">&#9660;</span>
+                </div>
+            </div>
+            <div class="cim-model-body">
+                <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">${escHtml(model.description)}</p>
+                <table class="cim-field-table">
+                    <thead><tr><th>Feld</th><th>Typ</th><th>Beschreibung</th></tr></thead>
+                    <tbody>${fieldsHtml}</tbody>
+                </table>
+                <div style="margin-top:12px;">
+                    <strong style="font-size:0.85em;color:#553c9a;">Beispiel-SPL:</strong>
+                    <pre style="margin-top:4px;position:relative;"><code>${escHtml(model.example_search)}</code><button class="copy-btn" onclick="event.stopPropagation();navigator.clipboard.writeText('${model.example_search.replace(/'/g, "\\'")}')">Kopieren</button></pre>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 // ============================================================

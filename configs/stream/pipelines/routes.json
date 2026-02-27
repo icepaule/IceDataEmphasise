@@ -2,31 +2,22 @@
   "id": "default",
   "routes": [
     {
-      "id": "route_classify_all",
-      "name": "Universal Classifier",
-      "filter": "true",
-      "pipeline": "universal_classifier",
-      "output": "devnull",
-      "final": false,
-      "description": "Classifies ALL events (Docker, Edge, Journal, Syslog, Sophos) via universal_classifier pipeline. Sets classification field. Non-final: events continue to routing below."
-    },
-    {
       "id": "route_all_to_es",
       "name": "ALL to Elasticsearch",
       "filter": "true",
       "pipeline": "passthrough",
       "output": "elasticsearch_ops",
       "final": false,
-      "description": "ES-First: ALL events go to Elasticsearch as primary data lake. Non-final: events continue to SIEM/S3 routing."
+      "description": "ES-First: ALL events (pre-classified at input via universal_classifier) go to Elasticsearch. Non-final: events continue to SIEM/S3 routing."
     },
     {
       "id": "route_siem_to_splunk",
       "name": "SIEM to Splunk",
       "filter": "classification=='siem'",
-      "pipeline": "passthrough",
+      "pipeline": "siem_to_splunk",
       "output": "splunk_hec",
       "final": true,
-      "description": "SIEM-classified events go ADDITIONALLY to Splunk HEC for SOC analysis (10.10.0.66:8088). Final: stops here."
+      "description": "SIEM events: sets index=cribl_siem and sourcetype=cribl:siem, then sends to Splunk HEC."
     },
     {
       "id": "route_ops_to_s3",
@@ -35,7 +26,7 @@
       "pipeline": "passthrough",
       "output": "minio_s3",
       "final": true,
-      "description": "Operational events go to MinIO S3 for long-term archival. Final: already in ES via route_all_to_es."
+      "description": "Operational events go to MinIO S3 for long-term archival."
     },
     {
       "id": "route_default",
@@ -44,7 +35,7 @@
       "pipeline": "passthrough",
       "output": "elasticsearch_ops",
       "final": true,
-      "description": "Safety net: any unclassified/fallback events already in ES via route_all_to_es. Final catch-all."
+      "description": "Safety net: any unclassified/fallback events. Final catch-all."
     }
   ]
 }
