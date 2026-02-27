@@ -73,6 +73,7 @@
         <li><a href="#stream-config">Cribl Stream: Fleet &amp; Routing</a></li>
         <li><a href="#splunk-setup">Splunk Enterprise: HEC &amp; CriblVision Setup</a></li>
         <li><a href="#verify">Verifikation &amp; Checkliste</a></li>
+        <li><a href="#network-devices">Netzwerkgeraete &amp; IoT Onboarding (Sophos, Proxmox, UniFi, Tasmota, HA, Synology)</a></li>
         <li><a href="#e2e-pipeline">Gesamtablauf &ndash; Ende-zu-Ende Datenpipeline</a></li>
     </ol>
 </div>
@@ -1298,14 +1299,528 @@ curl -s 'http://localhost:9200/cribl-ops/_search' \
 </div>
 
 <!-- ============================================================ -->
-<h2 id="e2e-pipeline">11. Gesamtablauf &ndash; Ende-zu-Ende Datenpipeline</h2>
+<h2 id="network-devices">11. Netzwerkgeraete &amp; IoT Onboarding</h2>
+
+<div class="info">
+    <strong>Reale Infrastruktur:</strong> Basierend auf der aktuellen Cribl-Instanz (10.10.0.100) werden hier
+    alle vorhandenen und geplanten Netzwerkgeraete dokumentiert. Die Sophos Firewall sendet bereits Syslog-Daten
+    auf Port 9514 (<code>in_syslog_sophos</code>) mit eigenem Pipeline (<code>pipeline_sophos_fw</code>).
+</div>
+
+<h3>11.0 Aktuelle Datenverteilung (Live-Werte)</h3>
+
+<table>
+    <tr><th>Klassifikation</th><th>Methode</th><th>Events</th><th>Anteil</th></tr>
+    <tr style="background:#f0fff4;"><td>Operational</td><td>rule_based</td><td>~9.4 Mio</td><td>~84%</td></tr>
+    <tr style="background:#fff5f5;"><td>SIEM</td><td>rule_based</td><td>~1.8 Mio</td><td>~16%</td></tr>
+    <tr style="background:#fefcbf;"><td>Fallback (unklassifiziert)</td><td>fallback</td><td>~571k</td><td>~5.1%</td></tr>
+</table>
+
+<div class="warning">
+    <strong>Fallback-Hotspots:</strong> 571k Events landen im Fallback und werden als <code>operational</code> behandelt,
+    ohne dass eine Regel sie explizit zuordnet. Top-Verursacher:
+    <ul>
+        <li><code>homeassistant</code>: ~457k Events (SNMP-Timeouts, command_line-Fehler, MQTT-Dekodierung)</li>
+        <li><code>oa-tika</code>: ~98k Events (Apache Tika OCR-Prozessor)</li>
+        <li><code>oa-postgres</code>: ~13k Events (PostgreSQL DB-Fehler)</li>
+    </ul>
+    Diese sollten durch explizite Regeln im <code>universal_classifier</code> abgedeckt werden.
+</div>
+
+<table>
+    <tr><th>Top Klassifikations-Gruende</th><th>Events</th><th>Ziel</th></tr>
+    <tr><td><code>sophos_fw_allowed</code></td><td>~7.1 Mio</td><td>Elasticsearch (Ops)</td></tr>
+    <tr><td><code>sophos_fw_denied_or_drop</code></td><td>~1.68 Mio</td><td>Splunk (SIEM)</td></tr>
+    <tr><td><code>rule_container_homeassistant</code></td><td>~1.56 Mio</td><td>Elasticsearch (Ops)</td></tr>
+    <tr><td><code>default_safe_fallback</code></td><td>~571k</td><td>Elasticsearch (Ops, unklassifiziert!)</td></tr>
+    <tr><td><code>normal_operation_pattern</code></td><td>~138k</td><td>Elasticsearch (Ops)</td></tr>
+    <tr><td><code>sophos_default_siem</code></td><td>~114k</td><td>Splunk (SIEM)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h3 id="sophos-fw">11.1 <span style="color:#e53e3e; font-weight:bold;">Sophos SFOS Firewall</span></h3>
+
+<div class="success">
+    <strong>Status: AKTIV</strong> &mdash; Die Sophos Firewall sendet bereits ~8.9 Mio Events via Syslog an Cribl.
+    Input: <code>in_syslog_sophos</code> (UDP/TCP Port 9514). Pipeline: <code>pipeline_sophos_fw</code>.
+    Route: <code>route_sophos_fw</code> mit dynamischem Output (SIEM&rarr;Splunk, Ops&rarr;ES).
+</div>
+
+<h4>Aktuelle Cribl-Konfiguration (Live-Werte)</h4>
+
+<table>
+    <tr><th>Parameter</th><th>Wert</th></tr>
+    <tr><td>Cribl Input</td><td><code>in_syslog_sophos</code> (Typ: syslog)</td></tr>
+    <tr><td>Syslog-Port</td><td>UDP/TCP <strong>9514</strong> (nicht Standard 514, Kollision vermieden)</td></tr>
+    <tr><td>Pipeline</td><td><code>pipeline_sophos_fw</code> (KVP-Parser + SIEM-Klassifikation + CIM-Normalisierung)</td></tr>
+    <tr><td>Route</td><td><code>route_sophos_fw</code> mit <code>outputExpression</code>: SIEM&rarr;splunk_hec, Ops&rarr;elasticsearch_ops</td></tr>
+    <tr><td>Events total</td><td>~8.9 Mio (davon Firewall: 8.78 Mio, Events: 31k, Content Filtering: 19k, System Health: 19k)</td></tr>
+    <tr><td>FW-Regeln aktiv</td><td>Rule 9: 6.1 Mio, Rule 8: 1.0 Mio, Rule 12: 3.3k</td></tr>
+</table>
+
+<h4>Sophos SFOS: Syslog konfigurieren</h4>
+
+<pre><code># Auf der Sophos SFOS Web-Konsole:
+# 1. System Services → Log Settings → Syslog Servers
+# 2. "Add" klicken:
+#    - Name:           Cribl-Stream
+#    - IP Address:     10.10.0.100
+#    - Port:           9514
+#    - Protocol:       UDP (oder TCP fuer zuverlaessigere Zustellung)
+#    - Facility:       LOCAL0 (oder DAEMON)
+#    - Severity Level: Information (alle Severity Levels)
+#    - Format:         Device Standard Format
+#
+# 3. Log-Typen aktivieren (alle ankreuzen):
+#    [x] Firewall          - Allow/Deny/Drop (Hauptvolumen ~8.8 Mio Events)
+#    [x] IDP               - Intrusion Detection/Prevention
+#    [x] ATP               - Advanced Threat Protection (Sandboxing)
+#    [x] WAF               - Web Application Firewall
+#    [x] Event             - Authentication, Admin, VPN
+#    [x] System Health     - CPU, Memory, Disk, SSL, Interface
+#    [x] Content Filtering - Web-Filter, URL-Kategorien
+#    [x] Anti-Spam         - E-Mail-Filterung
+#
+# 4. "Save" klicken</code></pre>
+
+<h4>Pipeline-Details: <code>pipeline_sophos_fw</code></h4>
+
+<p>Die bestehende Pipeline verarbeitet Sophos-Logs in 3 Stufen:</p>
+<table>
+    <tr><th>Stage</th><th>Funktion</th><th>Details</th></tr>
+    <tr><td>1</td><td>KVP-Extraktion</td><td><code>serde</code>: Sophos Key=Value Paare parsen (src_ip, dst_ip, protocol, log_type, log_subtype, fw_rule_id)</td></tr>
+    <tr><td>2</td><td>SIEM-Klassifikation</td><td>Denied/Drop &rarr; SIEM, IDP/ATP/WAF &rarr; SIEM, Auth/Admin/VPN &rarr; SIEM, Allowed &rarr; Operational</td></tr>
+    <tr><td>3</td><td>CIM-Normalisierung</td><td>src, dest, src_port_num, dest_port_num, protocol, action, rule, severity</td></tr>
+</table>
+
+<div class="siem">
+    <strong>SIEM-relevante Sophos Event-Typen:</strong>
+    <ul>
+        <li><code>Firewall Denied/Drop</code> &rarr; ~1.69 Mio Events &rarr; Splunk (Network_Traffic CIM)</li>
+        <li><code>IDP</code> (1 Event), <code>WAF</code> (5 Events), <code>ATP</code> (0) &rarr; Splunk (Intrusion_Detection CIM)</li>
+        <li><code>Event: Authentication/Admin/VPN</code> &rarr; ~31k Events &rarr; Splunk (Authentication CIM)</li>
+        <li><code>Content Filtering: HTTP</code> (9.6k), <code>SSL</code> (2.3k) &rarr; Splunk (Web CIM)</li>
+        <li><code>sophos_default_siem</code> &rarr; ~114k unklassifizierte Events &rarr; Splunk (zur manuellen Pruefung)</li>
+    </ul>
+</div>
+
+<h4>Verifikation Sophos-Datenfluss</h4>
+<pre><code># 1. Syslog-Empfang pruefen (auf 10.10.0.100)
+ss -ulnp | grep 9514
+# Erwartung: udp  0  0  0.0.0.0:9514  0.0.0.0:*  users:(("cribl",pid=...,fd=...))
+
+# 2. Live-Daten pruefen
+curl -sf 'http://10.10.0.100:9200/cribl-ops*/_search' \
+  -H 'Content-Type: application/json' \
+  -d '{"size":3,"query":{"term":{"source_type.keyword":"sophos_firewall"}},"sort":[{"@timestamp":"desc"}],"_source":["src_ip","dst_ip","protocol","log_type","log_subtype","classification"]}' \
+  | python3 -m json.tool
+
+# 3. Sophos-Statistik
+curl -sf 'http://10.10.0.100:9200/cribl-ops*/_search' \
+  -H 'Content-Type: application/json' \
+  -d '{"size":0,"query":{"term":{"source_type.keyword":"sophos_firewall"}},"aggs":{"by_subtype":{"terms":{"field":"log_subtype.keyword","size":10}}}}' \
+  | python3 -c "import sys,json; [print(f'  {b[\"key\"]}: {b[\"doc_count\"]:,}') for b in json.load(sys.stdin).get('aggregations',{}).get('by_subtype',{}).get('buckets',[])]"</code></pre>
+
+<!-- ============================================================ -->
+<h3 id="proxmox-ve">11.2 <span style="color:#e95420; font-weight:bold;">Proxmox VE</span></h3>
+
+<div class="info">
+    <strong>Status: GEPLANT</strong> &mdash; Proxmox VE (Virtualisierungs-Host) kann Syslog-Events senden.
+    Security-relevant: VM-Start/Stop, Backup-Jobs, Cluster-Events, API-Zugriffe, Firewall-Regeln.
+</div>
+
+<h4>Proxmox Syslog nach Cribl senden</h4>
+
+<pre><code># Auf dem Proxmox-Host (als root):
+
+# 1. rsyslog-Forwarding konfigurieren
+cat > /etc/rsyslog.d/60-cribl.conf &lt;&lt;'RSYSLOG'
+# IceDataEmphasise: Forward Proxmox logs to Cribl Stream
+# Alle Logs ab severity "info" weiterleiten
+*.*  @10.10.0.100:514
+
+# Alternativ: Nur Security-relevante Logs
+auth,authpriv.*         @10.10.0.100:514
+kern.*                  @10.10.0.100:514
+daemon.*                @10.10.0.100:514
+RSYSLOG
+
+# 2. rsyslog neu laden
+systemctl restart rsyslog
+
+# 3. pve-firewall Logging aktivieren (falls PVE Firewall aktiv)
+# In /etc/pve/firewall/cluster.fw:
+#   [OPTIONS]
+#   enable: 1
+#   log_level_in: info
+#   log_level_out: info
+
+# 4. Pruefen
+logger -t proxmox-test "IceDataEmphasise: Proxmox syslog test"
+# In Cribl/ES verifizieren</code></pre>
+
+<h4>Proxmox API-Audit-Log (optional)</h4>
+<pre><code># Proxmox protokolliert API-Zugriffe in /var/log/pveproxy/access.log
+# Diese koennen per Cribl Edge File Monitor erfasst werden
+
+# Edge File Monitor Source:
+{
+  "id": "proxmox_audit",
+  "type": "file_monitor",
+  "disabled": false,
+  "conf": {
+    "paths": [
+      "/var/log/pveproxy/access.log",
+      "/var/log/pve-firewall.log",
+      "/var/log/auth.log"
+    ],
+    "sendRawData": true
+  },
+  "description": "Proxmox VE Audit and Security Logs"
+}</code></pre>
+
+<h4>SIEM-relevante Proxmox Events</h4>
+<table>
+    <tr><th>Quelle</th><th>Event-Typ</th><th>SIEM-Relevanz</th></tr>
+    <tr><td>/var/log/auth.log</td><td>SSH Login, PAM</td><td>Brute-Force, Unauthorisierter Zugriff</td></tr>
+    <tr><td>/var/log/pveproxy/access.log</td><td>API-Aufrufe (POST, DELETE)</td><td>VM-Erstellung, Loesch-Aktionen, Config-Changes</td></tr>
+    <tr><td>/var/log/pve-firewall.log</td><td>Firewall-Drops</td><td>Netzwerk-Angriffe auf VMs</td></tr>
+    <tr><td>syslog</td><td>qm start/stop/migrate</td><td>VM-Lifecycle, Cluster-Events</td></tr>
+    <tr><td>syslog</td><td>vzdump</td><td>Backup-Erfolg/Fehler</td></tr>
+</table>
+
+<h4>Vorgeschlagene Pipeline-Regel fuer <code>universal_classifier</code></h4>
+<pre><code>// Proxmox SIEM-Events (im universal_classifier einfuegen)
+filter: log_message && /(pvedaemon|pveproxy|pveceph|qm (start|stop|destroy|migrate|clone)|vzdump.*(error|fail)|pve-firewall.*(DROP|REJECT))/i.test(log_message)
+classification = 'siem'
+classification_method = 'rule_based'
+classification_reason = 'proxmox_security_event'</code></pre>
+
+<!-- ============================================================ -->
+<h3 id="unifi-wifi">11.3 <span style="color:#0559C9; font-weight:bold;">UniFi WiFi Console</span></h3>
+
+<div class="info">
+    <strong>Status: GEPLANT</strong> &mdash; Ubiquiti UniFi Controller/Console kann Syslog-Events an Cribl senden.
+    Relevant: Client-Authentifizierung, Rogue AP Detection, Wireless IDS, Client (Dis)Connects.
+</div>
+
+<h4>UniFi Syslog konfigurieren</h4>
+
+<pre><code># In der UniFi Network Console (Web-UI):
+# 1. Settings → System → Advanced
+# 2. "Remote Syslog Server" aktivieren:
+#    - Syslog Host:  10.10.0.100
+#    - Syslog Port:  514
+#    - Log Level:    Informational (6)
+#
+# Die UniFi Console sendet dann Events im Format:
+#   &lt;facility&gt;&lt;severity&gt; timestamp hostname UniFi: ...
+#
+# Event-Typen:
+#   - STA connected/disconnected (Client WiFi-Verbindungen)
+#   - AP adopted/disconnected (Access Point Management)
+#   - Rogue AP detected (Security!)
+#   - WPA authentication failure (Brute-Force!)
+#   - DPI category blocked (Content Filter)
+#   - IDS/IPS alerts (Threat Management)</code></pre>
+
+<h4>Cribl-Empfang</h4>
+<p>UniFi-Syslog kommt auf dem bestehenden <code>in_syslog</code> Input (Port 514) an.
+Der <code>universal_classifier</code> kann diese per Keyword-Matching klassifizieren.</p>
+
+<h4>SIEM-relevante UniFi Events</h4>
+<table>
+    <tr><th>Event</th><th>Beschreibung</th><th>SIEM-Aktion</th></tr>
+    <tr><td>EVT_WU_Connected</td><td>Client mit WiFi verbunden</td><td>Authentifizierung tracken</td></tr>
+    <tr><td>EVT_WU_Disconnected</td><td>Client WiFi getrennt</td><td>Anomalie-Erkennung</td></tr>
+    <tr><td>EVT_AP_DetectedRogueAP</td><td>Unbekannter Access Point erkannt</td><td><strong>SIEM-Alarm!</strong></td></tr>
+    <tr><td>EVT_WU_WPA_AuthFail</td><td>WPA-Authentifizierung fehlgeschlagen</td><td><strong>Brute-Force-Erkennung</strong></td></tr>
+    <tr><td>EVT_IDS_Alert</td><td>IDS/IPS-Erkennung</td><td><strong>SIEM-Alarm!</strong></td></tr>
+    <tr><td>EVT_AP_Lost</td><td>Access Point nicht erreichbar</td><td>Infrastruktur-Monitoring</td></tr>
+    <tr><td>EVT_GW_WANTransition</td><td>WAN-Verbindung gewechselt</td><td>Netzwerk-Availability</td></tr>
+</table>
+
+<h4>Vorgeschlagene Pipeline-Regel</h4>
+<pre><code>// UniFi SIEM-Events
+filter: log_message && /(RogueAP|WPA.*[Ff]ail|IDS.*[Aa]lert|EVT_IDS|EVT_WU_WPA_AuthFail|EVT_AP_DetectedRogue)/i.test(log_message)
+classification = 'siem'
+classification_method = 'rule_based'
+classification_reason = 'unifi_security_event'
+
+// UniFi Operational Events
+filter: log_message && /(EVT_WU_Connected|EVT_WU_Disconnected|EVT_AP_Adopted|EVT_AP_Lost|EVT_GW_WAN)/i.test(log_message)
+classification = 'operational'
+classification_method = 'rule_based'
+classification_reason = 'unifi_network_event'</code></pre>
+
+<!-- ============================================================ -->
+<h3 id="tasmota-esp32">11.4 <span style="color:#d69e2e; font-weight:bold;">Tasmota ESP32 Devices</span></h3>
+
+<div class="success">
+    <strong>Status: TEILWEISE AKTIV</strong> &mdash; Tasmota-Geraete sind in HomeAssistant integriert (MQTT via Mosquitto).
+    Logs erscheinen aktuell im <code>homeassistant</code> Container als MQTT-StatusSTS-Nachrichten.
+    ~457k HomeAssistant-Events landen im Fallback &mdash; darunter Tasmota-MQTT-Dekodierungsfehler.
+</div>
+
+<h4>Tasmota Log-Architektur</h4>
+<pre><code>  Tasmota ESP32            Mosquitto MQTT           HomeAssistant
+  +---------------+        +---------------+        +-------------------+
+  | Sensor/Aktor  |--MQTT--| Broker        |--MQTT--| HA Integration    |
+  | StatusSTS     |        | (addon)       |        | tasmota.*         |
+  | Telemetry     |        | Port 1883     |        | Logs in Container |
+  +---------------+        +---------------+        +--------+----------+
+                                                             |
+                                                    Docker JSON Logs
+                                                             |
+                                                    Cribl File Monitor
+                                                    (docker_all_containers)</code></pre>
+
+<h4>Tasmota Syslog-Modus aktivieren (direkt an Cribl)</h4>
+<pre><code># In der Tasmota Web-Konsole jedes Geraets:
+# 1. Configuration → Configure Logging
+# 2. Syslog host:    10.10.0.100
+# 3. Syslog port:    514
+# 4. Syslog level:   2 (LOG_LEVEL_INFO)
+#
+# Oder per MQTT-Befehl (fuer alle Geraete gleichzeitig):
+# Topic: cmnd/tasmotas/SyslogHost
+# Payload: 10.10.0.100
+#
+# Topic: cmnd/tasmotas/SyslogPort
+# Payload: 514
+#
+# Topic: cmnd/tasmotas/SyslogLevel
+# Payload: 2
+#
+# Tasmota-Syslog sendet im Format:
+#   &lt;PRI&gt; timestamp hostname ESP-XXXXXX: {"StatusSTS":{"Time":"...","Uptime":"..."}}</code></pre>
+
+<h4>Vorgeschlagene Pipeline-Regel</h4>
+<pre><code>// Tasmota/ESP32 Events (alle operational)
+filter: log_message && /(StatusSTS|RESULT|tasmota|ESP-[A-F0-9]{6,}|Uptime.*SleepMode)/i.test(log_message)
+classification = 'operational'
+classification_method = 'rule_based'
+classification_reason = 'tasmota_iot_telemetry'
+
+// Tasmota Security (seltene Events)
+filter: log_message && /tasmota.*(WebServer.*Auth|MQTT.*[Dd]isconnect.*Reason|OTA.*[Ff]ail|CFG.*[Ee]rror)/i.test(log_message)
+classification = 'siem'
+classification_method = 'rule_based'
+classification_reason = 'tasmota_security_event'</code></pre>
+
+<!-- ============================================================ -->
+<h3 id="homeassistant">11.5 <span style="color:#41BDF5; font-weight:bold;">HomeAssistant</span></h3>
+
+<div class="success">
+    <strong>Status: AKTIV</strong> &mdash; HomeAssistant laeuft als Docker-Container auf dem NUC-HA.
+    Aktuell ~2.1 Mio Events, davon ~1.56 Mio per Regel als <code>operational</code> klassifiziert,
+    aber ~457k fallen in den Fallback (SNMP-Timeouts, command_line-Fehler, MQTT-Dekodierung).
+</div>
+
+<h4>Aktuelle Datenverteilung (HomeAssistant)</h4>
+<table>
+    <tr><th>Klassifikation</th><th>Events</th><th>Typische Log-Meldungen</th></tr>
+    <tr><td>rule_container_homeassistant</td><td>~1.56 Mio</td><td>Normale HA-Operationen (Setup, State Changes)</td></tr>
+    <tr><td>default_safe_fallback</td><td>~457k</td><td>SNMP Timeouts, MQTT-Dekodierungsfehler, command_line Errors</td></tr>
+    <tr><td>normal_operation_pattern</td><td>(enthalten)</td><td>INFO/DEBUG/WARNING-Level Logs</td></tr>
+</table>
+
+<div class="warning">
+    <strong>Fallback-Problem:</strong> Die 457k Fallback-Events enthalten viele <code>ERROR</code> und <code>FATAL</code>
+    Meldungen von HA-Integrationen (SNMP-Sensor-Timeouts, MQTT-Dekodierungsfehler).
+    Diese sind <strong>operational</strong> (keine Security-Events), werden aber vom <code>stderr_error_pattern</code>
+    nicht erfasst, weil sie nicht ueber Docker stderr kommen, sondern im HA-eigenen Log-Format.
+</div>
+
+<h4>Vorgeschlagene Pipeline-Regeln (Fallback reduzieren)</h4>
+<pre><code>// HomeAssistant: Alle HA-internen Logs → operational
+// Erfasst ERROR/WARNING/INFO aus HA-Komponenten die aktuell im Fallback landen
+filter: CONTAINER_NAME === 'homeassistant' && classification === 'unknown' && log_message && /\[(homeassistant|custom_components|hass)\./i.test(log_message)
+classification = 'operational'
+classification_method = 'rule_based'
+classification_reason = 'homeassistant_internal_log'
+
+// HomeAssistant Supervisor/Add-ons → operational
+filter: CONTAINER_NAME && /^(hassio_|addon_)/i.test(CONTAINER_NAME) && classification === 'unknown'
+classification = 'operational'
+classification_method = 'rule_based'
+classification_reason = 'homeassistant_addon_log'
+
+// HomeAssistant Security-Events → SIEM
+filter: CONTAINER_NAME === 'homeassistant' && log_message && /(login_attempt|auth.*fail|unauthorized|invalid_auth|blocked.*ip|banned)/i.test(log_message)
+classification = 'siem'
+classification_method = 'rule_based'
+classification_reason = 'homeassistant_auth_event'</code></pre>
+
+<h4>HA Logger Konfiguration (optional)</h4>
+<pre><code># In HomeAssistant configuration.yaml:
+# Logger-Level anpassen fuer weniger Noise
+logger:
+  default: warning
+  logs:
+    homeassistant.components.snmp: error      # SNMP-Timeouts reduzieren
+    homeassistant.components.command_line: error
+    homeassistant.components.mqtt: warning     # MQTT-Dekodierung
+    homeassistant.core: info
+    homeassistant.components.automation: info  # Automationen tracken
+
+# Alternativ: HA Syslog-Integration
+# In HA → Settings → Integrations → Syslog
+#   Destination: 10.10.0.100:514
+#   Facility: local7</code></pre>
+
+<!-- ============================================================ -->
+<h3 id="synology-nas">11.6 <span style="color:#1a365d; font-weight:bold;">Synology NAS DS1821+</span></h3>
+
+<div class="info">
+    <strong>Status: GEPLANT</strong> &mdash; Synology DSM unterstuetzt Syslog-Weiterleitung nativ.
+    SIEM-relevant: Login-Versuche, Datei-Zugriffe, Freigabe-Aenderungen, Paket-Updates, Hyper Backup Status.
+</div>
+
+<h4>Synology DSM: Syslog konfigurieren</h4>
+
+<pre><code># In DSM Web-UI (https://&lt;NAS-IP&gt;:5001):
+# 1. Hauptmenue → Protokollcenter (Log Center)
+# 2. Tab "Protokollversand" (Log Sending)
+# 3. "Erstellen" → Syslog-Regel:
+#    - Server:      10.10.0.100
+#    - Port:        514
+#    - Protokoll:   UDP (oder TCP fuer zuverlaessigere Zustellung)
+#    - Format:      BSD (Syslog RFC 3164)
+#    - Logs:
+#      [x] System           - DSM-Kern, Hardware, Services
+#      [x] Connection       - Login/Logout, IP-Blocks, 2FA
+#      [x] File Transfer    - SMB/NFS/AFP Zugriffe
+#      [x] Backup           - Hyper Backup Erfolg/Fehler
+#      [x] Drive            - Synology Drive Sync-Events
+#      [x] Surveillance     - Surveillance Station (falls vorhanden)
+#
+# 4. "OK" klicken → Syslog-Versand startet sofort</code></pre>
+
+<h4>SIEM-relevante Synology Events</h4>
+<table>
+    <tr><th>Quelle</th><th>Event</th><th>SIEM-Relevanz</th></tr>
+    <tr><td>Connection</td><td>Failed login (DSM, SSH, SMB)</td><td><strong>Brute-Force-Erkennung</strong></td></tr>
+    <tr><td>Connection</td><td>IP auto-blocked</td><td><strong>SIEM-Alarm: Angreifer geblockt</strong></td></tr>
+    <tr><td>Connection</td><td>2FA verification failed</td><td><strong>Account-Kompromittierung</strong></td></tr>
+    <tr><td>System</td><td>User created/deleted/modified</td><td>Account Management</td></tr>
+    <tr><td>System</td><td>Shared folder permission change</td><td>Rechteaenderung</td></tr>
+    <tr><td>System</td><td>DSM update installed</td><td>Patch Management</td></tr>
+    <tr><td>File Transfer</td><td>File deleted (SMB/NFS)</td><td>Ransomware-Erkennung (Massenloeschung)</td></tr>
+    <tr><td>Backup</td><td>Hyper Backup failed</td><td>Datenintegritaet</td></tr>
+    <tr><td>System</td><td>Disk S.M.A.R.T. warning</td><td>Hardware-Failure-Prediction</td></tr>
+    <tr><td>System</td><td>Volume degraded/crashed</td><td><strong>SIEM-Alarm: Storage-Ausfall</strong></td></tr>
+</table>
+
+<h4>Vorgeschlagene Pipeline-Regel</h4>
+<pre><code>// Synology SIEM-Events
+filter: log_message && /(synology|dsm|DiskStation).*([Ff]ailed.*login|auto.*block|ip.*block|2FA.*fail|permission.*chang|volume.*(degrad|crash)|SMART.*(warn|error))/i.test(log_message)
+classification = 'siem'
+classification_method = 'rule_based'
+classification_reason = 'synology_security_event'
+
+// Synology Operational
+filter: log_message && /(synology|dsm|DiskStation).*(backup.*complet|update.*success|Hyper Backup.*finish|disk.*normal)/i.test(log_message)
+classification = 'operational'
+classification_method = 'rule_based'
+classification_reason = 'synology_operational_event'</code></pre>
+
+<!-- ============================================================ -->
+<h3>11.7 Erweitertes Netzwerk-Diagramm (alle Geraete)</h3>
+
+<pre><code>                        Internet
+                            |
+                   +--------v--------+
+                   | Sophos SFOS     |  Syslog UDP 9514
+                   | Firewall        |---------------------------+
+                   | (Gateway)       |                           |
+                   +--------+--------+                           |
+                            |                                    |
+            +---------------+---------------+                    |
+            |          10.10.0.0/24         |                    |
+            |                               |                    |
+  +---------v---------+   +--------+--------v---------+         |
+  | UniFi WiFi        |   | NUC-HA (10.10.0.100)      |         |
+  | Console           |   | Cribl Stream Leader        |&lt;--------+
+  | Syslog → :514     |--→| Syslog :514 / :9514       |
+  +-------------------+   | Docker Containers:         |
+                           |  - HomeAssistant (HA)      |
+  +---------+----------+  |  - Ollama (ki01)            |
+  | Proxmox VE         |  |  - Elasticsearch + Kibana   |
+  | (Virtualisierung)  |  |  - MinIO S3                 |
+  | Syslog → :514      |--→|  - Cribl-Docs              |
+  +--------------------+  +---+-----------+---+---------+
+                               |           |   |
+  +---------+----------+      |           |   +--→ MinIO S3 (:9100)
+  | Synology DS1821+   |      |           |
+  | NAS / Storage       |      |           +------→ ES/Kibana (:9200/:5601)
+  | Syslog → :514      |------+
+  +--------------------+      |
+                               +--→ Splunk HEC (10.10.0.66:8088)
+  +---------+----------+
+  | Tasmota ESP32      |
+  | IoT Devices        |
+  | MQTT → Mosquitto   |--→ HomeAssistant --→ Docker Logs --→ Cribl
+  | (oder Syslog :514) |
+  +--------------------+
+
+  IPs aus Sophos FW-Daten:
+    10.10.0.100 = NUC-HA (Cribl, HA, ES, Kibana, MinIO)
+    10.10.0.66  = Splunk Enterprise
+    10.10.0.210 = ki01 (Ollama AI, 11434)
+    10.10.0.111 = Workstation (hoechster Traffic: 1.6 Mio Events)
+    10.10.0.50  = Zweites Geraet (826k Events)
+    10.10.0.186 = Drittes Geraet (784k Events)</code></pre>
+
+<!-- ============================================================ -->
+<h3>11.8 Gesamtcheckliste Netzwerkgeraete</h3>
+
+<div class="two-col">
+    <div>
+        <h4 style="color:#e53e3e;">Sophos SFOS</h4>
+        <ul class="checklist">
+            <li>Syslog-Server 10.10.0.100:9514 konfiguriert</li>
+            <li>Alle Log-Typen aktiviert (FW, IDP, ATP, WAF, Event)</li>
+            <li>Cribl Input <code>in_syslog_sophos</code> aktiv</li>
+            <li>Pipeline <code>pipeline_sophos_fw</code> deployed</li>
+            <li>Route <code>route_sophos_fw</code> mit outputExpression</li>
+            <li>~8.9 Mio Events in ES sichtbar</li>
+            <li>SIEM-Events (Denied/Drop) in Splunk</li>
+        </ul>
+        <h4 style="color:#e95420;">Proxmox VE</h4>
+        <ul class="checklist">
+            <li>rsyslog-Forwarding an 10.10.0.100:514</li>
+            <li>PVE-Firewall-Logging aktiviert</li>
+            <li>Pipeline-Regel fuer Proxmox-Events</li>
+        </ul>
+    </div>
+    <div>
+        <h4 style="color:#0559C9;">UniFi WiFi</h4>
+        <ul class="checklist">
+            <li>Remote Syslog 10.10.0.100:514 konfiguriert</li>
+            <li>Pipeline-Regel fuer UniFi SIEM/Ops Events</li>
+            <li>Rogue AP Detection in Splunk sichtbar</li>
+        </ul>
+        <h4 style="color:#d69e2e;">Tasmota / HA / Synology</h4>
+        <ul class="checklist">
+            <li>Tasmota: Syslog oder MQTT→HA→Docker-Logs</li>
+            <li>HA: Fallback-Regeln implementiert (~457k Events)</li>
+            <li>HA Supervisor/Add-on Container-Regel aktiv</li>
+            <li>Synology: Syslog an 10.10.0.100:514</li>
+            <li>Synology: Login-Failure Alerting in Splunk</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="e2e-pipeline">12. Gesamtablauf &ndash; Ende-zu-Ende Datenpipeline</h2>
 
 <div class="info">
     <strong>Uebersicht:</strong> Dieser Abschnitt beschreibt den vollstaendigen Datenfluss von allen Quellen
     durch die Ollama-gestuetzte Klassifikation bis zu den Ziel-Systemen (Splunk SIEM + Elasticsearch/Kibana Ops + MinIO S3 Archiv).
 </div>
 
-<h3>11.1 Erweitertes Datenfluss-Diagramm</h3>
+<h3>12.1 Erweitertes Datenfluss-Diagramm</h3>
 
 <pre><code>  Windows Workstation          Ubuntu NUC-HA (ki01)         Docker Container
   +-------------------+        +-------------------+        +-------------------+
@@ -1352,7 +1867,7 @@ curl -s 'http://localhost:9200/cribl-ops/_search' \
                     CIM-Datenmodelle     KQL-Suche         S3-Lifecycle
                     Alerting             Visualisierung     Compliance</code></pre>
 
-<h3>11.2 Ollama-Integrationspunkte</h3>
+<h3>12.2 Ollama-Integrationspunkte</h3>
 
 <p>Die KI (Ollama auf ki01, Port 11434) wird an 6 Stellen im System eingesetzt:</p>
 
@@ -1366,7 +1881,7 @@ curl -s 'http://localhost:9200/cribl-ops/_search' \
     <tr><td>6</td><td><strong>AI Panel: Log-Analyzer</strong></td><td>Analyse beliebiger Logs, Cribl-Konfig-Vorschlaege</td><td>Waehlbar</td><td>Manuell (Paste)</td></tr>
 </table>
 
-<h3>11.3 Reklassifikations-Zyklus (Continuous Improvement)</h3>
+<h3>12.3 Reklassifikations-Zyklus (Continuous Improvement)</h3>
 
 <pre><code>  +-------------------+
   | 1. Events fliessen|
@@ -1412,7 +1927,7 @@ curl -s 'http://localhost:9200/cribl-ops/_search' \
     Typisch: Nach 2-3 Reklassifikations-Zyklen sinkt die Fallback-Rate von ~20% auf unter 5%.
 </div>
 
-<h3>11.4 Setup-Verlauf (Schritte 1-12)</h3>
+<h3>12.4 Setup-Verlauf (Schritte 1-12)</h3>
 
 <table>
     <tr><th>Schritt</th><th>Skript / Aktion</th><th>Ergebnis</th></tr>
@@ -1430,7 +1945,7 @@ curl -s 'http://localhost:9200/cribl-ops/_search' \
     <tr><td>12</td><td>AI Panel: Reklassifikation + Konfig-Generierung</td><td>Continuous Improvement aktiv</td></tr>
 </table>
 
-<h3>11.5 Verifikation Gesamtablauf</h3>
+<h3>12.5 Verifikation Gesamtablauf</h3>
 
 <pre><code># === 1. Pipeline pruefen ===
 curl -s -u admin:PASSWORD http://10.10.0.100:9000/api/v1/pipelines/universal_classifier \
