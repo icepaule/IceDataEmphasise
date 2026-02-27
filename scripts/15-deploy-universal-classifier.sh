@@ -4,8 +4,8 @@
 # =============================================================================
 # Deploys the universal classifier pipeline and updated routes to Cribl Stream.
 # ES-First Architecture: ALL events go to ES, SIEM additionally to Splunk.
-# Activates Edge inputs (in_cribl_tcp on Worker, in_win_event_logs on Fleet).
-# Commits and deploys the configuration.
+# Uses filesystem deployment (pipeline contains async JS that the API validator
+# cannot parse) + Cribl reload for single-instance mode.
 #
 # Usage:
 #   ./scripts/15-deploy-universal-classifier.sh
@@ -25,132 +25,124 @@ source "$SCRIPT_DIR/lib/api-helpers.sh"
 # =============================================================================
 load_env "$PROJECT_DIR/.env"
 
+# Cribl config paths (single-instance mode)
+CRIBL_LOCAL_DIR="${CRIBL_HOME:-/opt/cribl}/local/cribl"
+CRIBL_PIPELINE_DIR="$CRIBL_LOCAL_DIR/pipelines"
+CRIBL_SERVICE_USER="${CRIBL_SERVICE_USER:-cribl}"
+CRIBL_SERVICE_GROUP="${CRIBL_SERVICE_GROUP:-cribl}"
+
 # =============================================================================
 # Main
 # =============================================================================
 main() {
     print_header "Deploy Universal Classifier Pipeline (ES-First Architecture)"
-    require_commands curl jq
+    require_commands curl jq python3
 
     # =========================================================================
     # Step 1: Health check
     # =========================================================================
-    log_step "Step 1/8: Cribl Stream Health Check"
+    log_step "Step 1/7: Cribl Stream Health Check"
     cribl_health_check || die "Cribl Stream is not healthy. Aborting."
 
     # =========================================================================
-    # Step 2: Authenticate
+    # Step 2: Authenticate (for verification steps)
     # =========================================================================
-    log_step "Step 2/8: Authenticate with Cribl API"
+    log_step "Step 2/7: Authenticate with Cribl API"
     cribl_auth
 
     # =========================================================================
-    # Step 3: Deploy universal_classifier pipeline
+    # Step 3: Deploy universal_classifier pipeline via filesystem
     # =========================================================================
-    log_step "Step 3/8: Deploy universal_classifier pipeline"
+    log_step "Step 3/7: Deploy universal_classifier pipeline"
 
     local pipeline_file="$PROJECT_DIR/configs/stream/pipelines/pipeline-universal-classifier.json"
     if [[ ! -f "$pipeline_file" ]]; then
         die "Pipeline config not found: $pipeline_file"
     fi
 
-    # Check if pipeline already exists
-    local existing
-    existing=$(cribl_get "/pipelines/universal_classifier" 2>/dev/null)
+    # Convert JSON to YAML and write to Cribl's local config
+    local pipeline_dir="$CRIBL_PIPELINE_DIR/universal_classifier"
+    log_info "Writing pipeline to $pipeline_dir/conf.yml ..."
 
-    if echo "$existing" | jq -e '.items[0].id' &>/dev/null 2>&1; then
-        log_info "Pipeline 'universal_classifier' already exists, updating..."
-        local result
-        result=$(cribl_put "/pipelines/universal_classifier" "$(cat "$pipeline_file")")
-        if echo "$result" | jq -e '.items' &>/dev/null; then
-            log_ok "Pipeline updated: universal_classifier"
-        else
-            log_warn "Pipeline update response: $result"
-        fi
-    else
-        log_info "Creating new pipeline: universal_classifier"
-        cribl_create_pipeline "$pipeline_file"
-    fi
+    sudo mkdir -p "$pipeline_dir"
+    python3 -c "
+import json, yaml, sys
+with open('$pipeline_file') as f:
+    d = json.load(f)
+yaml_str = yaml.dump(d['conf'], default_flow_style=False, allow_unicode=True, width=1000, sort_keys=False)
+sys.stdout.write(yaml_str)
+" | sudo tee "$pipeline_dir/conf.yml" > /dev/null
+
+    sudo chown -R "${CRIBL_SERVICE_USER}:${CRIBL_SERVICE_GROUP}" "$pipeline_dir"
+    log_ok "Pipeline written: universal_classifier ($(wc -l < "$pipeline_dir/conf.yml") lines)"
 
     # =========================================================================
-    # Step 4: Update routes (ES-First Architecture)
+    # Step 4: Update routes via filesystem (ES-First Architecture)
     # =========================================================================
-    log_step "Step 4/8: Update routes (ES-First: ALL->ES, SIEM->ES+Splunk)"
+    log_step "Step 4/7: Update routes (ES-First: ALL->ES, SIEM->ES+Splunk)"
 
     local routes_file="$PROJECT_DIR/configs/stream/pipelines/routes.json"
     if [[ ! -f "$routes_file" ]]; then
         die "Routes config not found: $routes_file"
     fi
 
-    cribl_create_route "$routes_file"
+    # Backup current routes
+    if [[ -f "$CRIBL_PIPELINE_DIR/route.yml" ]]; then
+        sudo cp "$CRIBL_PIPELINE_DIR/route.yml" "$CRIBL_PIPELINE_DIR/route.yml.bak.$(date '+%Y%m%d_%H%M%S')"
+        log_info "Backed up current routes"
+    fi
+
+    # Convert JSON routes to YAML
+    log_info "Writing routes to $CRIBL_PIPELINE_DIR/route.yml ..."
+    python3 -c "
+import json, yaml, sys
+with open('$routes_file') as f:
+    d = json.load(f)
+yaml_str = yaml.dump(d, default_flow_style=False, allow_unicode=True, width=1000, sort_keys=False)
+sys.stdout.write(yaml_str)
+" | sudo tee "$CRIBL_PIPELINE_DIR/route.yml" > /dev/null
+
+    sudo chown "${CRIBL_SERVICE_USER}:${CRIBL_SERVICE_GROUP}" "$CRIBL_PIPELINE_DIR/route.yml"
+    log_ok "Routes written (5 ES-First routes)"
 
     # =========================================================================
-    # Step 5: Enable Edge inputs
+    # Step 5: Reload Cribl Stream
     # =========================================================================
-    log_step "Step 5/8: Enable Edge inputs"
+    log_step "Step 5/7: Reload Cribl Stream"
 
-    # Enable in_cribl_tcp on default Worker Group (for receiving Edge data)
-    log_info "Enabling in_cribl_tcp on default Worker Group..."
+    log_info "Reloading Cribl to pick up new config..."
+    sudo -u "${CRIBL_SERVICE_USER}" "${CRIBL_HOME:-/opt/cribl}/bin/cribl" reload 2>/dev/null \
+        || sudo systemctl restart cribl 2>/dev/null \
+        || log_warn "Could not reload Cribl via CLI or systemd"
+
+    log_info "Waiting 10s for Cribl to reload..."
+    sleep 10
+
+    # Verify Cribl is healthy after reload
+    cribl_health_check || die "Cribl Stream is not healthy after reload!"
+    # Re-authenticate after reload
+    cribl_auth
+    log_ok "Cribl reloaded successfully"
+
+    # =========================================================================
+    # Step 6: Enable Edge inputs (single-instance mode)
+    # =========================================================================
+    log_step "Step 6/7: Enable Edge inputs"
+
+    # In single-instance mode, use direct /system/inputs/ paths
+    log_info "Enabling in_cribl_tcp (for receiving Edge data)..."
     local tcp_result
-    tcp_result=$(cribl_patch "/m/default/system/inputs/in_cribl_tcp" '{"disabled":false}' 2>/dev/null)
+    tcp_result=$(cribl_patch "/system/inputs/in_cribl_tcp" '{"disabled":false}' 2>/dev/null)
     if echo "$tcp_result" | jq -e '.items' &>/dev/null 2>&1; then
-        log_ok "in_cribl_tcp enabled on Worker Group"
+        log_ok "in_cribl_tcp enabled"
     else
-        log_warn "in_cribl_tcp enable response (may not exist or already enabled): $(echo "$tcp_result" | head -c 200)"
-    fi
-
-    # Enable in_win_event_logs on Edge Fleet
-    log_info "Enabling in_win_event_logs on default_fleet..."
-    local win_result
-    win_result=$(cribl_patch "/m/default_fleet/system/inputs/in_win_event_logs" '{"disabled":false}' 2>/dev/null)
-    if echo "$win_result" | jq -e '.items' &>/dev/null 2>&1; then
-        log_ok "in_win_event_logs enabled on default_fleet"
-    else
-        log_warn "in_win_event_logs enable response (may not exist on this fleet): $(echo "$win_result" | head -c 200)"
-    fi
-
-    # Enable journal source on Edge Fleet (for Linux Edge)
-    log_info "Enabling journal source on default_fleet..."
-    local journal_result
-    journal_result=$(cribl_patch "/m/default_fleet/system/inputs/in_journal_local" '{"disabled":false}' 2>/dev/null)
-    if echo "$journal_result" | jq -e '.items' &>/dev/null 2>&1; then
-        log_ok "in_journal_local enabled on default_fleet"
-    else
-        log_warn "in_journal_local enable response: $(echo "$journal_result" | head -c 200)"
-    fi
-
-    # =========================================================================
-    # Step 6: Commit & Deploy
-    # =========================================================================
-    log_step "Step 6/8: Commit & Deploy configuration"
-
-    cribl_commit_deploy "Deploy universal_classifier pipeline + ES-First routes + enable Edge inputs"
-    log_ok "Configuration committed"
-
-    # Deploy to Worker Group
-    log_info "Deploying to default Worker Group..."
-    local deploy_result
-    deploy_result=$(cribl_post "/master/groups/default/deploy" '{"version":"current"}' 2>/dev/null)
-    if echo "$deploy_result" | jq -e '.' &>/dev/null; then
-        log_ok "Deployed to default Worker Group"
-    else
-        log_warn "Deploy response: $(echo "$deploy_result" | head -c 200)"
-    fi
-
-    # Deploy to Edge Fleet
-    log_info "Deploying to default_fleet Edge Fleet..."
-    local fleet_deploy
-    fleet_deploy=$(cribl_post "/master/groups/default_fleet/deploy" '{"version":"current"}' 2>/dev/null)
-    if echo "$fleet_deploy" | jq -e '.' &>/dev/null; then
-        log_ok "Deployed to default_fleet"
-    else
-        log_warn "Fleet deploy response: $(echo "$fleet_deploy" | head -c 200)"
+        log_warn "in_cribl_tcp: $(echo "$tcp_result" | head -c 200)"
     fi
 
     # =========================================================================
     # Step 7: Verify deployment
     # =========================================================================
-    log_step "Step 7/8: Verify deployment"
+    log_step "Step 7/7: Verify deployment"
 
     local verify_passed=0
     local verify_total=0
@@ -166,11 +158,11 @@ main() {
         log_error "VERIFY: Pipeline 'universal_classifier' NOT found"
     fi
 
-    # Check routes (ES-First architecture)
+    # Check routes (ES-First architecture) - routes are nested in items[0].routes[]
     verify_total=$((verify_total + 1))
     local route_check
     route_check=$(cribl_get "/routes" 2>/dev/null)
-    if echo "$route_check" | jq -e '.items[] | select(.id == "route_classify_all")' &>/dev/null; then
+    if echo "$route_check" | jq -e '.items[0].routes[] | select(.id == "route_classify_all")' &>/dev/null; then
         log_ok "VERIFY: Route 'route_classify_all' exists"
         verify_passed=$((verify_passed + 1))
     else
@@ -178,7 +170,7 @@ main() {
     fi
 
     verify_total=$((verify_total + 1))
-    if echo "$route_check" | jq -e '.items[] | select(.id == "route_all_to_es")' &>/dev/null; then
+    if echo "$route_check" | jq -e '.items[0].routes[] | select(.id == "route_all_to_es")' &>/dev/null; then
         log_ok "VERIFY: Route 'route_all_to_es' exists (ES-First)"
         verify_passed=$((verify_passed + 1))
     else
@@ -186,7 +178,7 @@ main() {
     fi
 
     verify_total=$((verify_total + 1))
-    if echo "$route_check" | jq -e '.items[] | select(.id == "route_siem_to_splunk")' &>/dev/null; then
+    if echo "$route_check" | jq -e '.items[0].routes[] | select(.id == "route_siem_to_splunk")' &>/dev/null; then
         log_ok "VERIFY: Route 'route_siem_to_splunk' exists"
         verify_passed=$((verify_passed + 1))
     else
@@ -195,7 +187,7 @@ main() {
 
     # Check route_all_to_es is non-final
     verify_total=$((verify_total + 1))
-    if echo "$route_check" | jq -e '.items[] | select(.id == "route_all_to_es" and .final == false)' &>/dev/null; then
+    if echo "$route_check" | jq -e '.items[0].routes[] | select(.id == "route_all_to_es" and .final == false)' &>/dev/null; then
         log_ok "VERIFY: Route 'route_all_to_es' is non-final (dual-write enabled)"
         verify_passed=$((verify_passed + 1))
     else
@@ -205,7 +197,7 @@ main() {
     # Check route count
     verify_total=$((verify_total + 1))
     local route_count
-    route_count=$(echo "$route_check" | jq '[.items[]] | length' 2>/dev/null || echo "0")
+    route_count=$(echo "$route_check" | jq '[.items[0].routes[]] | length' 2>/dev/null || echo "0")
     if [[ "$route_count" -ge 5 ]]; then
         log_ok "VERIFY: ${route_count} routes configured (expected >= 5)"
         verify_passed=$((verify_passed + 1))
@@ -214,9 +206,9 @@ main() {
     fi
 
     # =========================================================================
-    # Step 8: Verify ES data flow (ES-First)
+    # Verify ES data flow (ES-First)
     # =========================================================================
-    log_step "Step 8/8: Verify ES data flow"
+    log_info "Verifying ES data flow..."
 
     local es_url="${ES_URL:-http://localhost:9200}"
     log_info "Checking Elasticsearch at ${es_url}..."

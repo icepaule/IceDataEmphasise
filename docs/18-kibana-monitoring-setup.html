@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>18 - Kibana Betriebsmonitoring Konfiguration</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a365d; border-bottom: 3px solid #2b6cb0; padding-bottom: 10px; }
+        h2 { color: #2b6cb0; border-bottom: 1px solid #bee3f8; padding-bottom: 5px; margin-top: 2em; }
+        h3 { color: #2c5282; margin-top: 1.5em; }
+        .header { background: #1a365d; color: white; padding: 30px; border-radius: 8px; margin-bottom: 2em; }
+        .header h1 { color: white; border: none; margin: 0 0 10px 0; font-size: 2em; }
+        .header p { margin: 5px 0; opacity: 0.9; }
+        pre { background: #1a202c; color: #e2e8f0; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 0.9em; line-height: 1.5; }
+        code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; color: #2d3748; }
+        pre code { background: none; padding: 0; color: inherit; }
+        .info { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 12px 16px; margin: 1em 0; border-radius: 0 4px 4px 0; }
+        .warn { background: #fffbeb; border-left: 4px solid #d69e2e; padding: 12px 16px; margin: 1em 0; border-radius: 0 4px 4px 0; }
+        .success { background: #f0fff4; border-left: 4px solid #38a169; padding: 12px 16px; margin: 1em 0; border-radius: 0 4px 4px 0; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px 14px; text-align: left; }
+        th { background: #edf2f7; color: #2d3748; font-weight: 600; }
+        tr:nth-child(even) { background: #f7fafc; }
+        .step { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 1.5em 0; }
+        .step-num { display: inline-block; background: #2b6cb0; color: white; width: 32px; height: 32px; border-radius: 50%; text-align: center; line-height: 32px; font-weight: bold; margin-right: 10px; }
+        .footer { text-align: center; margin-top: 3em; padding: 1em; border-top: 1px solid #e2e8f0; color: #718096; font-size: 0.85em; }
+        a { color: #2b6cb0; }
+        .toc { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 1.5em 0; }
+        .toc ul { list-style: none; padding-left: 1em; }
+        .toc > ul { padding-left: 0; }
+        .toc li { margin: 4px 0; }
+        .toc a { text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>18 - Kibana Betriebsmonitoring Setup</h1>
+    <p>Schritt-fuer-Schritt Anleitung zur Konfiguration des Betriebsmonitoring-Dashboards</p>
+    <p style="margin-top: 15px; font-size: 0.85em;">Version 1.0 | Stand: 2026-02-27 | Klassifikation: INTERN</p>
+</div>
+
+<div class="toc">
+    <h3 style="margin-top:0;">Inhaltsverzeichnis</h3>
+    <ul>
+        <li><a href="#ueberblick">1. Ueberblick</a></li>
+        <li><a href="#voraussetzungen">2. Voraussetzungen</a></li>
+        <li><a href="#datenstruktur">3. Datenstruktur im Index</a></li>
+        <li><a href="#runtime-fields">4. Runtime Fields anlegen</a></li>
+        <li><a href="#index-pattern">5. Index Pattern konfigurieren</a></li>
+        <li><a href="#dashboard-aufbau">6. Dashboard-Aufbau</a>
+            <ul>
+                <li><a href="#kpi-panels">6.1 KPI-Metrik-Panels</a></li>
+                <li><a href="#timeseries">6.2 Zeitreihen-Charts (CPU, Memory, Netzwerk)</a></li>
+                <li><a href="#bar-charts">6.3 Balkendiagramme (Top-N)</a></li>
+                <li><a href="#pie-charts">6.4 Donut/Pie-Charts</a></li>
+                <li><a href="#heatmap">6.5 Heatmap</a></li>
+                <li><a href="#tables">6.6 Datentabellen</a></li>
+            </ul>
+        </li>
+        <li><a href="#api-erstellung">7. Dashboard via API erstellen</a></li>
+        <li><a href="#navigation">8. Navigations-Dashboard</a></li>
+        <li><a href="#anpassungen">9. Eigene Anpassungen vornehmen</a></li>
+        <li><a href="#referenz">10. Feld-Referenz</a></li>
+    </ul>
+</div>
+
+<!-- 1. Ueberblick -->
+<h2 id="ueberblick">1. Ueberblick</h2>
+
+<p>Das Betriebsmonitoring-Dashboard bietet eine CheckMK-aehnliche Uebersicht ueber:</p>
+<ul>
+    <li><strong>System Health</strong> - CPU, Memory, Disk der Sophos XG Firewall</li>
+    <li><strong>Netzwerk</strong> - Interface-Durchsatz (RX/TX)</li>
+    <li><strong>Firewall</strong> - Allowed/Denied Actions, Top Sources, Protokolle, Rules</li>
+    <li><strong>Container &amp; Dienste</strong> - Docker-Container Error-Raten, Log-Volumen, Severity-Heatmap</li>
+    <li><strong>Dienste-Events</strong> - DHCP, IPSec, Content Filtering, Host-Aktivitaet</li>
+</ul>
+
+<div class="info">
+    <strong>Architektur:</strong> Logs fliessen von den Quellsystemen ueber <strong>Cribl Stream/Edge</strong>
+    in den <strong>Elasticsearch</strong>-Index <code>cribl-ops</code>. Kibana visualisiert diese Daten.
+</div>
+
+<p><strong>Dashboards:</strong></p>
+<table>
+    <tr><th>Dashboard</th><th>ID</th><th>Beschreibung</th></tr>
+    <tr><td>Navigation</td><td><code>navigation-menu</code></td><td>Hauptmenue mit Links</td></tr>
+    <tr><td>Betriebsmonitoring</td><td><code>ops-monitoring-v1</code></td><td>System- &amp; Dienste-Uebersicht (25 Panels)</td></tr>
+    <tr><td>Docker Log Classification</td><td><code>icedataemphasise-docker-log-dashboard</code></td><td>Log-Klassifikation</td></tr>
+</table>
+
+<!-- 2. Voraussetzungen -->
+<h2 id="voraussetzungen">2. Voraussetzungen</h2>
+
+<table>
+    <tr><th>Komponente</th><th>Version</th><th>Container</th><th>Port</th></tr>
+    <tr><td>Elasticsearch</td><td>8.12.2</td><td><code>cribl-elasticsearch</code></td><td>9200</td></tr>
+    <tr><td>Kibana</td><td>8.12.2</td><td><code>cribl-kibana</code></td><td>5601</td></tr>
+    <tr><td>Cribl Stream</td><td>-</td><td>via Docker Compose</td><td>-</td></tr>
+    <tr><td>MinIO</td><td>-</td><td><code>cribl-minio</code></td><td>-</td></tr>
+</table>
+
+<p>Alle Container laufen im selben Docker-Netzwerk und kommunizieren intern.</p>
+
+<!-- 3. Datenstruktur -->
+<h2 id="datenstruktur">3. Datenstruktur im Index</h2>
+
+<p>Der Index <code>cribl-ops</code> enthaelt zwei Hauptdatenquellen:</p>
+
+<h3>3.1 Sophos XG Firewall Logs (~8.9 Mio. Dokumente)</h3>
+<p>Empfangen via Syslog, verarbeitet durch die Cribl Pipeline <code>pipeline_sophos_fw</code>.</p>
+
+<table>
+    <tr><th>Feld</th><th>Typ</th><th>Beschreibung</th><th>Beispielwert</th></tr>
+    <tr><td><code>log_type</code></td><td>keyword</td><td>Hauptkategorie</td><td>Firewall, System Health, Event, Content Filtering</td></tr>
+    <tr><td><code>log_component</code></td><td>keyword</td><td>Unterkategorie</td><td>Firewall Rule, CPU, Memory, Disk, Interface, DHCP Server</td></tr>
+    <tr><td><code>log_subtype</code></td><td>keyword</td><td>Aktion</td><td>Allowed, Denied, Usage</td></tr>
+    <tr><td><code>action</code></td><td>keyword</td><td>Normalisierte Aktion</td><td>Allowed, Denied, Drop</td></tr>
+    <tr><td><code>src</code> / <code>dest</code></td><td>keyword</td><td>Quell-/Ziel-IP (normalisiert)</td><td>10.10.0.111, 192.168.178.1</td></tr>
+    <tr><td><code>protocol</code></td><td>keyword</td><td>Netzwerkprotokoll</td><td>TCP, UDP, ICMP</td></tr>
+    <tr><td><code>fw_rule_name</code></td><td>keyword</td><td>Name der FW-Regel</td><td>General out from all LAN</td></tr>
+    <tr><td><code>device_name</code></td><td>keyword</td><td>Geraetename</td><td>Schwalbe.paulis.net</td></tr>
+    <tr><td><code>source_type</code></td><td>keyword</td><td>Cribl Source Type</td><td>sophos_firewall</td></tr>
+</table>
+
+<h3>3.2 System Health Felder (Sophos)</h3>
+<table>
+    <tr><th>Komponente</th><th>Felder (Originaltyp: text)</th><th>Beispiel</th></tr>
+    <tr><td>CPU</td><td><code>system</code>, <code>user</code>, <code>idle</code></td><td>2.33%, 4.14%, 93.52%</td></tr>
+    <tr><td>Memory</td><td><code>total_memory</code>, <code>free</code>, <code>used</code>, <code>unit</code></td><td>16779149312, 11381645312, byte</td></tr>
+    <tr><td>Disk</td><td><code>Configuration</code>, <code>Reports</code>, <code>Signature</code>, <code>Temp</code></td><td>9.00%, 18.00%, 6.00%</td></tr>
+    <tr><td>Interface</td><td><code>interface</code>, <code>receivedkbits</code>, <code>transmittedkbits</code></td><td>Port2, 562.49, 137.11</td></tr>
+</table>
+
+<div class="warn">
+    <strong>Wichtig:</strong> Die System-Health-Werte werden von Sophos als Text geliefert (z.B. "93.52%").
+    Fuer Visualisierungen muessen diese via <strong>Runtime Fields</strong> in numerische Werte konvertiert werden.
+</div>
+
+<h3>3.3 NUC-HA Docker/Journald Logs (~2.3 Mio. Dokumente)</h3>
+<p>Empfangen via Cribl Edge (Journald-Quelle), klassifiziert durch <code>ollama_classifier</code> Pipeline.</p>
+
+<table>
+    <tr><th>Feld</th><th>Typ</th><th>Beschreibung</th></tr>
+    <tr><td><code>CONTAINER_NAME</code></td><td>keyword</td><td>Docker Container Name</td></tr>
+    <tr><td><code>IMAGE_NAME</code></td><td>keyword</td><td>Docker Image</td></tr>
+    <tr><td><code>appname</code></td><td>keyword</td><td>Applikationsname (journald)</td></tr>
+    <tr><td><code>classification</code></td><td>keyword</td><td>siem / operational</td></tr>
+    <tr><td><code>classification_method</code></td><td>keyword</td><td>rule_based / ollama</td></tr>
+    <tr><td><code>severityName</code></td><td>keyword</td><td>info, notice, error, warning</td></tr>
+    <tr><td><code>host.name</code></td><td>keyword</td><td>Hostname (NUC-HA fuer Docker-Logs)</td></tr>
+</table>
+
+<h3>3.4 Gemeinsame Felder</h3>
+<table>
+    <tr><th>Feld</th><th>Beschreibung</th></tr>
+    <tr><td><code>@timestamp</code></td><td>Zeitstempel (date) - Grundlage aller Zeitreihen</td></tr>
+    <tr><td><code>severity</code></td><td>Syslog Severity (numerisch: 0-7)</td></tr>
+    <tr><td><code>severityName</code></td><td>Severity als Text: info, notice, warning, error</td></tr>
+    <tr><td><code>cribl_pipe</code></td><td>Array der durchlaufenen Cribl Pipelines</td></tr>
+    <tr><td><code>message</code></td><td>Volltextmeldung</td></tr>
+    <tr><td><code>_raw</code></td><td>Original-Rohdaten</td></tr>
+</table>
+
+<!-- 4. Runtime Fields -->
+<h2 id="runtime-fields">4. Runtime Fields anlegen</h2>
+
+<p>Da Sophos System-Health-Werte als Text gespeichert werden, muessen <strong>Runtime Fields</strong> angelegt werden,
+die zur Abfragezeit die Werte in numerische Typen konvertieren.</p>
+
+<div class="step">
+    <p><span class="step-num">1</span><strong>Runtime Fields via Elasticsearch API anlegen</strong></p>
+    <p>Folgender API-Call fuegt alle benoetigten Runtime Fields zum Index <code>cribl-ops</code> hinzu:</p>
+<pre><code>curl -X PUT "http://10.10.0.100:9200/cribl-ops/_mapping" \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "runtime": {
+    "cpu_idle_pct": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"idle.keyword\") &amp;&amp; doc[\"idle.keyword\"].size() > 0) { String v = doc[\"idle.keyword\"].value; if (v.endsWith(\"%\")) { v = v.substring(0, v.length()-1); } try { emit(Double.parseDouble(v)); } catch(Exception e) {} }"
+      }
+    },
+    "cpu_user_pct": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"user.keyword\") &amp;&amp; doc[\"user.keyword\"].size() > 0) { String v = doc[\"user.keyword\"].value; if (v.endsWith(\"%\")) { v = v.substring(0, v.length()-1); } try { emit(Double.parseDouble(v)); } catch(Exception e) {} }"
+      }
+    },
+    "cpu_system_pct": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"system.keyword\") &amp;&amp; doc[\"system.keyword\"].size() > 0) { String v = doc[\"system.keyword\"].value; if (v.endsWith(\"%\")) { v = v.substring(0, v.length()-1); } try { emit(Double.parseDouble(v)); } catch(Exception e) {} }"
+      }
+    },
+    "mem_total_bytes": {
+      "type": "long",
+      "script": {
+        "source": "if (doc.containsKey(\"total_memory.keyword\") &amp;&amp; doc[\"total_memory.keyword\"].size() > 0) { try { emit(Long.parseLong(doc[\"total_memory.keyword\"].value)); } catch(Exception e) {} }"
+      }
+    },
+    "mem_used_bytes": {
+      "type": "long",
+      "script": {
+        "source": "if (doc.containsKey(\"used.keyword\") &amp;&amp; doc[\"used.keyword\"].size() > 0) { try { emit(Long.parseLong(doc[\"used.keyword\"].value)); } catch(Exception e) {} }"
+      }
+    },
+    "mem_free_bytes": {
+      "type": "long",
+      "script": {
+        "source": "if (doc.containsKey(\"free.keyword\") &amp;&amp; doc[\"free.keyword\"].size() > 0) { try { emit(Long.parseLong(doc[\"free.keyword\"].value)); } catch(Exception e) {} }"
+      }
+    },
+    "net_rx_kbits": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"receivedkbits.keyword\") &amp;&amp; doc[\"receivedkbits.keyword\"].size() > 0) { try { emit(Double.parseDouble(doc[\"receivedkbits.keyword\"].value)); } catch(Exception e) {} }"
+      }
+    },
+    "net_tx_kbits": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"transmittedkbits.keyword\") &amp;&amp; doc[\"transmittedkbits.keyword\"].size() > 0) { try { emit(Double.parseDouble(doc[\"transmittedkbits.keyword\"].value)); } catch(Exception e) {} }"
+      }
+    },
+    "disk_config_pct": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"Configuration.keyword\") &amp;&amp; doc[\"Configuration.keyword\"].size() > 0) { String v = doc[\"Configuration.keyword\"].value; if (v.endsWith(\"%\")) { v = v.substring(0, v.length()-1); } try { emit(Double.parseDouble(v)); } catch(Exception e) {} }"
+      }
+    },
+    "disk_reports_pct": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"Reports.keyword\") &amp;&amp; doc[\"Reports.keyword\"].size() > 0) { String v = doc[\"Reports.keyword\"].value; if (v.endsWith(\"%\")) { v = v.substring(0, v.length()-1); } try { emit(Double.parseDouble(v)); } catch(Exception e) {} }"
+      }
+    }
+  }
+}'</code></pre>
+    <p>Die Antwort sollte <code>{"acknowledged": true}</code> sein.</p>
+</div>
+
+<div class="info">
+    <strong>Wie Runtime Fields funktionieren:</strong> Im Gegensatz zu gespeicherten Feldern werden Runtime Fields
+    zur Abfragezeit berechnet. Das bedeutet: kein Reindexing noetig, aber etwas mehr CPU-Last bei Abfragen.
+    Fuer die wenigen System-Health-Dokumente (~18.000) ist das vernachlaessigbar.
+</div>
+
+<h3>Uebersicht der Runtime Fields</h3>
+<table>
+    <tr><th>Runtime Field</th><th>Typ</th><th>Quellfeld</th><th>Beschreibung</th></tr>
+    <tr><td><code>cpu_user_pct</code></td><td>double</td><td><code>user</code></td><td>CPU User % (ohne %-Zeichen)</td></tr>
+    <tr><td><code>cpu_system_pct</code></td><td>double</td><td><code>system</code></td><td>CPU System %</td></tr>
+    <tr><td><code>cpu_idle_pct</code></td><td>double</td><td><code>idle</code></td><td>CPU Idle %</td></tr>
+    <tr><td><code>mem_total_bytes</code></td><td>long</td><td><code>total_memory</code></td><td>Gesamter RAM in Bytes</td></tr>
+    <tr><td><code>mem_used_bytes</code></td><td>long</td><td><code>used</code></td><td>Belegter RAM in Bytes</td></tr>
+    <tr><td><code>mem_free_bytes</code></td><td>long</td><td><code>free</code></td><td>Freier RAM in Bytes</td></tr>
+    <tr><td><code>net_rx_kbits</code></td><td>double</td><td><code>receivedkbits</code></td><td>Empfangene kbit/s</td></tr>
+    <tr><td><code>net_tx_kbits</code></td><td>double</td><td><code>transmittedkbits</code></td><td>Gesendete kbit/s</td></tr>
+    <tr><td><code>disk_config_pct</code></td><td>double</td><td><code>Configuration</code></td><td>Disk Config %</td></tr>
+    <tr><td><code>disk_reports_pct</code></td><td>double</td><td><code>Reports</code></td><td>Disk Reports %</td></tr>
+</table>
+
+<!-- 5. Index Pattern -->
+<h2 id="index-pattern">5. Index Pattern konfigurieren</h2>
+
+<div class="step">
+    <p><span class="step-num">2</span><strong>Index Pattern pruefen/erstellen</strong></p>
+    <p>Das Index Pattern <code>cribl-ops*</code> sollte bereits existieren (ID: <code>99f5381a-3d59-4cec-8ce4-77ee8a90595d</code>).</p>
+    <p>Pruefen via API:</p>
+<pre><code>curl -s 'http://10.10.0.100:5601/api/saved_objects/_find?type=index-pattern' \
+  -H 'kbn-xsrf: true' | python3 -m json.tool</code></pre>
+    <p>Falls nicht vorhanden, erstellen:</p>
+<pre><code>curl -X POST "http://10.10.0.100:5601/api/saved_objects/index-pattern/99f5381a-3d59-4cec-8ce4-77ee8a90595d" \
+  -H "kbn-xsrf: true" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "attributes": {
+    "title": "cribl-ops*",
+    "timeFieldName": "@timestamp",
+    "name": "Cribl Operations Logs"
+  }
+}'</code></pre>
+</div>
+
+<div class="step">
+    <p><span class="step-num">3</span><strong>Index Pattern aktualisieren (Felder refreshen)</strong></p>
+    <p>Nach Anlage der Runtime Fields muessen die Felder im Index Pattern aktualisiert werden:</p>
+    <ol>
+        <li>Kibana oeffnen: <a href="http://10.10.0.100:5601/app/management/kibana/dataViews">Stack Management &rarr; Data Views</a></li>
+        <li>Auf <code>Cribl Operations Logs</code> klicken</li>
+        <li>Oben rechts auf das Refresh-Symbol klicken (Felder neu laden)</li>
+        <li>Die neuen Runtime Fields (<code>cpu_user_pct</code>, etc.) sollten nun in der Feldliste erscheinen</li>
+    </ol>
+</div>
+
+<!-- 6. Dashboard-Aufbau -->
+<h2 id="dashboard-aufbau">6. Dashboard-Aufbau</h2>
+
+<p>Das Dashboard besteht aus <strong>25 Panels</strong> in 5 Sektionen. Jeder Panel-Typ wird im Folgenden erklaert,
+damit eigene Panels erstellt oder bestehende angepasst werden koennen.</p>
+
+<h3 id="kpi-panels">6.1 KPI-Metrik-Panels</h3>
+<p>Grosse Zahlenwerte als Uebersicht (z.B. "Events Gesamt", "Errors", "FW Denied").</p>
+
+<p><strong>Manuell in Kibana erstellen:</strong></p>
+<ol>
+    <li>Dashboard oeffnen &rarr; <em>Edit</em> &rarr; <em>Create visualization</em></li>
+    <li>Visualization Type: <strong>Metric</strong></li>
+    <li>Metric: <strong>Count</strong> (Aggregation ueber alle Dokumente)</li>
+    <li>Optional: Filter hinzufuegen (z.B. <code>severityName.keyword: error</code> fuer Error-Zaehler)</li>
+    <li>Farbe anpassen: Panel Settings &rarr; Color</li>
+</ol>
+
+<p><strong>API-Struktur (Lens Metric):</strong></p>
+<pre><code>{
+  "visualizationType": "lnsMetric",
+  "state": {
+    "datasourceStates": {
+      "formBased": {
+        "layers": {
+          "l1": {
+            "columns": {
+              "c1": {
+                "label": "Errors",          // Angezeigter Name
+                "operationType": "count",    // Aggregation: count, sum, avg, min, max
+                "sourceField": "___records___"
+              }
+            }
+          }
+        }
+      }
+    },
+    "visualization": {
+      "metricAccessor": "c1",
+      "color": "#E7664C"                    // Farbe als Hex
+    },
+    "filters": [{                           // Optional: Vorfilterung
+      "query": { "match_phrase": { "severityName.keyword": "error" }}
+    }]
+  }
+}</code></pre>
+
+<h3 id="timeseries">6.2 Zeitreihen-Charts (XY)</h3>
+<p>Fuer CPU, Memory, Netzwerk-Durchsatz und andere zeitbasierte Metriken.</p>
+
+<p><strong>Manuell erstellen:</strong></p>
+<ol>
+    <li>Create visualization &rarr; Typ: <strong>Line</strong> oder <strong>Area</strong></li>
+    <li>X-Achse: <code>@timestamp</code> (Date Histogram, Auto-Interval)</li>
+    <li>Y-Achse: Average von <code>cpu_user_pct</code> (Runtime Field)</li>
+    <li>Weitere Metriken als zusaetzliche Y-Achsen-Werte hinzufuegen</li>
+    <li>Filter setzen: <code>log_component.keyword: CPU</code></li>
+    <li>Y-Achse begrenzen: 0-100 fuer Prozent-Werte</li>
+</ol>
+
+<p><strong>Wichtige Einstellungen:</strong></p>
+<table>
+    <tr><th>Einstellung</th><th>Wert</th><th>Zweck</th></tr>
+    <tr><td><code>seriesType</code></td><td>area_stacked / line / bar_stacked</td><td>Diagrammtyp</td></tr>
+    <tr><td><code>fittingFunction</code></td><td>Linear / None</td><td>Luecken interpolieren</td></tr>
+    <tr><td><code>yLeftExtent</code></td><td>{lowerBound: 0, upperBound: 100}</td><td>Y-Achse fixieren</td></tr>
+    <tr><td><code>splitAccessor</code></td><td>Feld-ID</td><td>Nach Kategorie aufteilen (z.B. Severity)</td></tr>
+    <tr><td><code>colorMapping</code></td><td>Assignments</td><td>Feste Farben pro Wert zuweisen</td></tr>
+</table>
+
+<p><strong>Beispiel: CPU-Chart mit fixierten Farben</strong></p>
+<pre><code>// colorMapping-Beispiel: Feste Farben pro Serie
+"colorMapping": {
+  "assignments": [
+    {
+      "rule": {"type": "matchExactly", "values": ["CPU User %"]},
+      "color": {"type": "colorCode", "colorCode": "#6092C0"}
+    },
+    {
+      "rule": {"type": "matchExactly", "values": ["CPU System %"]},
+      "color": {"type": "colorCode", "colorCode": "#E7664C"}
+    }
+  ],
+  "specialAssignments": [
+    {"rule": {"type": "other"}, "color": {"type": "loop"}}
+  ]
+}</code></pre>
+
+<h3 id="bar-charts">6.3 Balkendiagramme (Top-N)</h3>
+<p>Horizontale Balken fuer "Top Denied Sources", "Container Errors", "Top Hosts".</p>
+
+<p><strong>Manuell erstellen:</strong></p>
+<ol>
+    <li>Create visualization &rarr; <strong>Bar horizontal</strong></li>
+    <li>X-Achse: Terms-Aggregation auf <code>src.keyword</code> (Top 15)</li>
+    <li>Y-Achse: Count</li>
+    <li>Filter: <code>action.keyword: Denied</code></li>
+    <li>Value Labels: "Show" fuer bessere Lesbarkeit</li>
+</ol>
+
+<p><strong>API-Schluesselfelder:</strong></p>
+<pre><code>// Terms-Spalte fuer Top-N
+{
+  "label": "Source IP",
+  "operationType": "terms",
+  "sourceField": "src.keyword",
+  "params": {
+    "size": 15,              // Anzahl Top-Eintraege
+    "orderDirection": "desc", // Absteigend sortiert
+    "exclude": ["-"],         // Werte ausschliessen
+    "include": []             // Oder nur bestimmte einschliessen
+  }
+}</code></pre>
+
+<h3 id="pie-charts">6.4 Donut/Pie-Charts</h3>
+<p>Fuer Verteilungen (Protokolle, Log-Komponenten).</p>
+
+<p><strong>Manuell erstellen:</strong></p>
+<ol>
+    <li>Create visualization &rarr; <strong>Donut</strong></li>
+    <li>Slice By: Terms auf <code>protocol.keyword</code></li>
+    <li>Size: Count</li>
+    <li>"Other" Bucket aktivieren fuer Zusammenfassung kleiner Werte</li>
+</ol>
+
+<p><strong>API:</strong></p>
+<pre><code>"visualizationType": "lnsPie",
+"visualization": {
+  "shape": "donut",    // oder "pie" fuer Vollkreis
+  "layers": [{
+    "primaryGroups": ["proto"],  // Slice-Feld
+    "metrics": ["cnt"],          // Groesse
+    "numberDisplay": "percent"   // Prozent anzeigen
+  }]
+}</code></pre>
+
+<h3 id="heatmap">6.5 Heatmap</h3>
+<p>Ideal fuer Container &times; Severity Matrix.</p>
+
+<p><strong>Manuell erstellen:</strong></p>
+<ol>
+    <li>Create visualization &rarr; <strong>Heatmap</strong></li>
+    <li>X-Achse: Terms auf <code>severityName.keyword</code></li>
+    <li>Y-Achse: Terms auf <code>CONTAINER_NAME.keyword</code></li>
+    <li>Value: Count</li>
+    <li>Palette: "Status" fuer intuitive Rot/Gelb/Gruen-Faerbung</li>
+</ol>
+
+<p><strong>API:</strong></p>
+<pre><code>"visualizationType": "lnsHeatmap",
+"visualization": {
+  "xAccessor": "sev",       // Severity (X)
+  "yAccessor": "cname",     // Container (Y)
+  "valueAccessor": "cnt",   // Wert (Farbe)
+  "palette": {"type": "palette", "name": "status"},
+  "gridConfig": {"isCellLabelVisible": true}
+}</code></pre>
+
+<h3 id="tables">6.6 Datentabellen</h3>
+<p>Fuer detaillierte Auflistungen (Event-Typen, Firewall Rules).</p>
+
+<p><strong>Manuell erstellen:</strong></p>
+<ol>
+    <li>Create visualization &rarr; <strong>Table</strong></li>
+    <li>Rows: Terms auf <code>log_type.keyword</code>, dann <code>log_component.keyword</code></li>
+    <li>Metrics: Count</li>
+    <li>Paging aktivieren (10 Zeilen pro Seite)</li>
+</ol>
+
+<p><strong>API:</strong></p>
+<pre><code>"visualizationType": "lnsDatatable",
+"visualization": {
+  "columns": [
+    {"columnId": "lt", "isTransposed": false},
+    {"columnId": "cnt", "isTransposed": false}
+  ],
+  "paging": {"size": 10, "enabled": true}
+}</code></pre>
+
+<!-- 7. API-Erstellung -->
+<h2 id="api-erstellung">7. Dashboard via API erstellen</h2>
+
+<p>Dashboards koennen ueber die Kibana Saved Objects API erstellt werden:</p>
+
+<div class="step">
+    <p><span class="step-num">4</span><strong>Dashboard erstellen via POST</strong></p>
+<pre><code>curl -X POST "http://10.10.0.100:5601/api/saved_objects/dashboard/DASHBOARD-ID" \
+  -H "kbn-xsrf: true" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "attributes": {
+    "title": "Mein Dashboard",
+    "description": "Beschreibung",
+    "timeRestore": true,
+    "timeTo": "now",
+    "timeFrom": "now-24h",
+    "refreshInterval": {"pause": false, "value": 60000},
+    "kibanaSavedObjectMeta": {
+      "searchSourceJSON": "{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"
+    },
+    "panelsJSON": "[...]",     // JSON-String mit Panel-Array
+    "optionsJSON": "{\"useMargins\":true,\"syncColors\":true}",
+    "version": 1
+  }
+}'</code></pre>
+</div>
+
+<div class="step">
+    <p><span class="step-num">5</span><strong>Bestehendes Dashboard exportieren (als Vorlage)</strong></p>
+<pre><code># Export eines bestehenden Dashboards
+curl -s "http://10.10.0.100:5601/api/saved_objects/dashboard/ops-monitoring-v1" \
+  -H "kbn-xsrf: true" | python3 -m json.tool > dashboard-export.json
+
+# PanelsJSON extrahieren und formatiert anzeigen
+cat dashboard-export.json | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+panels = json.loads(data['attributes']['panelsJSON'])
+print(json.dumps(panels, indent=2))
+" > panels-formatted.json</code></pre>
+</div>
+
+<div class="step">
+    <p><span class="step-num">6</span><strong>Dashboard aktualisieren</strong></p>
+    <p>Zum Aktualisieren eines bestehenden Dashboards <code>DELETE</code> + <code>POST</code> verwenden:</p>
+<pre><code># Loeschen
+curl -X DELETE "http://10.10.0.100:5601/api/saved_objects/dashboard/ops-monitoring-v1" \
+  -H "kbn-xsrf: true"
+
+# Neu erstellen mit geaenderten Panels
+curl -X POST "http://10.10.0.100:5601/api/saved_objects/dashboard/ops-monitoring-v1" \
+  -H "kbn-xsrf: true" \
+  -H "Content-Type: application/json" \
+  -d @updated-dashboard.json</code></pre>
+</div>
+
+<div class="info">
+    <strong>Tipp:</strong> Am einfachsten ist es, das Dashboard in Kibana manuell zu bearbeiten (Edit-Modus),
+    dann per API zu exportieren und die JSON-Struktur als Vorlage fuer weitere Dashboards zu nutzen.
+</div>
+
+<!-- 8. Navigation -->
+<h2 id="navigation">8. Navigations-Dashboard</h2>
+
+<p>Ein spezielles Dashboard dient als Hauptmenue mit Links zu allen anderen Dashboards:</p>
+
+<ul>
+    <li><strong>ID:</strong> <code>navigation-menu</code></li>
+    <li><strong>URL:</strong> <a href="http://10.10.0.100:5601/app/dashboards#/view/navigation-menu">http://10.10.0.100:5601/app/dashboards#/view/navigation-menu</a></li>
+    <li>Besteht aus einem einzigen Markdown-Panel mit Tabellen und Links</li>
+    <li>Links verwenden das Format: <code>http://10.10.0.100:5601/app/dashboards#/view/DASHBOARD-ID</code></li>
+</ul>
+
+<p><strong>Markdown-Format fuer Dashboard-Links:</strong></p>
+<pre><code>| Dashboard | Beschreibung | Link |
+|-----------|-------------|------|
+| **Betriebsmonitoring** | System Health &amp; Dienste | [Oeffnen](http://10.10.0.100:5601/app/dashboards#/view/ops-monitoring-v1) |
+| **Docker Logs** | Log-Klassifikation | [Oeffnen](http://10.10.0.100:5601/app/dashboards#/view/icedataemphasise-docker-log-dashboard) |</code></pre>
+
+<!-- 9. Anpassungen -->
+<h2 id="anpassungen">9. Eigene Anpassungen vornehmen</h2>
+
+<h3>9.1 Neues Panel hinzufuegen</h3>
+<ol>
+    <li>Dashboard oeffnen &rarr; <strong>Edit</strong></li>
+    <li><strong>Create visualization</strong> klicken</li>
+    <li>Datenquelle: <code>Cribl Operations Logs</code> waehlen</li>
+    <li>Felder aus der linken Sidebar per Drag&amp;Drop ziehen</li>
+    <li><strong>Save and return</strong></li>
+</ol>
+
+<h3>9.2 Filter anpassen</h3>
+<p>Jedes Panel kann eigene Filter haben. In der API-Struktur unter <code>state.filters</code>:</p>
+<pre><code>// Einfacher Term-Filter
+{"query": {"match_phrase": {"log_component.keyword": "CPU"}}}
+
+// Exists-Filter (Feld muss vorhanden sein)
+{"query": {"exists": {"field": "CONTAINER_NAME"}}}
+
+// Mehrere Werte (should/or)
+{"query": {"bool": {"should": [
+  {"match_phrase": {"action.keyword": "Denied"}},
+  {"match_phrase": {"action.keyword": "Drop"}}
+]}}}
+</code></pre>
+
+<h3>9.3 Neues Runtime Field hinzufuegen</h3>
+<p>Fuer weitere numerische Felder, die als Text gespeichert sind:</p>
+<pre><code>curl -X PUT "http://10.10.0.100:9200/cribl-ops/_mapping" \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "runtime": {
+    "mein_neues_feld": {
+      "type": "double",
+      "script": {
+        "source": "if (doc.containsKey(\"quellfeld.keyword\") &amp;&amp; doc[\"quellfeld.keyword\"].size() > 0) { try { emit(Double.parseDouble(doc[\"quellfeld.keyword\"].value)); } catch(Exception e) {} }"
+      }
+    }
+  }
+}'</code></pre>
+<p>Danach in Kibana unter Data Views die Felder refreshen.</p>
+
+<h3>9.4 Farbpalette aendern</h3>
+<p>Die Farbzuweisungen in <code>colorMapping</code> verwenden Hex-Codes:</p>
+<table>
+    <tr><th>Farbe</th><th>Code</th><th>Verwendung</th></tr>
+    <tr><td style="background:#E7664C;color:white;">Rot</td><td><code>#E7664C</code></td><td>Error, Denied, kritisch</td></tr>
+    <tr><td style="background:#D6BF57;color:white;">Gelb</td><td><code>#D6BF57</code></td><td>Warning</td></tr>
+    <tr><td style="background:#54B399;color:white;">Gruen</td><td><code>#54B399</code></td><td>OK, Allowed, Info</td></tr>
+    <tr><td style="background:#6092C0;color:white;">Blau</td><td><code>#6092C0</code></td><td>Neutral, Notice</td></tr>
+    <tr><td style="background:#D36086;color:white;">Pink</td><td><code>#D36086</code></td><td>Drop, kritisch</td></tr>
+    <tr><td style="background:#B9A888;color:white;">Gold</td><td><code>#B9A888</code></td><td>SIEM, speziell</td></tr>
+</table>
+
+<!-- 10. Feld-Referenz -->
+<h2 id="referenz">10. Feld-Referenz</h2>
+
+<h3>Haeufig verwendete Filter-Kombinationen</h3>
+<table>
+    <tr><th>Zweck</th><th>Filter</th></tr>
+    <tr><td>Nur Firewall-Logs</td><td><code>log_type.keyword: Firewall</code></td></tr>
+    <tr><td>Nur System Health</td><td><code>log_type.keyword: System Health</code></td></tr>
+    <tr><td>Nur CPU-Daten</td><td><code>log_component.keyword: CPU</code></td></tr>
+    <tr><td>Nur Memory-Daten</td><td><code>log_component.keyword: Memory</code></td></tr>
+    <tr><td>Nur Disk-Daten</td><td><code>log_component.keyword: Disk</code></td></tr>
+    <tr><td>Nur Interface-Daten</td><td><code>log_component.keyword: Interface</code></td></tr>
+    <tr><td>Nur Denied Traffic</td><td><code>action.keyword: Denied</code></td></tr>
+    <tr><td>Nur Docker-Container-Logs</td><td><code>CONTAINER_NAME exists</code></td></tr>
+    <tr><td>Nur Errors</td><td><code>severityName.keyword: error</code></td></tr>
+    <tr><td>Nur SIEM-klassifizierte Logs</td><td><code>classification.keyword: siem</code></td></tr>
+    <tr><td>Bestimmter Container</td><td><code>CONTAINER_NAME.keyword: homeassistant</code></td></tr>
+</table>
+
+<h3>Verfuegbare Container im Index</h3>
+<table>
+    <tr><th>Container</th><th>Kategorie</th><th>Docs (ca.)</th></tr>
+    <tr><td>homeassistant</td><td>Smart Home</td><td>2.1M</td></tr>
+    <tr><td>oa-tika</td><td>Open Archiver</td><td>153K</td></tr>
+    <tr><td>oa-postgres</td><td>Open Archiver DB</td><td>13K</td></tr>
+    <tr><td>tax-ai-stack-paperless-1</td><td>Steuer-Pipeline</td><td>3.5K</td></tr>
+    <tr><td>hassio_supervisor</td><td>HA Supervisor</td><td>2.9K</td></tr>
+    <tr><td>tax-ai-stack-db-1</td><td>Steuer-Pipeline DB</td><td>1.2K</td></tr>
+    <tr><td>addon_a0d7b954_nodered</td><td>Node-RED</td><td>387</td></tr>
+    <tr><td>cribl-kibana</td><td>Monitoring Stack</td><td>129</td></tr>
+    <tr><td>addon_core_matter_server</td><td>Matter/Thread</td><td>107</td></tr>
+    <tr><td>addon_core_mosquitto</td><td>MQTT Broker</td><td>56</td></tr>
+</table>
+
+<div class="footer">
+    <p><a href="index.html">&larr; Zurueck zur Hauptseite</a></p>
+    <p>IceDataEmphasise - Kibana Monitoring Setup | Version 1.0 | 2026-02-27</p>
+</div>
+
+</body>
+</html>
