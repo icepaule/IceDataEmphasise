@@ -3,6 +3,7 @@
 # 15-deploy-universal-classifier.sh - Deploy Universal Classifier Pipeline
 # =============================================================================
 # Deploys the universal classifier pipeline and updated routes to Cribl Stream.
+# ES-First Architecture: ALL events go to ES, SIEM additionally to Splunk.
 # Activates Edge inputs (in_cribl_tcp on Worker, in_win_event_logs on Fleet).
 # Commits and deploys the configuration.
 #
@@ -28,25 +29,25 @@ load_env "$PROJECT_DIR/.env"
 # Main
 # =============================================================================
 main() {
-    print_header "Deploy Universal Classifier Pipeline"
+    print_header "Deploy Universal Classifier Pipeline (ES-First Architecture)"
     require_commands curl jq
 
     # =========================================================================
     # Step 1: Health check
     # =========================================================================
-    log_step "Step 1/7: Cribl Stream Health Check"
+    log_step "Step 1/8: Cribl Stream Health Check"
     cribl_health_check || die "Cribl Stream is not healthy. Aborting."
 
     # =========================================================================
     # Step 2: Authenticate
     # =========================================================================
-    log_step "Step 2/7: Authenticate with Cribl API"
+    log_step "Step 2/8: Authenticate with Cribl API"
     cribl_auth
 
     # =========================================================================
     # Step 3: Deploy universal_classifier pipeline
     # =========================================================================
-    log_step "Step 3/7: Deploy universal_classifier pipeline"
+    log_step "Step 3/8: Deploy universal_classifier pipeline"
 
     local pipeline_file="$PROJECT_DIR/configs/stream/pipelines/pipeline-universal-classifier.json"
     if [[ ! -f "$pipeline_file" ]]; then
@@ -72,9 +73,9 @@ main() {
     fi
 
     # =========================================================================
-    # Step 4: Update routes
+    # Step 4: Update routes (ES-First Architecture)
     # =========================================================================
-    log_step "Step 4/7: Update routes"
+    log_step "Step 4/8: Update routes (ES-First: ALL->ES, SIEM->ES+Splunk)"
 
     local routes_file="$PROJECT_DIR/configs/stream/pipelines/routes.json"
     if [[ ! -f "$routes_file" ]]; then
@@ -86,7 +87,7 @@ main() {
     # =========================================================================
     # Step 5: Enable Edge inputs
     # =========================================================================
-    log_step "Step 5/7: Enable Edge inputs"
+    log_step "Step 5/8: Enable Edge inputs"
 
     # Enable in_cribl_tcp on default Worker Group (for receiving Edge data)
     log_info "Enabling in_cribl_tcp on default Worker Group..."
@@ -121,9 +122,9 @@ main() {
     # =========================================================================
     # Step 6: Commit & Deploy
     # =========================================================================
-    log_step "Step 6/7: Commit & Deploy configuration"
+    log_step "Step 6/8: Commit & Deploy configuration"
 
-    cribl_commit_deploy "Deploy universal_classifier pipeline + updated routes + enable Edge inputs"
+    cribl_commit_deploy "Deploy universal_classifier pipeline + ES-First routes + enable Edge inputs"
     log_ok "Configuration committed"
 
     # Deploy to Worker Group
@@ -147,9 +148,9 @@ main() {
     fi
 
     # =========================================================================
-    # Step 7: Verify
+    # Step 7: Verify deployment
     # =========================================================================
-    log_step "Step 7/7: Verify deployment"
+    log_step "Step 7/8: Verify deployment"
 
     local verify_passed=0
     local verify_total=0
@@ -165,7 +166,7 @@ main() {
         log_error "VERIFY: Pipeline 'universal_classifier' NOT found"
     fi
 
-    # Check routes
+    # Check routes (ES-First architecture)
     verify_total=$((verify_total + 1))
     local route_check
     route_check=$(cribl_get "/routes" 2>/dev/null)
@@ -177,11 +178,28 @@ main() {
     fi
 
     verify_total=$((verify_total + 1))
-    if echo "$route_check" | jq -e '.items[] | select(.id == "route_siem_splunk")' &>/dev/null; then
-        log_ok "VERIFY: Route 'route_siem_splunk' exists"
+    if echo "$route_check" | jq -e '.items[] | select(.id == "route_all_to_es")' &>/dev/null; then
+        log_ok "VERIFY: Route 'route_all_to_es' exists (ES-First)"
         verify_passed=$((verify_passed + 1))
     else
-        log_error "VERIFY: Route 'route_siem_splunk' NOT found"
+        log_error "VERIFY: Route 'route_all_to_es' NOT found"
+    fi
+
+    verify_total=$((verify_total + 1))
+    if echo "$route_check" | jq -e '.items[] | select(.id == "route_siem_to_splunk")' &>/dev/null; then
+        log_ok "VERIFY: Route 'route_siem_to_splunk' exists"
+        verify_passed=$((verify_passed + 1))
+    else
+        log_error "VERIFY: Route 'route_siem_to_splunk' NOT found"
+    fi
+
+    # Check route_all_to_es is non-final
+    verify_total=$((verify_total + 1))
+    if echo "$route_check" | jq -e '.items[] | select(.id == "route_all_to_es" and .final == false)' &>/dev/null; then
+        log_ok "VERIFY: Route 'route_all_to_es' is non-final (dual-write enabled)"
+        verify_passed=$((verify_passed + 1))
+    else
+        log_error "VERIFY: Route 'route_all_to_es' should be non-final for dual-write"
     fi
 
     # Check route count
@@ -195,13 +213,48 @@ main() {
         log_error "VERIFY: Only ${route_count} routes found (expected >= 5)"
     fi
 
+    # =========================================================================
+    # Step 8: Verify ES data flow (ES-First)
+    # =========================================================================
+    log_step "Step 8/8: Verify ES data flow"
+
+    local es_url="${ES_URL:-http://localhost:9200}"
+    log_info "Checking Elasticsearch at ${es_url}..."
+
+    verify_total=$((verify_total + 1))
+    local es_count
+    es_count=$(curl -s "${es_url}/cribl-ops*/_count" 2>/dev/null | jq -r '.count // 0' 2>/dev/null || echo "0")
+    if [[ "$es_count" -gt 0 ]]; then
+        log_ok "VERIFY: ES contains ${es_count} events in cribl-ops* indices"
+        verify_passed=$((verify_passed + 1))
+    else
+        log_warn "VERIFY: ES cribl-ops* count is ${es_count} (events may take a moment to appear)"
+    fi
+
+    # Check that ES receives events with classification field
+    verify_total=$((verify_total + 1))
+    local es_classified
+    es_classified=$(curl -s "${es_url}/cribl-ops*/_count" \
+        -H 'Content-Type: application/json' \
+        -d '{"query":{"exists":{"field":"classification"}}}' 2>/dev/null | jq -r '.count // 0' 2>/dev/null || echo "0")
+    if [[ "$es_classified" -gt 0 ]]; then
+        log_ok "VERIFY: ES has ${es_classified} classified events (ES-First working)"
+        verify_passed=$((verify_passed + 1))
+    else
+        log_warn "VERIFY: No classified events in ES yet (may take time after deployment)"
+    fi
+
     # Summary
     echo ""
     echo "============================================================================="
-    echo "  Universal Classifier Deployment Summary"
+    echo "  Universal Classifier Deployment Summary (ES-First Architecture)"
     echo "============================================================================="
     echo ""
     echo -e "  ${verify_passed}/${verify_total} verification checks passed"
+    echo ""
+    echo "  Architecture: ALL events -> ES (primary data lake)"
+    echo "                SIEM events -> ES + Splunk (dual-write)"
+    echo "                Ops events  -> ES + S3 (archive)"
     echo ""
 
     if [[ "$verify_passed" -eq "$verify_total" ]]; then
@@ -209,9 +262,10 @@ main() {
         echo ""
         echo "  Next steps:"
         echo "    1. Check Edge Nodes: http://10.10.0.100:9000/edge/fleets"
-        echo "    2. Monitor events:   http://10.10.0.100:5601 (Kibana)"
-        echo "    3. SIEM events:      http://10.10.0.66:8000 (Splunk)"
-        echo "    4. AI Panel:         http://10.10.0.100:8080/docs/16-ai-status-panel.html"
+        echo "    2. Monitor ALL events: http://10.10.0.100:5601 (Kibana - ES Data Lake)"
+        echo "    3. SIEM events:        http://10.10.0.66:8000 (Splunk)"
+        echo "    4. AI Panel:           http://10.10.0.100:8080/docs/16-ai-status-panel.html"
+        echo "    5. SIEM Discovery:     Use AI Panel to find sources with SIEM potential"
     else
         echo -e "  ${YELLOW}${BOLD}Deployment completed with warnings. Review output above.${NC}"
     fi

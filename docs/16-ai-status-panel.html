@@ -183,6 +183,32 @@
         .footer { text-align: center; padding: 1em; color: #718096; font-size: 0.85em; }
         .hidden { display: none !important; }
 
+        /* SIEM Discovery */
+        .discovery-panel-header { background: #742a2a !important; }
+        .discovery-table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+        .discovery-table th, .discovery-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .discovery-table th { background: #f7fafc; font-weight: 600; position: sticky; top: 0; }
+        .discovery-table tr:hover { background: #fff5f5; }
+        .discovery-table tr.activated { opacity: 0.5; background: #f0fff4; }
+        .confidence-bar { display: inline-flex; align-items: center; gap: 6px; }
+        .confidence-bar .track { width: 80px; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+        .confidence-bar .fill { height: 100%; border-radius: 5px; transition: width 0.3s; }
+        .confidence-bar .pct { font-size: 0.85em; font-weight: 600; min-width: 35px; }
+        .btn-activate { background: #c53030; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.85em; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-activate:hover { background: #9b2c2c; }
+        .btn-activate.activated { background: #38a169; cursor: default; }
+        .btn-activate:disabled { opacity: 0.5; cursor: not-allowed; }
+        .detail-row { display: none; }
+        .detail-row.open { display: table-row; }
+        .detail-row td { background: #faf5ff; padding: 16px; }
+        .activation-step { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 4px 0; border-radius: 6px; font-size: 0.9em; }
+        .activation-step.pending { background: #f7fafc; color: #a0aec0; }
+        .activation-step.running { background: #ebf8ff; color: #2b6cb0; font-weight: 600; }
+        .activation-step.done { background: #f0fff4; color: #276749; }
+        .activation-step.error { background: #fff5f5; color: #c53030; }
+        .activation-step .step-icon { width: 20px; text-align: center; }
+        .siem-type-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: 600; background: #fed7d7; color: #c53030; margin: 1px 2px; }
+
         /* Log Analyzer */
         .analyzer-input { width: 100%; min-height: 180px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85em; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; resize: vertical; background: #1a202c; color: #e2e8f0; }
         .analyzer-input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 2px rgba(43,108,176,0.2); }
@@ -267,6 +293,18 @@
                 <div>
                     <label>Cribl Passwort (nur Session)</label>
                     <input type="password" id="setCriblPass" placeholder="Wird nicht gespeichert">
+                </div>
+                <div>
+                    <label>Splunk REST URL</label>
+                    <input type="text" id="setSplunkRestUrl" placeholder="http://10.10.0.66:8089">
+                </div>
+                <div>
+                    <label>Splunk Benutzer</label>
+                    <input type="text" id="setSplunkUser" placeholder="admin">
+                </div>
+                <div>
+                    <label>Splunk Passwort (nur Session)</label>
+                    <input type="password" id="setSplunkPass" placeholder="Wird nicht gespeichert">
                 </div>
             </div>
             <div class="mt-2" style="display:flex; gap:8px;">
@@ -429,9 +467,9 @@
                 <line x1="490" y1="100" x2="620" y2="100" stroke="#38a169" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
                 <line x1="490" y1="115" x2="620" y2="165" stroke="#805ad5" stroke-width="1.5" marker-end="url(#arrowPurple)"/>
 
-                <!-- Labels on arrows -->
+                <!-- Labels on arrows (ES-First: ALL→ES, SIEM→ES+Splunk) -->
                 <text x="555" y="52" text-anchor="middle" font-size="9" fill="#e53e3e">SIEM</text>
-                <text x="555" y="93" text-anchor="middle" font-size="9" fill="#38a169">Ops</text>
+                <text x="555" y="93" text-anchor="middle" font-size="9" fill="#38a169">ALL</text>
                 <text x="555" y="148" text-anchor="middle" font-size="9" fill="#805ad5">Ops</text>
 
                 <!-- Destinations -->
@@ -471,6 +509,47 @@
                 <thead><tr><th>Quelle</th><th>Typ</th><th>Events (24h)</th><th>SIEM</th><th>Ops</th><th>Status</th></tr></thead>
                 <tbody id="flowSourceBody"><tr><td colspan="6" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 4a. SIEM DISCOVERY (ES-First: Find untapped SIEM sources) -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header discovery-panel-header">
+        <h2>SIEM-Discovery (ES-First)</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Alle ES-Quellen &rarr; SIEM-Potenzial finden &rarr; Ein-Klick-Aktivierung</span>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
+            Analysiert <strong>alle Quellen im ES Data Lake</strong> und findet Events mit ungenutztem SIEM-Potenzial.
+            Per Ein-Klick: Pipeline-Regel aktivieren + Splunk-Dashboard erstellen + Kibana-Dashboard erstellen.
+            <br><span class="text-muted">Architektur: ALLE Events &rarr; ES (Data Lake), SIEM-Events &rarr; ES + Splunk (Dual-Write)</span>
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+            <select id="discoveryModel">
+                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                <option value="llama3.1:8b">llama3.1:8b</option>
+                <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
+            </select>
+            <button class="btn btn-primary" onclick="startSiemDiscovery()" id="discoveryBtn" style="background:#c53030;">SIEM-Discovery starten</button>
+            <span id="discoveryStatus" class="text-muted"></span>
+        </div>
+        <div id="discoveryResult">
+            <div class="empty-state">Klicke "SIEM-Discovery starten" um alle ES-Quellen auf SIEM-Potenzial zu analysieren.</div>
+        </div>
+    </div>
+</div>
+
+<!-- SIEM Activation Modal -->
+<div class="modal-overlay" id="siemActivationModal">
+    <div class="modal" style="max-width:850px;">
+        <h3 id="siemModalTitle" style="color:#742a2a;">SIEM-Quelle aktivieren</h3>
+        <div id="siemModalContent"></div>
+        <div class="modal-footer" id="siemModalFooter">
+            <button class="btn btn-outline" onclick="closeSiemModal()">Schliessen</button>
         </div>
     </div>
 </div>
@@ -542,6 +621,7 @@
                     <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
                 </select>
                 <button class="btn btn-primary" onclick="generateSplunkConfig()" id="splunkGenBtn">SIEM-Events laden &amp; Splunk-Konfig generieren</button>
+                <button class="btn btn-sm" style="background:#c53030;color:white;" onclick="pushSplunkDashboardFromConfig()" id="splunkPushBtn" title="SOC-Dashboard direkt in Splunk erstellen">Dashboard zu Splunk pushen</button>
                 <span id="splunkGenStatus" class="text-muted"></span>
             </div>
             <div id="splunkConfigResult"></div>
@@ -560,6 +640,7 @@
                     <option value="llama3.1:8b">llama3.1:8b</option>
                 </select>
                 <button class="btn btn-primary" onclick="generateKibanaConfig()" id="kibanaGenBtn">Ops-Events laden &amp; Kibana-Konfig generieren</button>
+                <button class="btn btn-sm btn-success" onclick="pushKibanaDashboardFromConfig()" id="kibanaPushBtn" title="SOC-Dashboard direkt in Kibana erstellen">Dashboard in Kibana erstellen</button>
                 <span id="kibanaGenStatus" class="text-muted"></span>
             </div>
             <div id="kibanaConfigResult"></div>
@@ -647,6 +728,8 @@ const DEFAULTS = {
     KIBANA_URL: PROXY_BASE + '/proxy/kibana',
     MINIO_URL: 'http://10.10.0.100:9101',
     SPLUNK_URL: 'http://10.10.0.66:8000',
+    SPLUNK_REST_URL: PROXY_BASE + '/proxy/splunk-api',
+    SPLUNK_USER: 'admin',
     OLLAMA_URL: PROXY_BASE + '/proxy/ollama',
     CRIBL_USER: 'admin'
 };
@@ -669,6 +752,11 @@ function setConfig(key, val) {
 
 // Password: session-only
 let criblPassword = '';
+let splunkPassword = '';
+
+// SIEM Discovery state
+let discoveryResults = [];
+let discoveryActivatedSources = [];
 
 // State
 let autoRefreshEnabled = true;
@@ -734,6 +822,8 @@ function loadSettingsToForm() {
     document.getElementById('setSplunkUrl').value = getConfig('SPLUNK_URL');
     document.getElementById('setOllamaUrl').value = getConfig('OLLAMA_URL');
     document.getElementById('setCriblUser').value = getConfig('CRIBL_USER');
+    document.getElementById('setSplunkRestUrl').value = getConfig('SPLUNK_REST_URL');
+    document.getElementById('setSplunkUser').value = getConfig('SPLUNK_USER');
 }
 
 function saveSettings() {
@@ -744,7 +834,10 @@ function saveSettings() {
     setConfig('SPLUNK_URL', document.getElementById('setSplunkUrl').value);
     setConfig('OLLAMA_URL', document.getElementById('setOllamaUrl').value);
     setConfig('CRIBL_USER', document.getElementById('setCriblUser').value);
+    setConfig('SPLUNK_REST_URL', document.getElementById('setSplunkRestUrl').value);
+    setConfig('SPLUNK_USER', document.getElementById('setSplunkUser').value);
     criblPassword = document.getElementById('setCriblPass').value;
+    splunkPassword = document.getElementById('setSplunkPass').value;
     renderServiceTiles();
     refreshAll();
     toggleSettings();
@@ -3433,6 +3526,736 @@ function copyKibanaJSON() {
 }
 
 // ============================================================
+// SIEM DISCOVERY (ES-First Architecture)
+// ============================================================
+async function startSiemDiscovery() {
+    const resultDiv = document.getElementById('discoveryResult');
+    const statusSpan = document.getElementById('discoveryStatus');
+    const btn = document.getElementById('discoveryBtn');
+    const model = document.getElementById('discoveryModel').value;
+    const esUrl = getConfig('ES_URL');
+    const ollamaUrl = getConfig('OLLAMA_URL');
+
+    btn.disabled = true;
+    statusSpan.innerHTML = '<span class="analyzer-spinner"></span>ES-Quellen aggregieren (24h)...';
+    resultDiv.innerHTML = '<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 1/3: Alle Quellen aus ES Data Lake aggregieren...</div>';
+
+    try {
+        // Step 1: ES query - aggregate all sources by CONTAINER_NAME with classification breakdown
+        const esResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_search`, {
+            size: 0,
+            query: { range: { '@timestamp': { gte: 'now-24h' } } },
+            aggs: {
+                by_source: {
+                    terms: { field: 'CONTAINER_NAME.keyword', size: 50, missing: 'unknown' },
+                    aggs: {
+                        by_classification: {
+                            terms: { field: 'classification.keyword', size: 5 }
+                        },
+                        sample_siem: {
+                            filter: { term: { 'classification.keyword': 'siem' } },
+                            aggs: {
+                                top: { top_hits: { size: 3, _source: ['message', 'log_message', 'classification_reason'], sort: [{ '@timestamp': 'desc' }] } }
+                            }
+                        },
+                        sample_ops: {
+                            filter: { term: { 'classification.keyword': 'operational' } },
+                            aggs: {
+                                top: { top_hits: { size: 3, _source: ['message', 'log_message', 'classification_reason'], sort: [{ '@timestamp': 'desc' }] } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const esData = await esResp.json();
+        const sourceBuckets = esData.aggregations?.by_source?.buckets || [];
+
+        if (sourceBuckets.length === 0) {
+            resultDiv.innerHTML = '<div class="empty-state">Keine Quellen in ES gefunden (24h). Pruefen Sie die Datenfluss-Konfiguration.</div>';
+            btn.disabled = false;
+            statusSpan.textContent = '';
+            return;
+        }
+
+        // Build source summary for Ollama
+        const sourceSummary = sourceBuckets.map(sb => {
+            const classBuckets = sb.by_classification?.buckets || [];
+            const siemCount = classBuckets.find(c => c.key === 'siem')?.doc_count || 0;
+            const opsCount = classBuckets.find(c => c.key === 'operational')?.doc_count || 0;
+            const fallbackCount = classBuckets.find(c => c.key === 'fallback')?.doc_count || 0;
+            const totalCount = sb.doc_count;
+
+            const siemSamples = (sb.sample_siem?.top?.hits?.hits || []).map(h => {
+                const s = h._source || {};
+                return (s.message || s.log_message || '').substring(0, 200);
+            });
+            const opsSamples = (sb.sample_ops?.top?.hits?.hits || []).map(h => {
+                const s = h._source || {};
+                return (s.message || s.log_message || '').substring(0, 200);
+            });
+
+            return {
+                source: sb.key, total: totalCount, siem: siemCount, ops: opsCount, fallback: fallbackCount,
+                siem_samples: siemSamples, ops_samples: opsSamples
+            };
+        });
+
+        // Step 2: Ollama analysis
+        statusSpan.innerHTML = `<span class="analyzer-spinner"></span>Ollama analysiert ${sourceBuckets.length} Quellen...`;
+        resultDiv.innerHTML = `<div class="empty-state"><span class="analyzer-spinner"></span> Schritt 2/3: Ollama analysiert ${sourceBuckets.length} Quellen auf SIEM-Potenzial...</div>`;
+
+        const sourceText = sourceSummary.map(s => {
+            let text = `Source: "${s.source}" | total=${s.total}, siem=${s.siem}, operational=${s.ops}, fallback=${s.fallback}`;
+            if (s.siem_samples.length > 0) text += `\n  SIEM-Samples:\n    ${s.siem_samples.join('\n    ')}`;
+            if (s.ops_samples.length > 0) text += `\n  Ops-Samples:\n    ${s.ops_samples.join('\n    ')}`;
+            return text;
+        }).join('\n\n');
+
+        const prompt = `Du bist ein Security Analyst und Cribl Stream Experte. Analysiere diese Quellen aus dem ES Data Lake.
+Finde Quellen die KEIN oder wenig SIEM-Traffic haben (siem_count=0 oder niedrig), aber security-relevante Events enthalten koennten.
+
+QUELLEN (letzte 24h):
+${sourceText}
+
+Aufgabe: Welche Quellen mit siem_count=0 oder niedrigem SIEM-Anteil enthalten security-relevante Events die nach Splunk geroutet werden sollten?
+
+Antworte EXAKT im JSON-Format (kein Markdown):
+{
+  "analysis": "2-3 Saetze Zusammenfassung",
+  "candidates": [
+    {
+      "source": "CONTAINER_NAME der Quelle",
+      "confidence_pct": 0 bis 100,
+      "siem_event_types": ["auth_failure", "network_scan", "privilege_escalation", etc.],
+      "suggested_filter": "Cribl eval-Filter fuer SIEM-Klassifikation",
+      "suggested_reason": "classification_reason Name",
+      "splunk_sourcetype": "Vorgeschlagener Splunk Sourcetype",
+      "dashboard_panels": [
+        {"title": "Panel-Titel", "type": "timechart|stats|table", "spl_query": "SPL-Query fuer Splunk"}
+      ]
+    }
+  ]
+}
+
+Nur Quellen mit echtem SIEM-Potenzial (confidence >= 50) vorschlagen. Bei Quellen die bereits SIEM-Events liefern, nur vorschlagen wenn der Anteil ungewoehnlich niedrig ist.`;
+
+        const ollamaResp = await fetch(`${ollamaUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: model, prompt: prompt, stream: false,
+                options: { num_predict: 4096, temperature: 0.2 }
+            })
+        });
+
+        if (!ollamaResp.ok) throw new Error(`Ollama HTTP ${ollamaResp.status}`);
+        const ollamaData = await ollamaResp.json();
+        const raw = ollamaData.response || '';
+
+        // Step 3: Parse and render
+        statusSpan.innerHTML = '<span class="analyzer-spinner"></span>Ergebnis rendern...';
+        let jsonStr = raw;
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        let aiResult;
+        try {
+            aiResult = JSON.parse(jsonStr);
+        } catch {
+            resultDiv.innerHTML = `<div class="config-card"><div class="config-card-header">KI-Rohantwort (JSON-Parse fehlgeschlagen)</div><div class="config-card-body"><pre><code>${escHtml(raw)}</code></pre></div></div>`;
+            btn.disabled = false;
+            statusSpan.textContent = 'Parse-Fehler';
+            return;
+        }
+
+        discoveryResults = aiResult.candidates || [];
+        renderDiscoveryResults(aiResult, sourceSummary, model, ollamaData.total_duration);
+        statusSpan.textContent = `${discoveryResults.length} Kandidaten gefunden (${model}, ${((ollamaData.total_duration || 0) / 1e9).toFixed(1)}s)`;
+
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="empty-state" style="color:#e53e3e;">Fehler: ${escHtml(e.message)}</div>`;
+        statusSpan.textContent = 'Fehler';
+    }
+    btn.disabled = false;
+}
+
+function renderDiscoveryResults(aiResult, sourceSummary, model, duration) {
+    const resultDiv = document.getElementById('discoveryResult');
+    const candidates = aiResult.candidates || [];
+    let html = '';
+
+    // Analysis summary
+    if (aiResult.analysis) {
+        html += `<div style="padding:12px;background:#fff5f5;border-radius:6px;margin-bottom:14px;border-left:4px solid #742a2a;">
+            <strong style="color:#742a2a;">KI-Analyse:</strong> ${escHtml(aiResult.analysis)}
+        </div>`;
+    }
+
+    // Source overview table (all sources)
+    html += `<h3 style="color:#742a2a;font-size:0.95em;margin:12px 0 8px;">Alle ES-Quellen (24h)</h3>`;
+    html += `<div class="table-scroll" style="max-height:300px;margin-bottom:16px;">
+        <table class="discovery-table">
+            <thead><tr><th>Quelle</th><th>Events (24h)</th><th>In Splunk</th><th>Operational</th><th>Fallback</th><th>Status</th></tr></thead>
+            <tbody>`;
+
+    for (const s of sourceSummary) {
+        const isCandidate = candidates.some(c => c.source === s.source);
+        const hasSiem = s.siem > 0;
+        const statusIcon = hasSiem ? '<span class="badge badge-siem">SIEM aktiv</span>' : isCandidate ? '<span style="color:#d69e2e;font-weight:600;">Kandidat</span>' : '<span class="text-muted">Nur Ops</span>';
+        html += `<tr${isCandidate ? ' style="background:#fff5f5;"' : ''}>
+            <td><code>${escHtml(s.source)}</code></td>
+            <td>${formatNum(s.total)}</td>
+            <td>${hasSiem ? `<span class="badge badge-siem">${formatNum(s.siem)}</span>` : '<span class="text-muted">0</span>'}</td>
+            <td><span class="badge badge-operational">${formatNum(s.ops)}</span></td>
+            <td>${s.fallback > 0 ? formatNum(s.fallback) : '-'}</td>
+            <td>${statusIcon}</td>
+        </tr>`;
+    }
+    html += '</tbody></table></div>';
+
+    // Discovery candidates
+    if (candidates.length === 0) {
+        html += '<div class="empty-state">Keine Quellen mit ungenutztem SIEM-Potenzial gefunden. Alle relevanten Quellen senden bereits SIEM-Events.</div>';
+    } else {
+        html += `<h3 style="color:#742a2a;font-size:0.95em;margin:16px 0 8px;">SIEM-Kandidaten (${candidates.length})</h3>`;
+        html += `<div class="table-scroll" style="max-height:500px;">
+            <table class="discovery-table">
+                <thead><tr><th>Quelle</th><th>Events/24h</th><th>Aktuell in Splunk</th><th>SIEM-Typen</th><th>Konfidenz</th><th>Aktion</th></tr></thead>
+                <tbody>`;
+
+        for (let i = 0; i < candidates.length; i++) {
+            const c = candidates[i];
+            const sourceData = sourceSummary.find(s => s.source === c.source) || { total: 0, siem: 0 };
+            const confColor = c.confidence_pct >= 80 ? '#c53030' : c.confidence_pct >= 60 ? '#d69e2e' : '#a0aec0';
+            const types = (c.siem_event_types || []).map(t => `<span class="siem-type-badge">${escHtml(t)}</span>`).join(' ');
+            const isActivated = discoveryActivatedSources.includes(c.source);
+
+            html += `<tr id="disc-row-${i}" class="${isActivated ? 'activated' : ''}" style="cursor:pointer;" onclick="toggleDiscoveryDetail(${i})">
+                <td><code>${escHtml(c.source)}</code></td>
+                <td>${formatNum(sourceData.total)}</td>
+                <td>${sourceData.siem > 0 ? `<span class="badge badge-siem">${formatNum(sourceData.siem)}</span>` : '<span class="text-muted">Nein</span>'}</td>
+                <td>${types || '-'}</td>
+                <td>
+                    <div class="confidence-bar">
+                        <div class="track"><div class="fill" style="width:${c.confidence_pct}%;background:${confColor};"></div></div>
+                        <span class="pct" style="color:${confColor};">${c.confidence_pct}%</span>
+                    </div>
+                </td>
+                <td>
+                    <button class="btn-activate${isActivated ? ' activated' : ''}" id="disc-btn-${i}" onclick="event.stopPropagation();activateSiemSource(${i})"${isActivated ? ' disabled' : ''}>${isActivated ? 'Aktiviert' : 'SIEM aktivieren'}</button>
+                </td>
+            </tr>
+            <tr class="detail-row" id="disc-detail-${i}">
+                <td colspan="6">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                        <div>
+                            <strong style="font-size:0.9em;">Vorgeschlagener Filter:</strong>
+                            <pre style="font-size:0.82em;margin-top:4px;"><code>${escHtml(c.suggested_filter || '')}</code></pre>
+                            <strong style="font-size:0.9em;">Splunk Sourcetype:</strong> <code>${escHtml(c.splunk_sourcetype || '')}</code>
+                            <br><strong style="font-size:0.9em;">Classification Reason:</strong> <code>${escHtml(c.suggested_reason || '')}</code>
+                        </div>
+                        <div>
+                            <strong style="font-size:0.9em;">Geplante Dashboard-Panels:</strong>
+                            <ul style="font-size:0.85em;margin:4px 0 0 16px;color:#4a5568;">
+                                ${(c.dashboard_panels || []).map(p => `<li><strong>${escHtml(p.title)}</strong> (${escHtml(p.type)})</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+    }
+
+    resultDiv.innerHTML = html;
+}
+
+function toggleDiscoveryDetail(idx) {
+    const detailRow = document.getElementById('disc-detail-' + idx);
+    if (detailRow) detailRow.classList.toggle('open');
+}
+
+async function activateSiemSource(idx) {
+    const candidate = discoveryResults[idx];
+    if (!candidate) return;
+
+    const modal = document.getElementById('siemActivationModal');
+    const content = document.getElementById('siemModalContent');
+    const footer = document.getElementById('siemModalFooter');
+    document.getElementById('siemModalTitle').textContent = 'SIEM aktivieren: ' + candidate.source;
+
+    const steps = [
+        { id: 'siem-step-1', label: '1. Pipeline-Regel hinzufuegen', detail: 'eval-Function in universal_classifier einfuegen' },
+        { id: 'siem-step-2', label: '2. Cribl committen & deployen', detail: 'Konfiguration committen und Worker deployen' },
+        { id: 'siem-step-3', label: '3. Splunk-Dashboard erstellen', detail: `SOC-Dashboard soc_overview_ide erweitern (${candidate.splunk_sourcetype || 'auto'})` },
+        { id: 'siem-step-4', label: '4. Kibana-Dashboard erstellen', detail: 'SOC-Dashboard ide-soc-overview erweitern' },
+        { id: 'siem-step-5', label: '5. Verifizierung', detail: 'Neue SIEM-Events in ES pruefen (5min Fenster)' }
+    ];
+
+    content.innerHTML = `
+        <p style="margin-bottom:12px;font-size:0.9em;">Folgende 5 Schritte werden automatisch ausgefuehrt:</p>
+        ${steps.map(s => `<div class="activation-step pending" id="${s.id}">
+            <span class="step-icon">&#9679;</span>
+            <div><div style="font-weight:600;">${escHtml(s.label)}</div><div style="font-size:0.82em;color:#718096;">${escHtml(s.detail)}</div></div>
+        </div>`).join('')}
+        <div class="mt-2"><strong>Einzufuegende Regel:</strong></div>
+        <pre style="font-size:0.82em;"><code>filter: ${escHtml(candidate.suggested_filter || 'true')}
+classification = 'siem'
+classification_reason = '${escHtml(candidate.suggested_reason || '')}'</code></pre>
+    `;
+    footer.innerHTML = `
+        <button class="btn btn-outline" onclick="closeSiemModal()">Abbrechen</button>
+        <button class="btn" style="background:#c53030;color:white;" id="siemConfirmBtn" onclick="executeSiemActivation(${idx})">Aktivierung starten</button>
+    `;
+    modal.classList.add('active');
+}
+
+function markSiemStep(id, state) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = 'activation-step ' + state;
+    const icon = el.querySelector('.step-icon');
+    if (state === 'done') icon.innerHTML = '&#10003;';
+    else if (state === 'running') icon.innerHTML = '<span class="analyzer-spinner" style="width:14px;height:14px;"></span>';
+    else if (state === 'error') icon.innerHTML = '&#10007;';
+}
+
+async function executeSiemActivation(idx) {
+    const candidate = discoveryResults[idx];
+    const confirmBtn = document.getElementById('siemConfirmBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Wird ausgefuehrt...';
+
+    try {
+        // Step 1: Add pipeline rule
+        markSiemStep('siem-step-1', 'running');
+        const token = await ensureCriblAuth();
+        const criblUrl = getConfig('CRIBL_URL');
+
+        const pipeResp = await apiFetch('GET', `${criblUrl}/api/v1/pipelines/universal_classifier`, null, false, {
+            'Authorization': `Bearer ${token}`
+        });
+        const pipeData = await safeJson(pipeResp, 'Pipeline laden');
+        const pipeline = pipeData.items ? pipeData.items[0] : pipeData;
+        const functions = pipeline.conf?.functions || [];
+
+        const newFunc = {
+            id: 'eval',
+            filter: candidate.suggested_filter || 'true',
+            disabled: false,
+            conf: {
+                add: [
+                    { name: 'classification', value: "'siem'" },
+                    { name: 'classification_method', value: "'rule_based'" },
+                    { name: 'classification_reason', value: `'${candidate.suggested_reason || 'siem_discovery'}'` }
+                ]
+            },
+            description: `SIEM-Discovery: ${candidate.source} → ${(candidate.siem_event_types || []).join(', ')}`
+        };
+
+        // Insert before Stage 2 (Ollama AI)
+        let insertIdx = functions.findIndex(f =>
+            (f.description && f.description.includes('Ollama AI')) ||
+            (f.id === 'comment' && f.conf?.comment?.includes('Stage 2'))
+        );
+        if (insertIdx === -1) insertIdx = Math.max(0, functions.length - 3);
+        functions.splice(insertIdx, 0, newFunc);
+        pipeline.conf.functions = functions;
+
+        const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/universal_classifier`, pipeline, false, {
+            'Authorization': `Bearer ${token}`
+        });
+        if (!updateResp.ok) throw new Error('Pipeline-Update fehlgeschlagen');
+        markSiemStep('siem-step-1', 'done');
+
+        // Step 2: Commit & Deploy
+        markSiemStep('siem-step-2', 'running');
+        await apiFetch('POST', `${criblUrl}/api/v1/version/commit`, {
+            message: `SIEM-Discovery: ${candidate.source} als SIEM-Quelle aktiviert`
+        }, false, { 'Authorization': `Bearer ${token}` });
+
+        try {
+            await apiFetch('POST', `${criblUrl}/api/v1/master/groups/default/deploy`, { version: 'current' }, true, {
+                'Authorization': `Bearer ${token}`
+            });
+        } catch { /* deploy may timeout but still succeed */ }
+        markSiemStep('siem-step-2', 'done');
+
+        // Step 3: Splunk Dashboard
+        markSiemStep('siem-step-3', 'running');
+        try {
+            await createOrUpdateSplunkDashboard(candidate);
+            markSiemStep('siem-step-3', 'done');
+        } catch (e) {
+            markSiemStep('siem-step-3', 'error');
+            appendSiemModalMsg(`Splunk-Dashboard Fehler: ${e.message}`, true);
+        }
+
+        // Step 4: Kibana Dashboard
+        markSiemStep('siem-step-4', 'running');
+        try {
+            await createOrUpdateKibanaDashboard(candidate);
+            markSiemStep('siem-step-4', 'done');
+        } catch (e) {
+            markSiemStep('siem-step-4', 'error');
+            appendSiemModalMsg(`Kibana-Dashboard Fehler: ${e.message}`, true);
+        }
+
+        // Step 5: Verify
+        markSiemStep('siem-step-5', 'running');
+        const esUrl = getConfig('ES_URL');
+        // Wait briefly for new events to appear
+        await new Promise(r => setTimeout(r, 3000));
+        const verifyResp = await apiFetch('POST', `${esUrl}/cribl-ops*/_count`, {
+            query: {
+                bool: {
+                    must: [
+                        { term: { 'classification.keyword': 'siem' } },
+                        { range: { '@timestamp': { gte: 'now-5m' } } }
+                    ],
+                    should: [
+                        { match_phrase: { 'CONTAINER_NAME': candidate.source } },
+                        { term: { 'classification_reason.keyword': candidate.suggested_reason || '' } }
+                    ],
+                    minimum_should_match: 1
+                }
+            }
+        }, true);
+        const verifyData = await verifyResp.json();
+        const newSiemCount = verifyData.count || 0;
+        markSiemStep('siem-step-5', 'done');
+
+        // Success
+        discoveryActivatedSources.push(candidate.source);
+        const btn = document.getElementById('disc-btn-' + idx);
+        if (btn) { btn.textContent = 'Aktiviert'; btn.classList.add('activated'); btn.disabled = true; }
+        const row = document.getElementById('disc-row-' + idx);
+        if (row) row.classList.add('activated');
+
+        const splunkUrl = getConfig('SPLUNK_URL');
+        const kibanaUrl = getConfig('KIBANA_URL');
+        appendSiemModalMsg(`Erfolg! ${newSiemCount > 0 ? newSiemCount + ' neue SIEM-Events gefunden.' : 'Verifizierung laeuft (Events benoetigen ggf. einige Minuten).'}`, false);
+        appendSiemModalLinks(splunkUrl, kibanaUrl);
+
+        confirmBtn.textContent = 'Fertig';
+        confirmBtn.onclick = closeSiemModal;
+        confirmBtn.disabled = false;
+
+    } catch (e) {
+        for (let i = 1; i <= 5; i++) {
+            const el = document.getElementById('siem-step-' + i);
+            if (el && el.classList.contains('running')) { markSiemStep('siem-step-' + i, 'error'); break; }
+        }
+        appendSiemModalMsg(`Fehler: ${e.message}`, true);
+        confirmBtn.textContent = 'Schliessen';
+        confirmBtn.onclick = closeSiemModal;
+        confirmBtn.disabled = false;
+    }
+}
+
+function appendSiemModalMsg(msg, isError) {
+    const content = document.getElementById('siemModalContent');
+    content.insertAdjacentHTML('beforeend', `<div style="margin-top:12px;padding:10px;background:${isError ? '#fff5f5' : '#f0fff4'};border-radius:6px;border-left:4px solid ${isError ? '#e53e3e' : '#38a169'};font-size:0.9em;">
+        ${escHtml(msg)}
+    </div>`);
+}
+
+function appendSiemModalLinks(splunkUrl, kibanaUrl) {
+    const content = document.getElementById('siemModalContent');
+    content.insertAdjacentHTML('beforeend', `<div style="margin-top:8px;display:flex;gap:10px;">
+        <a href="${escHtml(splunkUrl)}/app/search/soc_overview_ide" target="_blank" class="btn btn-sm" style="background:#c53030;color:white;text-decoration:none;">Splunk SOC-Dashboard</a>
+        <a href="${escHtml(kibanaUrl)}/app/dashboards#/view/ide-soc-overview" target="_blank" class="btn btn-sm btn-success" style="text-decoration:none;">Kibana SOC-Dashboard</a>
+    </div>`);
+}
+
+function closeSiemModal() {
+    document.getElementById('siemActivationModal').classList.remove('active');
+}
+
+// ============================================================
+// SPLUNK REST API: Create/Update SOC Dashboard
+// ============================================================
+async function ensureSplunkAuth() {
+    if (!splunkPassword) {
+        splunkPassword = prompt('Splunk-Passwort eingeben (wird nur fuer diese Sitzung gespeichert):');
+        if (!splunkPassword) throw new Error('Kein Splunk-Passwort eingegeben');
+    }
+    return btoa(getConfig('SPLUNK_USER') + ':' + splunkPassword);
+}
+
+async function createOrUpdateSplunkDashboard(candidate) {
+    const splunkRestUrl = getConfig('SPLUNK_REST_URL');
+    const authB64 = await ensureSplunkAuth();
+    const headers = {
+        'Authorization': `Basic ${authB64}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+    };
+
+    const dashboardName = 'soc_overview_ide';
+    const sourcetype = candidate.splunk_sourcetype || candidate.source.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const panels = candidate.dashboard_panels || [];
+
+    // Generate panel XML
+    let panelXml = '';
+    if (panels.length > 0) {
+        panelXml = panels.map(p => {
+            const spl = p.spl_query || `index=cribl_siem sourcetype="${sourcetype}" | ${p.type === 'timechart' ? 'timechart count' : 'stats count by classification_reason'}`;
+            return `<row><panel><title>${escXml(p.title)}</title><${p.type === 'table' ? 'table' : 'chart'}><search><query>${escXml(spl)}</query><earliest>-24h@h</earliest><latest>now</latest></search></${p.type === 'table' ? 'table' : 'chart'}></panel></row>`;
+        }).join('\n');
+    } else {
+        // Fallback template panels
+        panelXml = `<row><panel><title>${escXml(candidate.source)} - SIEM Events (24h)</title><chart><search><query>index=cribl_siem sourcetype="${escXml(sourcetype)}" | timechart count</query><earliest>-24h@h</earliest><latest>now</latest></search></chart></panel></row>
+<row><panel><title>${escXml(candidate.source)} - Top Events</title><table><search><query>index=cribl_siem sourcetype="${escXml(sourcetype)}" | stats count by classification_reason | sort -count</query><earliest>-24h@h</earliest><latest>now</latest></search></table></panel></row>`;
+    }
+
+    // Check if dashboard exists
+    let existingXml = null;
+    try {
+        const checkResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}?output_mode=json`, {
+            method: 'GET', headers: { 'Authorization': `Basic ${authB64}` }
+        });
+        if (checkResp.ok) {
+            const checkData = await checkResp.json();
+            existingXml = checkData?.entry?.[0]?.content?.['eai:data'] || null;
+        }
+    } catch { /* dashboard doesn't exist */ }
+
+    let dashboardXml;
+    if (existingXml) {
+        // Append new panels before </dashboard>
+        dashboardXml = existingXml.replace('</dashboard>', `\n<!-- SIEM-Discovery: ${escXml(candidate.source)} -->\n${panelXml}\n</dashboard>`);
+    } else {
+        // Create new dashboard
+        dashboardXml = `<dashboard version="1.1">
+  <label>SOC Overview - IceDataEmphasise</label>
+  <description>Auto-generiertes SOC-Dashboard (SIEM-Discovery)</description>
+  <row><panel><title>Alle SIEM Events (24h)</title><chart><search><query>index=cribl_siem | timechart count by sourcetype</query><earliest>-24h@h</earliest><latest>now</latest></search></chart></panel></row>
+  <row><panel><title>SIEM Events nach Quelle</title><chart><search><query>index=cribl_siem | stats count by sourcetype | sort -count</query><earliest>-24h@h</earliest><latest>now</latest></search><option name="charting.chart">pie</option></chart></panel></row>
+  <!-- SIEM-Discovery: ${escXml(candidate.source)} -->
+  ${panelXml}
+</dashboard>`;
+    }
+
+    // Create or update
+    const body = `name=${encodeURIComponent(dashboardName)}&eai:data=${encodeURIComponent(dashboardXml)}`;
+    const method = existingXml ? 'POST' : 'POST';
+    const url = existingXml
+        ? `${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`
+        : `${splunkRestUrl}/servicesNS/admin/search/data/ui/views`;
+
+    const resp = await fetch(url, { method, headers, body });
+    if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`Splunk Dashboard ${existingXml ? 'Update' : 'Create'} fehlgeschlagen (HTTP ${resp.status}): ${text.substring(0, 200)}`);
+    }
+
+    logApiCall(method, url, { dashboard: dashboardName, panels: panels.length }, resp.status, 'Dashboard erstellt/erweitert');
+}
+
+function escXml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+async function pushSplunkDashboardFromConfig() {
+    if (!window._lastSplunkConfig) {
+        alert('Bitte zuerst eine Splunk-Konfiguration generieren.');
+        return;
+    }
+    try {
+        const cfg = window._lastSplunkConfig;
+        const candidate = {
+            source: 'splunk-configurator',
+            splunk_sourcetype: (cfg.inputs_conf?.stanzas?.[0]?.stanza || '').replace(/[\[\]]/g, ''),
+            dashboard_panels: (cfg.datamodels || []).map(dm => ({
+                title: dm.name + ' Overview',
+                type: 'timechart',
+                spl_query: `index=cribl_siem sourcetype IN (${(dm.sourcetypes || []).map(s => '"' + s + '"').join(',')}) | timechart count by sourcetype`
+            }))
+        };
+        await createOrUpdateSplunkDashboard(candidate);
+        alert('SOC-Dashboard erfolgreich in Splunk erstellt/erweitert!');
+    } catch (e) {
+        alert('Fehler: ' + e.message);
+    }
+}
+
+// ============================================================
+// KIBANA SAVED OBJECTS API: Create/Update SOC Dashboard
+// ============================================================
+async function createOrUpdateKibanaDashboard(candidate) {
+    const kibanaUrl = getConfig('KIBANA_URL');
+    const dashboardId = 'ide-soc-overview';
+    const indexPatternId = 'ide-cribl-ops';
+    const sourcetype = candidate.splunk_sourcetype || candidate.source.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const panels = candidate.dashboard_panels || [];
+
+    const kbnHeaders = {
+        'Content-Type': 'application/json',
+        'kbn-xsrf': 'true'
+    };
+
+    // Ensure index pattern exists
+    try {
+        await apiFetch('POST', `${kibanaUrl}/api/saved_objects/index-pattern/${indexPatternId}`, {
+            attributes: { title: 'cribl-ops*', timeFieldName: '@timestamp' }
+        }, true, kbnHeaders);
+    } catch { /* may already exist */ }
+
+    // Create lens visualizations for this candidate
+    const vizObjects = [];
+    const panelRefs = [];
+    const timestamp = Date.now();
+
+    for (let i = 0; i < Math.max(panels.length, 2); i++) {
+        const panel = panels[i] || {
+            title: `${candidate.source} - ${i === 0 ? 'SIEM Timeline' : 'Top Events'}`,
+            type: i === 0 ? 'timechart' : 'stats'
+        };
+        const vizId = `ide-viz-${sourcetype}-${i}-${timestamp}`;
+
+        const lensState = {
+            datasourceStates: {
+                formBased: {
+                    layers: {
+                        layer1: {
+                            columns: {
+                                col1: { operationType: 'date_histogram', sourceField: '@timestamp', params: { interval: 'auto' } },
+                                col2: { operationType: 'count', label: 'Count' }
+                            },
+                            columnOrder: ['col1', 'col2']
+                        }
+                    }
+                }
+            },
+            visualization: {
+                layerId: 'layer1',
+                layerType: 'data',
+                xAccessor: 'col1',
+                accessors: ['col2']
+            },
+            query: { query: `classification_reason: "${candidate.suggested_reason || ''}" OR CONTAINER_NAME: "${candidate.source}"`, language: 'kuery' },
+            filters: []
+        };
+
+        vizObjects.push({
+            type: 'lens',
+            id: vizId,
+            attributes: {
+                title: panel.title,
+                visualizationType: i === 0 ? 'lnsXY' : 'lnsDatatable',
+                state: lensState,
+                references: [{ type: 'index-pattern', id: indexPatternId, name: 'indexpattern-datasource-layer-layer1' }]
+            }
+        });
+
+        panelRefs.push({
+            panelIndex: String(i),
+            gridData: { x: (i % 2) * 24, y: Math.floor(i / 2) * 15, w: 24, h: 15, i: String(i) },
+            version: '8.0.0',
+            panelRefName: `panel_${vizId}`,
+            embeddableConfig: { attributes: { title: panel.title } },
+            type: 'lens'
+        });
+    }
+
+    // Check if dashboard exists
+    let existingDashboard = null;
+    try {
+        const checkResp = await apiFetch('GET', `${kibanaUrl}/api/saved_objects/dashboard/${dashboardId}`, null, true, kbnHeaders);
+        if (checkResp.ok) {
+            existingDashboard = await checkResp.json();
+        }
+    } catch { /* dashboard doesn't exist */ }
+
+    // Build bulk create payload
+    const bulkObjects = [...vizObjects];
+
+    if (existingDashboard) {
+        // Extend existing dashboard
+        let existingPanels = [];
+        try { existingPanels = JSON.parse(existingDashboard.attributes?.panelsJSON || '[]'); } catch {}
+        let existingRefs = existingDashboard.references || [];
+
+        const startIdx = existingPanels.length;
+        for (let i = 0; i < panelRefs.length; i++) {
+            const p = { ...panelRefs[i] };
+            p.panelIndex = String(startIdx + i);
+            p.gridData.i = String(startIdx + i);
+            p.gridData.y = (Math.floor(existingPanels.length / 2) + Math.floor(i / 2)) * 15;
+            existingPanels.push(p);
+            existingRefs.push({ name: p.panelRefName, type: 'lens', id: vizObjects[i].id });
+        }
+
+        bulkObjects.push({
+            type: 'dashboard',
+            id: dashboardId,
+            attributes: {
+                ...existingDashboard.attributes,
+                panelsJSON: JSON.stringify(existingPanels),
+                title: existingDashboard.attributes?.title || 'SOC Overview - IceDataEmphasise'
+            },
+            references: existingRefs
+        });
+    } else {
+        // New dashboard
+        const refs = [
+            { type: 'index-pattern', id: indexPatternId, name: 'indexpattern' },
+            ...vizObjects.map((v, i) => ({ name: panelRefs[i].panelRefName, type: 'lens', id: v.id }))
+        ];
+
+        bulkObjects.push({
+            type: 'dashboard',
+            id: dashboardId,
+            attributes: {
+                title: 'SOC Overview - IceDataEmphasise',
+                description: 'Auto-generiertes SOC-Dashboard (SIEM-Discovery)',
+                panelsJSON: JSON.stringify(panelRefs),
+                timeRestore: true,
+                timeTo: 'now',
+                timeFrom: 'now-24h'
+            },
+            references: refs
+        });
+    }
+
+    // Bulk create
+    const bulkResp = await apiFetch('POST', `${kibanaUrl}/api/saved_objects/_bulk_create?overwrite=true`, bulkObjects, false, kbnHeaders);
+    if (!bulkResp.ok) {
+        const errData = await bulkResp.text();
+        throw new Error(`Kibana bulk_create fehlgeschlagen (HTTP ${bulkResp.status}): ${errData.substring(0, 200)}`);
+    }
+
+    logApiCall('POST', `${kibanaUrl}/api/saved_objects/_bulk_create`, { objects: bulkObjects.length }, bulkResp.status, 'Dashboard erstellt/erweitert');
+}
+
+async function pushKibanaDashboardFromConfig() {
+    if (!window._lastKibanaConfig) {
+        alert('Bitte zuerst eine Kibana-Konfiguration generieren.');
+        return;
+    }
+    try {
+        const cfg = window._lastKibanaConfig;
+        const candidate = {
+            source: 'kibana-configurator',
+            splunk_sourcetype: 'ops-overview',
+            suggested_reason: 'ops_overview',
+            dashboard_panels: (cfg.dashboard_panels || []).map(p => ({
+                title: p.title,
+                type: p.type || 'timechart',
+                spl_query: ''
+            }))
+        };
+        await createOrUpdateKibanaDashboard(candidate);
+        alert('SOC-Dashboard erfolgreich in Kibana erstellt/erweitert!');
+    } catch (e) {
+        alert('Fehler: ' + e.message);
+    }
+}
+
+// ============================================================
 // UTILITIES
 // ============================================================
 function escHtml(str) {
@@ -3476,10 +4299,13 @@ function copyToClipboard(text) {
 document.getElementById('activationModal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
+document.getElementById('siemActivationModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSiemModal();
+});
 
 // Keyboard: Escape closes modal
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') { closeModal(); closeSiemModal(); }
 });
 </script>
 

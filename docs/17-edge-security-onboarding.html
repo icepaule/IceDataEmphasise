@@ -1817,7 +1817,8 @@ classification_reason = 'synology_operational_event'</code></pre>
 
 <div class="info">
     <strong>Uebersicht:</strong> Dieser Abschnitt beschreibt den vollstaendigen Datenfluss von allen Quellen
-    durch die Ollama-gestuetzte Klassifikation bis zu den Ziel-Systemen (Splunk SIEM + Elasticsearch/Kibana Ops + MinIO S3 Archiv).
+    durch die Ollama-gestuetzte Klassifikation bis zu den Ziel-Systemen.<br>
+    <strong>ES-First Architektur:</strong> ALLE Events &rarr; Elasticsearch (primaerer Data Lake). SIEM-Events &rarr; ZUSAETZLICH an Splunk (Dual-Write). Operational &rarr; S3 Archiv.
 </div>
 
 <h3>12.1 Erweitertes Datenfluss-Diagramm</h3>
@@ -1840,7 +1841,7 @@ classification_reason = 'synology_operational_event'</code></pre>
               +---------v--------------------------------------------v---------+
               |                    Cribl Stream Leader (10.10.0.100)            |
               |                                                                |
-              |  Route: route_classify_all (filter: true, final: false)        |
+              |  Route 1: route_classify_all (filter: true, final: false)      |
               |     Pipeline: universal_classifier                             |
               |                                                                |
               |  +----------------------------------------------------------+  |
@@ -1852,20 +1853,26 @@ classification_reason = 'synology_operational_event'</code></pre>
               |  | Fallback: operational (sicherer Default)                 |  |
               |  +----------------------------------------------------------+  |
               |                          |                                     |
-              |        classification = 'siem' | 'operational'                 |
-              |                     /          |          \                     |
+              |  Route 2: route_all_to_es (filter: true, final: false)        |
+              |     ==> ALLE Events nach Elasticsearch (ES-First Data Lake)   |
+              |                          |                                     |
+              |  Route 3: route_siem_to_splunk (classification=='siem')       |
+              |     ==> SIEM-Events ZUSAETZLICH nach Splunk (Dual-Write)      |
+              |  Route 4: route_ops_to_s3 (classification=='operational')     |
+              |     ==> Operational nach S3 Archiv                             |
+              |  Route 5: route_default (Catch-All)                           |
               +--------------------/-----------|----------\---------------------+
                                   /            |          \
                     +------------v--+   +------v------+  +-v--------------+
                     | Splunk HEC    |   | Elasticsearch|  | MinIO S3      |
                     | 10.10.0.66    |   | :9200        |  | :9100         |
                     | :8088         |   | + Kibana     |  | cribl-logs/   |
-                    | cribl_siem    |   | :5601        |  | (Langzeit)    |
-                    | Index         |   | cribl-ops*   |  |               |
+                    | SIEM-Events   |   | :5601        |  | (Langzeit)    |
+                    | (zusaetzlich) |   | ALLE Events  |  |               |
                     +---------------+   +--------------+  +---------------+
-                    SIEM-Analyse         Ops-Dashboards    Langzeit-Archiv
+                    SOC-Analyse          Data Lake (ALL)   Langzeit-Archiv
                     CIM-Datenmodelle     KQL-Suche         S3-Lifecycle
-                    Alerting             Visualisierung     Compliance</code></pre>
+                    Alerting             SIEM-Discovery     Compliance</code></pre>
 
 <h3>12.2 Ollama-Integrationspunkte</h3>
 
@@ -1955,7 +1962,7 @@ curl -s -u admin:PASSWORD http://10.10.0.100:9000/api/v1/pipelines/universal_cla
 # === 2. Routes pruefen ===
 curl -s -u admin:PASSWORD http://10.10.0.100:9000/api/v1/routes \
   | jq '.items[] | {id, filter, pipeline, output, final}'
-# Erwartung: route_classify_all, route_siem_splunk, route_ops_s3, route_ops_es, route_default
+# Erwartung: route_classify_all, route_all_to_es, route_siem_to_splunk, route_ops_to_s3, route_default
 
 # === 3. Edge Nodes pruefen ===
 curl -s -u admin:PASSWORD http://10.10.0.100:9000/api/v1/edge/nodes \
@@ -1990,7 +1997,7 @@ curl -s 'http://localhost:9200/cribl-ops*/_search' \
     <strong>Ende-zu-Ende Verifikation bestanden</strong> wenn:
     <ul>
         <li>Universal Classifier Pipeline hat &ge; 30 Funktionen (inkl. Windows/Linux/Edge Regeln)</li>
-        <li>5 Routes konfiguriert (classify_all, siem_splunk, ops_s3, ops_es, default)</li>
+        <li>5 Routes konfiguriert (classify_all, all_to_es, siem_to_splunk, ops_to_s3, default) - ES-First Architektur</li>
         <li>Edge Nodes in Cribl UI sichtbar und verbunden</li>
         <li>ES zeigt Events mit <code>source_type</code> und <code>classification</code> Feldern</li>
         <li>Splunk empfaengt SIEM-Events via HEC</li>

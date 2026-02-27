@@ -8,43 +8,43 @@
       "pipeline": "universal_classifier",
       "output": "devnull",
       "final": false,
-      "description": "Classifies ALL events (Docker, Edge, Journal, Syslog) via universal_classifier pipeline. Sets classification field. Non-final: events continue to routing below."
+      "description": "Classifies ALL events (Docker, Edge, Journal, Syslog, Sophos) via universal_classifier pipeline. Sets classification field. Non-final: events continue to routing below."
     },
     {
-      "id": "route_siem_splunk",
+      "id": "route_all_to_es",
+      "name": "ALL to Elasticsearch",
+      "filter": "true",
+      "pipeline": "passthrough",
+      "output": "elasticsearch_ops",
+      "final": false,
+      "description": "ES-First: ALL events go to Elasticsearch as primary data lake. Non-final: events continue to SIEM/S3 routing."
+    },
+    {
+      "id": "route_siem_to_splunk",
       "name": "SIEM to Splunk",
       "filter": "classification=='siem'",
       "pipeline": "passthrough",
       "output": "splunk_hec",
       "final": true,
-      "description": "Routes security-classified events to Splunk HEC for SIEM analysis (10.10.0.66:8088)"
+      "description": "SIEM-classified events go ADDITIONALLY to Splunk HEC for SOC analysis (10.10.0.66:8088). Final: stops here."
     },
     {
-      "id": "route_ops_s3",
-      "name": "Ops to S3",
+      "id": "route_ops_to_s3",
+      "name": "Ops to S3 Archive",
       "filter": "classification=='operational'",
       "pipeline": "passthrough",
       "output": "minio_s3",
-      "final": false,
-      "description": "Routes operational events to MinIO S3 for long-term archival. Non-final: continues to ES."
-    },
-    {
-      "id": "route_ops_es",
-      "name": "Ops to Elasticsearch",
-      "filter": "classification=='operational'",
-      "pipeline": "passthrough",
-      "output": "elasticsearch_ops",
       "final": true,
-      "description": "Routes operational events to Elasticsearch for Kibana dashboards"
+      "description": "Operational events go to MinIO S3 for long-term archival. Final: already in ES via route_all_to_es."
     },
     {
       "id": "route_default",
       "name": "Default Catch-All",
       "filter": "true",
       "pipeline": "passthrough",
-      "output": "splunk_hec",
+      "output": "elasticsearch_ops",
       "final": true,
-      "description": "Safety net: any unrouted events go to Splunk HEC for investigation"
+      "description": "Safety net: any unclassified/fallback events already in ES via route_all_to_es. Final catch-all."
     }
   ]
 }
