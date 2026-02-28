@@ -1,0 +1,38 @@
+{
+  "id": "siem_to_splunk",
+  "conf": {
+    "asyncFuncTimeout": 1000,
+    "functions": [
+      {
+        "id": "comment",
+        "filter": "true",
+        "conf": {
+          "comment": "SIEM to Splunk - Sets index, sourcetype and ensures CIM-relevant fields are present for Splunk ingestion via HEC"
+        }
+      },
+      {
+        "id": "eval",
+        "filter": "true",
+        "conf": {
+          "add": [
+            { "name": "index", "value": "'cribl_siem'" },
+            { "name": "sourcetype", "value": "'cribl:siem'" },
+            { "name": "source", "value": "source || CONTAINER_NAME || container_name || 'cribl_stream'" },
+            { "name": "host", "value": "cribl_host || host || C.os.hostname()" }
+          ]
+        },
+        "description": "Set Splunk metadata: index, sourcetype, source, host"
+      },
+      {
+        "id": "eval",
+        "filter": "!_raw && message",
+        "conf": {
+          "add": [
+            { "name": "_raw", "value": "message" }
+          ]
+        },
+        "description": "Ensure _raw is set from message field for Splunk HEC"
+      }
+    ]
+  }
+}

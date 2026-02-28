@@ -2,7 +2,7 @@
   "id": "splunk_s2s",
   "type": "splunk",
   "host": "${SPLUNK_HOST}",
-  "port": ${SPLUNK_S2S_PORT},
+  "port": 9997,
   "tls": { "disabled": true },
   "pqEnabled": true,
   "pqMaxSize": "1GB",

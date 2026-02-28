@@ -2469,7 +2469,8 @@ async function apiFetch(method, url, body, silent, extraHeaders) {
         headers: { 'Content-Type': 'application/json', ...(extraHeaders || {}) }
     };
     if (body && method !== 'GET') {
-        opts.body = JSON.stringify(body);
+        const isForm = (opts.headers['Content-Type'] || '').includes('form-urlencoded');
+        opts.body = isForm ? body : JSON.stringify(body);
     }
 
     let respStatus, respBody;

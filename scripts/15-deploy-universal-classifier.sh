@@ -162,19 +162,19 @@ sys.stdout.write(yaml_str)
     verify_total=$((verify_total + 1))
     local route_check
     route_check=$(cribl_get "/routes" 2>/dev/null)
-    if echo "$route_check" | jq -e '.items[0].routes[] | select(.id == "route_classify_all")' &>/dev/null; then
-        log_ok "VERIFY: Route 'route_classify_all' exists"
-        verify_passed=$((verify_passed + 1))
-    else
-        log_error "VERIFY: Route 'route_classify_all' NOT found"
-    fi
-
-    verify_total=$((verify_total + 1))
     if echo "$route_check" | jq -e '.items[0].routes[] | select(.id == "route_all_to_es")' &>/dev/null; then
         log_ok "VERIFY: Route 'route_all_to_es' exists (ES-First)"
         verify_passed=$((verify_passed + 1))
     else
         log_error "VERIFY: Route 'route_all_to_es' NOT found"
+    fi
+
+    verify_total=$((verify_total + 1))
+    if echo "$route_check" | jq -e '.items[0].routes[] | select(.id == "route_ops_to_s3")' &>/dev/null; then
+        log_ok "VERIFY: Route 'route_ops_to_s3' exists"
+        verify_passed=$((verify_passed + 1))
+    else
+        log_error "VERIFY: Route 'route_ops_to_s3' NOT found"
     fi
 
     verify_total=$((verify_total + 1))

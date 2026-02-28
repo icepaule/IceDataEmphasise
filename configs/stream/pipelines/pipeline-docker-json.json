@@ -39,6 +39,17 @@
         }
       },
       {
+        "id": "eval",
+        "filter": "container_id",
+        "conf": {
+          "add": [
+            { "name": "container_name", "value": "CONTAINER_NAME || (source || '').replace(/.*\\/containers\\/[a-f0-9]+\\//, '').replace(/-json\\.log.*/, '') || container_id" },
+            { "name": "CONTAINER_NAME", "value": "CONTAINER_NAME || container_name" }
+          ]
+        },
+        "description": "Derive container_name from source path or Docker metadata (CONTAINER_NAME)"
+      },
+      {
         "id": "regex_extract",
         "filter": "log",
         "conf": {
