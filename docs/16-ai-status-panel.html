@@ -254,6 +254,31 @@
         .cim-field-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
         .cim-field-table th, .cim-field-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         .cim-field-table th { background: #faf5ff; font-weight: 600; color: #553c9a; }
+
+        /* Step badges & pipeline dividers */
+        .step-badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,0.25); font-weight:700; font-size:0.85em; margin-right:8px; flex-shrink:0; }
+        .section-divider { background:#edf2f7; padding:14px 20px; margin:24px 0 12px; border-radius:8px; font-weight:700; color:#4a5568; font-size:0.95em; display:flex; align-items:center; gap:8px; }
+        .pipeline-hint { font-size:0.8em; opacity:0.75; font-weight:400; margin-left:auto; }
+
+        /* Full Deploy Steps */
+        .deploy-step { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 4px 0; border-radius: 6px; font-size: 0.9em; background: #f7fafc; color: #a0aec0; }
+        .deploy-step.running { background: #ebf8ff; color: #2b6cb0; font-weight: 600; }
+        .deploy-step.done { background: #f0fff4; color: #276749; }
+        .deploy-step.error { background: #fff5f5; color: #c53030; }
+        .deploy-step .step-icon { width: 20px; text-align: center; }
+        .deploy-step .step-label { font-weight: 600; font-size: 0.9em; }
+        .deploy-step .step-detail { font-size: 0.82em; color: #718096; margin-top: 4px; }
+
+        /* Client Config Generator */
+        .client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .client-card { border: 2px solid #e2e8f0; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
+        .client-card:hover { border-color: #2b6cb0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .client-card.selected { border-color: #2b6cb0; background: #ebf8ff; box-shadow: 0 2px 8px rgba(43,108,176,0.2); }
+        .client-card .card-icon { font-size: 2em; margin-bottom: 8px; }
+        .client-card .card-label { font-weight: 600; font-size: 0.9em; color: #2d3748; }
+        .client-config-output { position: relative; margin-top: 12px; }
+        .client-config-output pre { min-height: 120px; max-height: 400px; overflow-y: auto; }
+        .client-config-actions { display: flex; gap: 8px; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -275,7 +300,7 @@
 <div class="container">
 
 <!-- ============================================================ -->
-<!-- 1. SERVICE URL BAR -->
+<!-- SERVICE-ENDPUNKTE (Voraussetzung) -->
 <!-- ============================================================ -->
 <div class="panel">
     <div class="panel-header">
@@ -345,118 +370,18 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- 2. CLASSIFICATION OVERVIEW -->
-<!-- ============================================================ -->
-<div class="panel">
-    <div class="panel-header">
-        <h2>Klassifikations-Uebersicht</h2>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchClassificationStats()">Aktualisieren</button>
-    </div>
-    <div class="panel-body">
-        <div class="stats-grid" id="statsCards">
-            <div class="stat-card"><div class="value" id="statTotal">-</div><div class="label">Gesamt-Events</div></div>
-            <div class="stat-card siem"><div class="value" id="statSiem">-</div><div class="label">SIEM Events</div></div>
-            <div class="stat-card operational"><div class="value" id="statOps">-</div><div class="label">Operational Events</div></div>
-        </div>
-        <h3 style="color:#2c5282; font-size:0.95em; margin-bottom:8px;">Klassifikations-Methode</h3>
-        <div id="methodBars">
-            <div class="method-bar"><div class="bar-label"><span>rule_based</span><span id="pctRule">-</span></div><div class="bar-track"><div class="bar-fill bar-rule" id="barRule" style="width:0%"></div></div></div>
-            <div class="method-bar"><div class="bar-label"><span>ollama_ai</span><span id="pctOllama">-</span></div><div class="bar-track"><div class="bar-fill bar-ollama" id="barOllama" style="width:0%"></div></div></div>
-            <div class="method-bar"><div class="bar-label"><span>fallback</span><span id="pctFallback">-</span></div><div class="bar-track"><div class="bar-fill bar-fallback" id="barFallback" style="width:0%"></div></div></div>
-        </div>
-        <h3 style="color:#2c5282; font-size:0.95em; margin:16px 0 8px;">Top Classification Reasons</h3>
-        <div class="table-scroll" style="max-height:250px;">
-            <table id="reasonsTable">
-                <thead><tr><th>Reason</th><th>Anzahl</th><th>Anteil</th></tr></thead>
-                <tbody id="reasonsBody"><tr><td colspan="3" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
-            </table>
-        </div>
-    </div>
-</div>
+<div class="section-divider"><span class="step-badge">&#9654;</span> Daten-Pipeline: Schritt fuer Schritt<span class="pipeline-hint">7 Schritte vom Dateneingang bis zur SIEM-Verarbeitung</span></div>
 
 <!-- ============================================================ -->
-<!-- 3. OLLAMA ANALYSIS DETAILS -->
+<!-- STEP 1: DATENFLUSS-MONITOR -->
 <!-- ============================================================ -->
 <div class="panel">
     <div class="panel-header">
-        <h2>Klassifizierte Events</h2>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchOllamaEvents(0)">Aktualisieren</button>
-    </div>
-    <div class="panel-body">
-        <div class="filter-bar">
-            <label style="font-size:0.85em;font-weight:600;">Filter:</label>
-            <select id="filterContainer" onchange="fetchOllamaEvents(0)">
-                <option value="">Alle Container</option>
-            </select>
-            <select id="filterClassification" onchange="fetchOllamaEvents(0)">
-                <option value="">Alle Klassifikationen</option>
-                <option value="siem">siem</option>
-                <option value="operational">operational</option>
-            </select>
-            <select id="filterMethod" onchange="fetchOllamaEvents(0)">
-                <option value="">Alle Methoden</option>
-                <option value="rule_based">rule_based</option>
-                <option value="ollama_ai">ollama_ai</option>
-                <option value="fallback">fallback</option>
-            </select>
-            <input type="text" id="filterKeyword" placeholder="Keyword-Suche..." onkeyup="if(event.key==='Enter')fetchOllamaEvents(0)">
-            <button class="btn btn-sm btn-outline" onclick="fetchOllamaEvents(0)">Suchen</button>
+        <h2><span class="step-badge">1</span> Datenfluss-Monitor</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="pipeline-hint">Schritt 1 von 7</span>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchDataFlowStats()">Aktualisieren</button>
         </div>
-        <div class="table-scroll">
-            <table>
-                <thead><tr><th>Zeitstempel</th><th>Container</th><th>Log-Auszug</th><th>Klassifikation</th><th>Methode</th></tr></thead>
-                <tbody id="ollamaEventsBody"><tr><td colspan="5" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
-            </table>
-        </div>
-        <div class="mt-1" style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="text-muted" id="ollamaPageInfo">-</span>
-            <div>
-                <button class="btn btn-sm btn-outline" id="ollamaPrev" onclick="ollamaPagePrev()" disabled>Zurueck</button>
-                <button class="btn btn-sm btn-outline" id="ollamaNext" onclick="ollamaPageNext()">Weiter</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- 4. AI SUGGESTIONS (KI-gesteuerte Routing-Vorschlaege) -->
-<!-- ============================================================ -->
-<div class="panel">
-    <div class="panel-header">
-        <h2>KI-Vorschlaege (Routing &amp; Pipeline)</h2>
-        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Ollama analysiert Cribl-Kontext &rarr; Vorschlaege</span>
-    </div>
-    <div class="panel-body">
-        <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
-            Analysiert die aktuelle Cribl-Konfiguration (Routen, Pipelines, Destinations) zusammen mit der
-            Datenverteilung aus Elasticsearch und generiert konkrete Vorschlaege fuer Pipeline-Regeln und Route-Aenderungen.
-        </p>
-        <div class="suggestion-controls">
-            <select id="suggestionModel">
-                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
-                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
-                <option value="llama3.1:8b">llama3.1:8b</option>
-            </select>
-            <button class="btn btn-primary" onclick="generateAISuggestions()" id="aiSuggestBtn">KI-Analyse starten</button>
-            <button class="btn btn-outline" onclick="generateSuggestionsLegacy()" id="legacySuggestBtn">Schnellanalyse (ohne KI)</button>
-            <button class="btn btn-sm btn-outline" onclick="clearActivatedRules(); this.textContent='Zurueckgesetzt!'; setTimeout(()=>this.textContent='Verlauf loeschen',1500);" title="Loescht den Verlauf aktivierter Regeln, damit die KI diese erneut vorschlagen kann" style="font-size:0.8em;">Verlauf loeschen</button>
-            <span id="aiSuggestStatus" class="text-muted"></span>
-        </div>
-        <div id="suggestionContext" class="hidden"></div>
-        <div id="suggestionsContainer">
-            <div class="empty-state">Klicke "KI-Analyse starten" fuer kontextbasierte Vorschlaege oder "Schnellanalyse" fuer regelbasierte Auswertung.</div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- 2b. DATA FLOW MONITOR -->
-<!-- ============================================================ -->
-<div class="panel">
-    <div class="panel-header">
-        <h2>Datenfluss-Monitor</h2>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchDataFlowStats()">Aktualisieren</button>
     </div>
     <div class="panel-body">
         <div id="dataFlowDiagram" style="margin-bottom:16px;">
@@ -525,6 +450,16 @@
                 </defs>
             </svg>
         </div>
+        <div style="margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <h3 style="color:#2c5282; font-size:0.95em; margin:0;">Cribl Live-Flow</h3>
+                <button class="btn btn-sm btn-outline" onclick="toggleCriblFlow()" id="criblFlowToggle">Einblenden</button>
+                <a href="javascript:void(0)" onclick="window.open(getConfig('CRIBL_URL')+'/stream/dashboard/flows','_blank')" style="font-size:0.82em;color:#2b6cb0;">In Cribl oeffnen &#8599;</a>
+            </div>
+            <div id="criblFlowFrame" class="hidden">
+                <iframe id="criblFlowIframe" style="width:100%;height:450px;border:1px solid #e2e8f0;border-radius:8px;background:#f7fafc;" src="about:blank"></iframe>
+            </div>
+        </div>
         <div class="stats-grid" id="flowStatsCards">
             <div class="stat-card"><div class="value" id="flowTotal24h">-</div><div class="label">Events (24h)</div></div>
             <div class="stat-card siem"><div class="value" id="flowSiem24h">-</div><div class="label">SIEM (24h)</div></div>
@@ -542,12 +477,15 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- 4a. SIEM DISCOVERY (ES-First: Find untapped SIEM sources) -->
+<!-- STEP 2: SIEM-DISCOVERY -->
 <!-- ============================================================ -->
 <div class="panel">
     <div class="panel-header discovery-panel-header">
-        <h2>SIEM-Discovery (ES-First)</h2>
-        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Alle ES-Quellen &rarr; SIEM-Potenzial finden &rarr; Ein-Klick-Aktivierung</span>
+        <h2><span class="step-badge">2</span> SIEM-Discovery (ES-First)</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="pipeline-hint" style="color:rgba(255,255,255,0.7);">Schritt 2 von 7</span>
+            <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Alle ES-Quellen &rarr; SIEM-Potenzial finden &rarr; Ein-Klick-Aktivierung</span>
+        </div>
     </div>
     <div class="panel-body">
         <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
@@ -583,12 +521,95 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- 4b. OPS->SIEM RECLASSIFICATION -->
+<!-- STEP 3: KLASSIFIKATIONS-UEBERSICHT -->
 <!-- ============================================================ -->
 <div class="panel">
     <div class="panel-header">
-        <h2>Ops&rarr;SIEM Reklassifikation</h2>
-        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Operational Events auf SIEM-Relevanz pruefen</span>
+        <h2><span class="step-badge">3</span> Klassifikations-Uebersicht</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="pipeline-hint">Schritt 3 von 7</span>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchClassificationStats()">Aktualisieren</button>
+        </div>
+    </div>
+    <div class="panel-body">
+        <div class="stats-grid" id="statsCards">
+            <div class="stat-card"><div class="value" id="statTotal">-</div><div class="label">Gesamt-Events</div></div>
+            <div class="stat-card siem"><div class="value" id="statSiem">-</div><div class="label">SIEM Events</div></div>
+            <div class="stat-card operational"><div class="value" id="statOps">-</div><div class="label">Operational Events</div></div>
+        </div>
+        <h3 style="color:#2c5282; font-size:0.95em; margin-bottom:8px;">Klassifikations-Methode</h3>
+        <div id="methodBars">
+            <div class="method-bar"><div class="bar-label"><span>rule_based</span><span id="pctRule">-</span></div><div class="bar-track"><div class="bar-fill bar-rule" id="barRule" style="width:0%"></div></div></div>
+            <div class="method-bar"><div class="bar-label"><span>ollama_ai</span><span id="pctOllama">-</span></div><div class="bar-track"><div class="bar-fill bar-ollama" id="barOllama" style="width:0%"></div></div></div>
+            <div class="method-bar"><div class="bar-label"><span>fallback</span><span id="pctFallback">-</span></div><div class="bar-track"><div class="bar-fill bar-fallback" id="barFallback" style="width:0%"></div></div></div>
+        </div>
+        <h3 style="color:#2c5282; font-size:0.95em; margin:16px 0 8px;">Top Classification Reasons</h3>
+        <div class="table-scroll" style="max-height:250px;">
+            <table id="reasonsTable">
+                <thead><tr><th>Reason</th><th>Anzahl</th><th>Anteil</th></tr></thead>
+                <tbody id="reasonsBody"><tr><td colspan="3" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- STEP 4: KLASSIFIZIERTE EVENTS -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2><span class="step-badge">4</span> Klassifizierte Events</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="pipeline-hint">Schritt 4 von 7</span>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="fetchOllamaEvents(0)">Aktualisieren</button>
+        </div>
+    </div>
+    <div class="panel-body">
+        <div class="filter-bar">
+            <label style="font-size:0.85em;font-weight:600;">Filter:</label>
+            <select id="filterContainer" onchange="fetchOllamaEvents(0)">
+                <option value="">Alle Container</option>
+            </select>
+            <select id="filterClassification" onchange="fetchOllamaEvents(0)">
+                <option value="">Alle Klassifikationen</option>
+                <option value="siem">siem</option>
+                <option value="operational">operational</option>
+            </select>
+            <select id="filterMethod" onchange="fetchOllamaEvents(0)">
+                <option value="">Alle Methoden</option>
+                <option value="rule_based">rule_based</option>
+                <option value="ollama_ai">ollama_ai</option>
+                <option value="fallback">fallback</option>
+            </select>
+            <input type="text" id="filterKeyword" placeholder="Keyword-Suche..." onkeyup="if(event.key==='Enter')fetchOllamaEvents(0)">
+            <button class="btn btn-sm btn-outline" onclick="fetchOllamaEvents(0)">Suchen</button>
+        </div>
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Zeitstempel</th><th>Container</th><th>Log-Auszug</th><th>Klassifikation</th><th>Methode</th></tr></thead>
+                <tbody id="ollamaEventsBody"><tr><td colspan="5" class="text-muted" style="text-align:center;">Laden...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="mt-1" style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="text-muted" id="ollamaPageInfo">-</span>
+            <div>
+                <button class="btn btn-sm btn-outline" id="ollamaPrev" onclick="ollamaPagePrev()" disabled>Zurueck</button>
+                <button class="btn btn-sm btn-outline" id="ollamaNext" onclick="ollamaPageNext()">Weiter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- STEP 5: OPS->SIEM REKLASSIFIKATION -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2><span class="step-badge">5</span> Ops&rarr;SIEM Reklassifikation</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="pipeline-hint">Schritt 5 von 7</span>
+            <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Operational Events auf SIEM-Relevanz pruefen</span>
+        </div>
     </div>
     <div class="panel-body">
         <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
@@ -619,111 +640,15 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- 5. SPLUNK & KIBANA CONFIG GENERATOR (Tabbed) -->
-<!-- ============================================================ -->
-<div class="panel">
-    <div class="panel-header">
-        <h2>Splunk &amp; Kibana Konfigurator (ki01)</h2>
-        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">SIEM &rarr; Splunk | Ops &rarr; Kibana</span>
-    </div>
-    <div class="panel-body">
-        <!-- Tab Navigation -->
-        <div style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:16px;">
-            <button class="btn" id="tabSplunk" onclick="switchConfigTab('splunk')" style="border-radius:6px 6px 0 0;border-bottom:3px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;">Splunk SIEM</button>
-            <button class="btn" id="tabKibana" onclick="switchConfigTab('kibana')" style="border-radius:6px 6px 0 0;border-bottom:3px solid transparent;background:transparent;color:#718096;">Kibana Ops</button>
-        </div>
-
-        <!-- Splunk Tab -->
-        <div id="tabContentSplunk">
-            <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">
-                Analysiert aktuelle SIEM-Events aus Elasticsearch, beruecksichtigt das Routing
-                (<code>classification==siem</code> &rarr; Splunk HEC) und generiert passende Splunk-Konfiguration
-                fuer <code>inputs.conf</code>, <code>props.conf</code>, <code>transforms.conf</code>, <code>eventtypes.conf</code>, <code>tags.conf</code>, <code>indexes.conf</code> und CIM-Datenmodelle.
-                Beruecksichtigt Windows Edge EventIDs, Sysmon, PowerShell, auditd und Linux Security Events.
-            </p>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-                <select id="splunkModel">
-                    <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
-                    <option value="mistral-nemo:12b">mistral-nemo:12b</option>
-                    <option value="llama3.1:8b">llama3.1:8b</option>
-                    <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
-                </select>
-                <button class="btn btn-primary" onclick="generateSplunkConfig()" id="splunkGenBtn">SIEM-Events laden &amp; Splunk-Konfig generieren</button>
-                <button class="btn btn-sm" style="background:#c53030;color:white;" onclick="pushSplunkDashboardFromConfig()" id="splunkPushBtn" title="SOC-Dashboard direkt in Splunk erstellen">Dashboard zu Splunk pushen</button>
-                <span id="splunkGenStatus" class="text-muted"></span>
-            </div>
-            <div id="splunkConfigResult"></div>
-        </div>
-
-        <!-- Kibana Tab (hidden by default) -->
-        <div id="tabContentKibana" class="hidden">
-            <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">
-                Analysiert Operational-Events in Elasticsearch und generiert per Ollama Kibana-Konfigurationen:
-                Index Patterns, Saved Searches (KQL), Dashboard-Panels und Visualisierungen.
-            </p>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-                <select id="kibanaModel">
-                    <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
-                    <option value="mistral-nemo:12b">mistral-nemo:12b</option>
-                    <option value="llama3.1:8b">llama3.1:8b</option>
-                </select>
-                <button class="btn btn-primary" onclick="generateKibanaConfig()" id="kibanaGenBtn">Ops-Events laden &amp; Kibana-Konfig generieren</button>
-                <button class="btn btn-sm btn-success" onclick="pushKibanaDashboardFromConfig()" id="kibanaPushBtn" title="SOC-Dashboard direkt in Kibana erstellen">Dashboard in Kibana erstellen</button>
-                <span id="kibanaGenStatus" class="text-muted"></span>
-            </div>
-            <div id="kibanaConfigResult"></div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- 6. LOG ANALYZER - Logdaten analysieren & Cribl-Konfig generieren (manuelle Eingabe) -->
-<!-- ============================================================ -->
-<div class="panel">
-    <div class="panel-header">
-        <h2>Log-Analyzer (ki01)</h2>
-        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Logdaten einfuegen &rarr; KI analysiert &rarr; Cribl-Konfiguration</span>
-    </div>
-    <div class="panel-body">
-        <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">Log-Zeilen einfuegen (mind. 3 Zeilen fuer gute Analyse). Die KI auf <strong>ki01</strong> erkennt Format, Felder und Sicherheitsrelevanz und schlaegt eine passende Cribl-Konfiguration vor.</p>
-        <textarea class="analyzer-input" id="analyzerInput" placeholder="Hier Log-Zeilen einfuegen, z.B.:&#10;Feb 17 10:23:45 webserver sshd[12345]: Failed password for root from 192.168.1.100 port 22&#10;2026-02-17T10:24:01.123Z INFO  [nginx] GET /api/health 200 12ms&#10;{&quot;timestamp&quot;:&quot;2026-02-17T10:25:00Z&quot;,&quot;level&quot;:&quot;error&quot;,&quot;msg&quot;:&quot;connection refused&quot;}"></textarea>
-        <div class="analyzer-controls">
-            <select id="analyzerModel">
-                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
-                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
-                <option value="llama3.1:8b">llama3.1:8b</option>
-                <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
-            </select>
-            <button class="btn" onclick="analyzeLogSamples()" id="analyzerBtn">Analysieren &amp; Konfig generieren</button>
-            <button class="btn btn-outline" onclick="clearAnalyzer()">Zuruecksetzen</button>
-            <span id="analyzerStatus" class="text-muted"></span>
-        </div>
-        <div class="analyzer-result" id="analyzerResult"></div>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- 6. API COMMAND LOG -->
-<!-- ============================================================ -->
-<div class="panel">
-    <div class="panel-header">
-        <h2>API-Befehlsprotokoll</h2>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="clearApiLog()">Leeren</button>
-    </div>
-    <div class="panel-body">
-        <div class="api-log" id="apiLog">
-            <div class="empty-state" id="apiLogEmpty">Noch keine API-Aufrufe protokolliert.</div>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- CIM-ANALYSE & DATENMODELLE -->
+<!-- STEP 6: CIM-ANALYSE & DATENMODELLE -->
 <!-- ============================================================ -->
 <div class="panel">
     <div class="panel-header" style="background:#553c9a;">
-        <h2>CIM-ANALYSE &amp; DATENMODELLE</h2>
-        <span style="font-size:0.8em;opacity:0.85;">KI-gestuetzte Feldextraktion &amp; CIM-Mapping</span>
+        <h2><span class="step-badge">6</span> CIM-Analyse &amp; Datenmodelle</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="pipeline-hint" style="color:rgba(255,255,255,0.7);">Schritt 6 von 7</span>
+            <span style="font-size:0.8em;opacity:0.85;">KI-gestuetzte Feldextraktion &amp; CIM-Mapping</span>
+        </div>
     </div>
     <div class="panel-body">
         <div class="cim-tabs">
@@ -760,6 +685,205 @@
             <div id="cimExplorerContent">
                 <div class="empty-state">Lade Datenmodelle...</div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- STEP 7: SPLUNK & KIBANA KONFIGURATOR -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2><span class="step-badge">7</span> Splunk &amp; Kibana Konfigurator (ki01)</h2>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <span class="pipeline-hint">Schritt 7 von 7</span>
+            <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">SIEM &rarr; Splunk | Ops &rarr; Kibana</span>
+        </div>
+    </div>
+    <div class="panel-body">
+        <!-- Tab Navigation -->
+        <div style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:16px;">
+            <button class="btn" id="tabSplunk" onclick="switchConfigTab('splunk')" style="border-radius:6px 6px 0 0;border-bottom:3px solid #2b6cb0;background:#ebf8ff;color:#2b6cb0;">Splunk SIEM</button>
+            <button class="btn" id="tabKibana" onclick="switchConfigTab('kibana')" style="border-radius:6px 6px 0 0;border-bottom:3px solid transparent;background:transparent;color:#718096;">Kibana Ops</button>
+        </div>
+
+        <!-- Splunk Tab -->
+        <div id="tabContentSplunk">
+            <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">
+                Analysiert aktuelle SIEM-Events aus Elasticsearch, beruecksichtigt das Routing
+                (<code>classification==siem</code> &rarr; Splunk HEC) und generiert passende Splunk-Konfiguration
+                fuer <code>inputs.conf</code>, <code>props.conf</code>, <code>transforms.conf</code>, <code>eventtypes.conf</code>, <code>tags.conf</code>, <code>indexes.conf</code> und CIM-Datenmodelle.
+                Beruecksichtigt Windows Edge EventIDs, Sysmon, PowerShell, auditd und Linux Security Events.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                <select id="splunkModel">
+                    <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                    <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                    <option value="llama3.1:8b">llama3.1:8b</option>
+                    <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
+                </select>
+                <button class="btn btn-primary" onclick="generateSplunkConfig()" id="splunkGenBtn">SIEM-Events laden &amp; Splunk-Konfig generieren</button>
+                <button class="btn btn-sm" style="background:#c53030;color:white;" onclick="fullDeployToSplunk()" id="splunkPushBtn" title="Indexes, Inputs, Props, Transforms, Eventtypes, Tags und Dashboard komplett deployen">Komplett-Deploy nach Splunk</button>
+                <span id="splunkGenStatus" class="text-muted"></span>
+            </div>
+            <div id="splunkConfigResult"></div>
+        </div>
+
+        <!-- Kibana Tab (hidden by default) -->
+        <div id="tabContentKibana" class="hidden">
+            <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">
+                Analysiert Operational-Events in Elasticsearch und generiert per Ollama Kibana-Konfigurationen:
+                Index Patterns, Saved Searches (KQL), Dashboard-Panels und Visualisierungen.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                <select id="kibanaModel">
+                    <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                    <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                    <option value="llama3.1:8b">llama3.1:8b</option>
+                </select>
+                <button class="btn btn-primary" onclick="generateKibanaConfig()" id="kibanaGenBtn">Ops-Events laden &amp; Kibana-Konfig generieren</button>
+                <button class="btn btn-sm btn-success" onclick="fullDeployToKibana()" id="kibanaPushBtn" title="Index Patterns, Saved Searches und Dashboard komplett deployen">Komplett-Deploy nach Kibana</button>
+                <span id="kibanaGenStatus" class="text-muted"></span>
+            </div>
+            <div id="kibanaConfigResult"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DATENQUELLEN-KONFIGURATOR (Client Config Generator) -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header" style="background:#276749;">
+        <h2>Datenquellen-Konfigurator</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Client-Configs fuer Cribl-Anbindung generieren</span>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
+            Generiert Konfigurationsdateien fuer verschiedene Datenquellen zur Anbindung an Cribl Stream.
+            Ziel-Host und Port werden automatisch aus den Einstellungen uebernommen.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <label style="font-weight:600;font-size:0.88em;">Ziel-Host:</label>
+            <input type="text" id="clientTargetHost" placeholder="10.10.0.100:9514" style="padding:7px 10px;border:1px solid #cbd5e0;border-radius:5px;font-size:0.88em;width:220px;">
+            <label style="font-weight:600;font-size:0.88em;margin-left:8px;">Port:</label>
+            <input type="text" id="clientTargetPort" placeholder="9514" style="padding:7px 10px;border:1px solid #cbd5e0;border-radius:5px;font-size:0.88em;width:80px;">
+        </div>
+
+        <div class="client-grid" id="clientTypeGrid">
+            <div class="client-card" onclick="selectClientType('windows')" data-type="windows">
+                <div class="card-icon">&#128187;</div>
+                <div class="card-label">Windows</div>
+            </div>
+            <div class="client-card" onclick="selectClientType('linux')" data-type="linux">
+                <div class="card-icon">&#128039;</div>
+                <div class="card-label">Linux/Ubuntu</div>
+            </div>
+            <div class="client-card" onclick="selectClientType('esp32')" data-type="esp32">
+                <div class="card-icon">&#9889;</div>
+                <div class="card-label">ESP32/IoT</div>
+            </div>
+            <div class="client-card" onclick="selectClientType('syslog')" data-type="syslog">
+                <div class="card-icon">&#128220;</div>
+                <div class="card-label">Syslog</div>
+            </div>
+            <div class="client-card" onclick="selectClientType('netflow')" data-type="netflow">
+                <div class="card-icon">&#127760;</div>
+                <div class="card-label">NetFlow</div>
+            </div>
+            <div class="client-card" onclick="selectClientType('docker')" data-type="docker">
+                <div class="card-icon">&#128230;</div>
+                <div class="card-label">Docker</div>
+            </div>
+        </div>
+
+        <div id="clientVariantArea" class="hidden">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+                <label style="font-weight:600;font-size:0.88em;">Variante:</label>
+                <select id="clientVariantSelect" onchange="generateClientConfig()" style="padding:7px 10px;border:1px solid #cbd5e0;border-radius:5px;font-size:0.88em;"></select>
+            </div>
+            <div class="client-config-output" id="clientConfigOutput">
+                <pre id="clientConfigPre"><code id="clientConfigCode"></code></pre>
+                <div class="client-config-actions">
+                    <button class="btn btn-sm btn-primary" onclick="copyClientConfig()">In Zwischenablage kopieren</button>
+                    <button class="btn btn-sm btn-outline" onclick="downloadClientConfig()">Als Datei herunterladen</button>
+                    <span id="clientConfigStatus" class="text-muted"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section-divider">Zusaetzliche Werkzeuge</div>
+
+<!-- ============================================================ -->
+<!-- EXTRA 1: KI-VORSCHLAEGE (Routing & Pipeline) -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>KI-Vorschlaege (Routing &amp; Pipeline)</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Ollama analysiert Cribl-Kontext &rarr; Vorschlaege</span>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:12px;font-size:0.9em;color:#4a5568;">
+            Analysiert die aktuelle Cribl-Konfiguration (Routen, Pipelines, Destinations) zusammen mit der
+            Datenverteilung aus Elasticsearch und generiert konkrete Vorschlaege fuer Pipeline-Regeln und Route-Aenderungen.
+        </p>
+        <div class="suggestion-controls">
+            <select id="suggestionModel">
+                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                <option value="llama3.1:8b">llama3.1:8b</option>
+            </select>
+            <button class="btn btn-primary" onclick="generateAISuggestions()" id="aiSuggestBtn">KI-Analyse starten</button>
+            <button class="btn btn-outline" onclick="generateSuggestionsLegacy()" id="legacySuggestBtn">Schnellanalyse (ohne KI)</button>
+            <button class="btn btn-sm btn-outline" onclick="clearActivatedRules(); this.textContent='Zurueckgesetzt!'; setTimeout(()=>this.textContent='Verlauf loeschen',1500);" title="Loescht den Verlauf aktivierter Regeln, damit die KI diese erneut vorschlagen kann" style="font-size:0.8em;">Verlauf loeschen</button>
+            <span id="aiSuggestStatus" class="text-muted"></span>
+        </div>
+        <div id="suggestionContext" class="hidden"></div>
+        <div id="suggestionsContainer">
+            <div class="empty-state">Klicke "KI-Analyse starten" fuer kontextbasierte Vorschlaege oder "Schnellanalyse" fuer regelbasierte Auswertung.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EXTRA 2: LOG ANALYZER -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>Log-Analyzer (ki01)</h2>
+        <span class="text-muted" style="color:rgba(255,255,255,0.7);font-size:0.82em;">Logdaten einfuegen &rarr; KI analysiert &rarr; Cribl-Konfiguration</span>
+    </div>
+    <div class="panel-body">
+        <p style="margin-bottom:10px;font-size:0.9em;color:#4a5568;">Log-Zeilen einfuegen (mind. 3 Zeilen fuer gute Analyse). Die KI auf <strong>ki01</strong> erkennt Format, Felder und Sicherheitsrelevanz und schlaegt eine passende Cribl-Konfiguration vor.</p>
+        <textarea class="analyzer-input" id="analyzerInput" placeholder="Hier Log-Zeilen einfuegen, z.B.:&#10;Feb 17 10:23:45 webserver sshd[12345]: Failed password for root from 192.168.1.100 port 22&#10;2026-02-17T10:24:01.123Z INFO  [nginx] GET /api/health 200 12ms&#10;{&quot;timestamp&quot;:&quot;2026-02-17T10:25:00Z&quot;,&quot;level&quot;:&quot;error&quot;,&quot;msg&quot;:&quot;connection refused&quot;}"></textarea>
+        <div class="analyzer-controls">
+            <select id="analyzerModel">
+                <option value="qwen2.5:14b">qwen2.5:14b (Standard)</option>
+                <option value="mistral-nemo:12b">mistral-nemo:12b</option>
+                <option value="llama3.1:8b">llama3.1:8b</option>
+                <option value="qwen2.5:7b-instruct-q4_1">qwen2.5:7b-instruct (schnell)</option>
+            </select>
+            <button class="btn" onclick="analyzeLogSamples()" id="analyzerBtn">Analysieren &amp; Konfig generieren</button>
+            <button class="btn btn-outline" onclick="clearAnalyzer()">Zuruecksetzen</button>
+            <span id="analyzerStatus" class="text-muted"></span>
+        </div>
+        <div class="analyzer-result" id="analyzerResult"></div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- EXTRA 3: API COMMAND LOG -->
+<!-- ============================================================ -->
+<div class="panel">
+    <div class="panel-header">
+        <h2>API-Befehlsprotokoll</h2>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none;" onclick="clearApiLog()">Leeren</button>
+    </div>
+    <div class="panel-body">
+        <div class="api-log" id="apiLog">
+            <div class="empty-state" id="apiLogEmpty">Noch keine API-Aufrufe protokolliert.</div>
         </div>
     </div>
 </div>
@@ -804,6 +928,46 @@
         <div id="cimDeploySummary" style="display:none;margin-top:12px;padding:12px;background:#f0fff4;border-radius:6px;border-left:4px solid #38a169;font-size:0.9em;"></div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeCimDeployModal()">Schliessen</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SPLUNK FULL DEPLOY MODAL -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="splunkDeployModal">
+    <div class="modal">
+        <h3>Komplett-Deploy nach Splunk</h3>
+        <div id="splunkDeployContent">
+            <div class="deploy-step" id="splk-step-1"><span class="step-icon">&#9679;</span> <span class="step-label">Indexes anlegen</span><div class="step-detail" id="splk-step-1-detail"></div></div>
+            <div class="deploy-step" id="splk-step-2"><span class="step-icon">&#9679;</span> <span class="step-label">Inputs (HEC) konfigurieren</span><div class="step-detail" id="splk-step-2-detail"></div></div>
+            <div class="deploy-step" id="splk-step-3"><span class="step-icon">&#9679;</span> <span class="step-label">Props konfigurieren</span><div class="step-detail" id="splk-step-3-detail"></div></div>
+            <div class="deploy-step" id="splk-step-4"><span class="step-icon">&#9679;</span> <span class="step-label">Transforms konfigurieren</span><div class="step-detail" id="splk-step-4-detail"></div></div>
+            <div class="deploy-step" id="splk-step-5"><span class="step-icon">&#9679;</span> <span class="step-label">Eventtypes deployen</span><div class="step-detail" id="splk-step-5-detail"></div></div>
+            <div class="deploy-step" id="splk-step-6"><span class="step-icon">&#9679;</span> <span class="step-label">Tags (CIM) deployen</span><div class="step-detail" id="splk-step-6-detail"></div></div>
+            <div class="deploy-step" id="splk-step-7"><span class="step-icon">&#9679;</span> <span class="step-label">SOC-Dashboard erstellen</span><div class="step-detail" id="splk-step-7-detail"></div></div>
+        </div>
+        <div id="splunkDeploySummary" style="display:none;margin-top:12px;padding:12px;border-radius:6px;border-left:4px solid #38a169;font-size:0.9em;"></div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeSplunkDeployModal()">Schliessen</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- KIBANA FULL DEPLOY MODAL -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="kibanaDeployModal">
+    <div class="modal">
+        <h3>Komplett-Deploy nach Kibana</h3>
+        <div id="kibanaDeployContent">
+            <div class="deploy-step" id="kbn-step-1"><span class="step-icon">&#9679;</span> <span class="step-label">Index Patterns anlegen</span><div class="step-detail" id="kbn-step-1-detail"></div></div>
+            <div class="deploy-step" id="kbn-step-2"><span class="step-icon">&#9679;</span> <span class="step-label">Saved Searches erstellen</span><div class="step-detail" id="kbn-step-2-detail"></div></div>
+            <div class="deploy-step" id="kbn-step-3"><span class="step-icon">&#9679;</span> <span class="step-label">Dashboard erstellen</span><div class="step-detail" id="kbn-step-3-detail"></div></div>
+        </div>
+        <div id="kibanaDeploySummary" style="display:none;margin-top:12px;padding:12px;border-radius:6px;border-left:4px solid #38a169;font-size:0.9em;"></div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeKibanaDeployModal()">Schliessen</button>
         </div>
     </div>
 </div>
@@ -3138,6 +3302,18 @@ function clearAnalyzer() {
 // ============================================================
 // DATA FLOW MONITOR
 // ============================================================
+function toggleCriblFlow() {
+    const frame = document.getElementById('criblFlowFrame');
+    const iframe = document.getElementById('criblFlowIframe');
+    const btn = document.getElementById('criblFlowToggle');
+    const isHidden = frame.classList.contains('hidden');
+    frame.classList.toggle('hidden');
+    btn.textContent = isHidden ? 'Ausblenden' : 'Einblenden';
+    if (isHidden && iframe.src === 'about:blank') {
+        iframe.src = getConfig('CRIBL_URL') + '/stream/dashboard/flows';
+    }
+}
+
 async function fetchDataFlowStats() {
     const esUrl = getConfig('ES_URL');
     const criblUrl = getConfig('CRIBL_URL');
@@ -4033,7 +4209,7 @@ async function activateSiemSource(idx) {
             <div><div style="font-weight:600;">5. Verifizierung</div><div style="font-size:0.82em;color:#718096;">Datenqualitaet, Dashboard-Checks und Event-Verifizierung</div></div>
         </div>
         <div class="mt-2"><strong>Einzufuegende Regel:</strong></div>
-        <pre style="font-size:0.82em;" id="siem-rule-preview"><code>filter: ${escHtml(candidate.suggested_filter || 'true')}
+        <pre style="font-size:0.82em;" id="siem-rule-preview"><code>filter: ${escHtml(fixCriblFilter(candidate.suggested_filter))}
 classification = <span id="siem-class-preview">'operational'</span>
 classification_reason = '${escHtml(candidate.suggested_reason || '')}'</code></pre>
     `;
@@ -4067,6 +4243,28 @@ function markSiemStep(id, state) {
     else if (state === 'error') icon.innerHTML = '&#10007;';
 }
 
+function fixCriblFilter(raw) {
+    let f = raw || 'true';
+    // Remove accidental prefixes from AI output
+    f = f.replace(/^\s*cribl\s+eval\s*:\s*/i, '');
+    // Convert =~ (Perl/Ruby regex) to JS .test()
+    f = f.replace(/(\w[\w.]*)\s*=~\s*\/((?:[^/\\]|\\.)*)\/([gimsuy]*)/g,
+        (_, field, pattern, flags) => `/${pattern}/${flags}.test(${field})`);
+    // Convert SQL-style 'and'/'or' to JS '&&'/'||' (word-boundary safe)
+    f = f.replace(/\)\s+and\s+/gi, ') && ');
+    f = f.replace(/\s+and\s+/gi, ' && ');
+    f = f.replace(/\)\s+or\s+/gi, ') || ');
+    f = f.replace(/\s+or\s+/gi, ' || ');
+    // Convert "field contains 'value'" to JS includes()
+    f = f.replace(/(\w[\w.]*)\s+contains\s+'([^']*)'/gi, (_, field, val) => `(${field} || '').includes('${val}')`);
+    f = f.replace(/(\w[\w.]*)\s+contains\s+"([^"]*)"/gi, (_, field, val) => `(${field} || '').includes('${val}')`);
+    // Convert == to === for safer comparison
+    f = f.replace(/([^=!<>])={2}(?!=)/g, '$1===');
+    // Convert 'not ' prefix to '!'
+    f = f.replace(/\bnot\s+/gi, '!');
+    return f.trim();
+}
+
 async function executeSiemActivation(idx) {
     const candidate = discoveryResults[idx];
     const confirmBtn = document.getElementById('siemConfirmBtn');
@@ -4092,30 +4290,39 @@ async function executeSiemActivation(idx) {
         const pipeline = pipeData.items ? pipeData.items[0] : pipeData;
         const functions = pipeline.conf?.functions || [];
 
-        // Sanitize: Cribl API rejects .then() chains and 'remove' in eval conf
+        // Sanitize functions: fix .then() chains, ensure conf.add entries have name+value
         const sanitizedFunctions = functions.map(f => {
-            const confStr = JSON.stringify(f.conf || {});
-            const hasPromiseChain = confStr.includes('.then(');
-            const hasRemove = f.conf?.remove && f.conf.remove.length > 0;
-            if (hasPromiseChain || hasRemove) {
-                const safeAdd = (f.conf?.add || []).map(a => {
-                    const valStr = String(a.value || '');
-                    return valStr.includes('.then(') ? { ...a, value: "'OPERATIONAL'" } : a;
-                });
-                return { ...f, disabled: true, conf: { add: safeAdd } };
+            // Fix .then() promise chains in eval values
+            if (f.conf?.add) {
+                const confStr = JSON.stringify(f.conf.add);
+                if (confStr.includes('.then(')) {
+                    const safeAdd = f.conf.add
+                        .filter(a => a && a.name)
+                        .map(a => {
+                            const valStr = String(a.value || '');
+                            return valStr.includes('.then(') ? { ...a, value: "'OPERATIONAL'" } : a;
+                        });
+                    return { ...f, disabled: true, conf: { ...f.conf, add: safeAdd } };
+                }
+                // Filter out malformed add entries (missing name)
+                const cleanAdd = f.conf.add.filter(a => a && a.name);
+                if (cleanAdd.length !== f.conf.add.length) {
+                    return { ...f, conf: { ...f.conf, add: cleanAdd } };
+                }
             }
             return f;
         });
 
+        const cleanFilter = fixCriblFilter(candidate.suggested_filter);
         const newFunc = {
             id: 'eval',
-            filter: candidate.suggested_filter || 'true',
+            filter: cleanFilter,
             disabled: false,
             conf: {
                 add: [
                     { name: 'classification', value: classificationValue },
                     { name: 'classification_method', value: "'rule_based'" },
-                    { name: 'classification_reason', value: `'${candidate.suggested_reason || 'siem_discovery'}'` }
+                    { name: 'classification_reason', value: `'${(candidate.suggested_reason || 'siem_discovery').replace(/'/g, "\\'")}'` }
                 ]
             },
             description: `SIEM-Discovery: ${candidate.source} → ${modeLabel} (${(candidate.siem_event_types || []).join(', ')})`
@@ -4128,12 +4335,24 @@ async function executeSiemActivation(idx) {
         );
         if (insertIdx === -1) insertIdx = Math.max(0, sanitizedFunctions.length - 3);
         sanitizedFunctions.splice(insertIdx, 0, newFunc);
-        pipeline.conf.functions = sanitizedFunctions;
 
-        const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/universal_classifier`, pipeline, false, {
+        // Build clean payload — only send fields Cribl PATCH accepts
+        const patchPayload = {
+            id: pipeline.id,
+            conf: {
+                functions: sanitizedFunctions,
+                asyncFuncTimeout: pipeline.conf?.asyncFuncTimeout || 10000
+            }
+        };
+        if (pipeline.description) patchPayload.description = pipeline.description;
+
+        const updateResp = await apiFetch('PATCH', `${criblUrl}/api/v1/pipelines/universal_classifier`, patchPayload, false, {
             'Authorization': `Bearer ${token}`
         });
-        if (!updateResp.ok) throw new Error('Pipeline-Update fehlgeschlagen');
+        if (!updateResp.ok) {
+            const errBody = await updateResp.text().catch(() => '');
+            throw new Error('Pipeline-Update fehlgeschlagen: ' + (errBody || updateResp.status));
+        }
         markSiemStep('siem-step-1', 'done');
 
         // Step 2: Commit (single-instance: commit macht config sofort live)
@@ -4556,36 +4775,40 @@ async function deployCimToSplunk(reasonKey) {
     try {
         // Step 1: transforms.conf
         markCimStep('cim-step-1', 'running');
+        let transforms_created = 0, transforms_updated = 0;
         for (const field of data.fields) {
             const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
-            const body = `name=cribl_siem_${reasonSafe}_extract_${fieldSafe}&REGEX=${encodeURIComponent(field.regex)}&FORMAT=${encodeURIComponent(field.cim_field + '::$1')}`;
-            await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-transforms`, body, false, headers);
+            const stanzaName = `cribl_siem_${reasonSafe}_extract_${fieldSafe}`;
+            const params = `REGEX=${encodeURIComponent(field.regex)}&FORMAT=${encodeURIComponent(field.cim_field + '::$1')}`;
+            const result = await splunkConfCreateOrUpdate(splunkRestUrl, 'transforms', stanzaName, params, headers);
+            if (result === 'updated') transforms_updated++; else transforms_created++;
         }
-        document.getElementById('cim-step-1-detail').textContent = `${data.fields.length} Extraktionen erstellt`;
+        document.getElementById('cim-step-1-detail').textContent = `${transforms_created} erstellt, ${transforms_updated} aktualisiert`;
         markCimStep('cim-step-1', 'done');
 
         // Step 2: props.conf
         markCimStep('cim-step-2', 'running');
         for (const field of data.fields) {
             const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
-            const body = `name=cribl%3Asiem&REPORT-${reasonSafe}_${fieldSafe}=${encodeURIComponent(`cribl_siem_${reasonSafe}_extract_${fieldSafe}`)}`;
-            await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-props`, body, false, headers);
+            const params = `REPORT-${reasonSafe}_${fieldSafe}=${encodeURIComponent(`cribl_siem_${reasonSafe}_extract_${fieldSafe}`)}`;
+            await splunkConfCreateOrUpdate(splunkRestUrl, 'props', 'cribl:siem', params, headers);
         }
         document.getElementById('cim-step-2-detail').textContent = `props.conf fuer cribl:siem aktualisiert`;
         markCimStep('cim-step-2', 'done');
 
         // Step 3: eventtypes.conf
         markCimStep('cim-step-3', 'running');
-        const etBody = `name=cribl_siem_${reasonSafe}&search=${encodeURIComponent(`index=cribl_siem classification_reason="${reasonKey}"`)}`;
-        await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-eventtypes`, etBody, false, headers);
-        document.getElementById('cim-step-3-detail').textContent = `Eventtype cribl_siem_${reasonSafe} erstellt`;
+        const etParams = `search=${encodeURIComponent(`index=cribl_siem classification_reason="${reasonKey}"`)}`;
+        const etResult = await splunkConfCreateOrUpdate(splunkRestUrl, 'eventtypes', `cribl_siem_${reasonSafe}`, etParams, headers);
+        document.getElementById('cim-step-3-detail').textContent = `Eventtype cribl_siem_${reasonSafe} ${etResult === 'updated' ? 'aktualisiert' : 'erstellt'}`;
         markCimStep('cim-step-3', 'done');
 
         // Step 4: tags.conf
         markCimStep('cim-step-4', 'running');
-        const tagBody = `name=${encodeURIComponent(`eventtype=cribl_siem_${reasonSafe}`)}&${encodeURIComponent(cimModel)}=enabled`;
-        await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-tags`, tagBody, false, headers);
-        document.getElementById('cim-step-4-detail').textContent = `Tag ${cimModel} aktiviert`;
+        const tagStanza = `eventtype=cribl_siem_${reasonSafe}`;
+        const tagParams = `${encodeURIComponent(cimModel)}=enabled`;
+        const tagResult = await splunkConfCreateOrUpdate(splunkRestUrl, 'tags', tagStanza, tagParams, headers);
+        document.getElementById('cim-step-4-detail').textContent = `Tag ${cimModel} ${tagResult === 'updated' ? 'aktualisiert' : 'aktiviert'}`;
         markCimStep('cim-step-4', 'done');
 
         // Summary
@@ -4694,14 +4917,16 @@ async function createOrUpdateSplunkDashboard(candidate) {
             const checkData = await checkResp.json();
             existingXml = checkData?.entry?.[0]?.content?.['eai:data'] || null;
         }
-    } catch { /* dashboard doesn't exist */ }
+    } catch (e) {
+        console.warn('Dashboard-Check fehlgeschlagen (CORS?), versuche Create mit Update-Fallback:', e.message);
+    }
 
     let dashboardXml;
     if (existingXml) {
         // Append new panels before </dashboard>
         dashboardXml = existingXml.replace('</dashboard>', `\n<!-- SIEM-Discovery: ${escXml(candidate.source)} -->\n${panelXml}\n</dashboard>`);
     } else {
-        // Create new dashboard
+        // Create new dashboard (or fallback XML if GET check failed)
         dashboardXml = `<dashboard version="1.1">
   <label>SOC Overview - IceDataEmphasise</label>
   <description>Auto-generiertes SOC-Dashboard (SIEM-Discovery)</description>
@@ -4712,20 +4937,65 @@ async function createOrUpdateSplunkDashboard(candidate) {
 </dashboard>`;
     }
 
-    // Create or update
-    const body = `name=${encodeURIComponent(dashboardName)}&eai:data=${encodeURIComponent(dashboardXml)}`;
-    const method = existingXml ? 'POST' : 'POST';
-    const url = existingXml
-        ? `${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`
-        : `${splunkRestUrl}/servicesNS/admin/search/data/ui/views`;
+    // Try create or update
+    const dashboardBody = `name=${encodeURIComponent(dashboardName)}&eai:data=${encodeURIComponent(dashboardXml)}`;
 
-    const resp = await fetch(url, { method, headers, body });
-    if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(`Splunk Dashboard ${existingXml ? 'Update' : 'Create'} fehlgeschlagen (HTTP ${resp.status}): ${text.substring(0, 200)}`);
+    if (existingXml) {
+        // Dashboard exists: update directly
+        const resp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, {
+            method: 'POST', headers, body: dashboardBody
+        });
+        if (!resp.ok) {
+            const text = await resp.text();
+            throw new Error(`Splunk Dashboard Update fehlgeschlagen (HTTP ${resp.status}): ${text.substring(0, 200)}`);
+        }
+        logApiCall('POST', `${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, { dashboard: dashboardName, panels: panels.length }, resp.status, 'Dashboard aktualisiert');
+    } else {
+        // Try create first, fall back to update if dashboard already exists
+        const createResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views`, {
+            method: 'POST', headers, body: dashboardBody
+        });
+
+        if (createResp.ok) {
+            logApiCall('POST', `${splunkRestUrl}/servicesNS/admin/search/data/ui/views`, { dashboard: dashboardName, panels: panels.length }, createResp.status, 'Dashboard erstellt');
+        } else if (createResp.status === 409) {
+            // Dashboard already exists (GET check failed, e.g. CORS) — update instead
+            console.log('Dashboard existiert bereits (409), aktualisiere...');
+            const updateBody = `eai:data=${encodeURIComponent(dashboardXml)}`;
+            const updateResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, {
+                method: 'POST', headers, body: updateBody
+            });
+            if (!updateResp.ok) {
+                const text = await updateResp.text();
+                throw new Error(`Splunk Dashboard Update fehlgeschlagen (HTTP ${updateResp.status}): ${text.substring(0, 200)}`);
+            }
+            logApiCall('POST', `${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, { dashboard: dashboardName, panels: panels.length }, updateResp.status, 'Dashboard aktualisiert (existierte bereits)');
+        } else {
+            const text = await createResp.text();
+            throw new Error(`Splunk Dashboard Create fehlgeschlagen (HTTP ${createResp.status}): ${text.substring(0, 200)}`);
+        }
+    }
+}
+
+// Helper: Create or update a Splunk conf stanza (handles 409 "already exists")
+async function splunkConfCreateOrUpdate(splunkRestUrl, confName, stanzaName, bodyParams, headers) {
+    const createBody = `name=${encodeURIComponent(stanzaName)}&${bodyParams}`;
+    const createResp = await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-${confName}`, createBody, true, headers);
+
+    if (createResp.ok) return 'created';
+
+    if (createResp.status === 409) {
+        // Already exists — update instead
+        const updateResp = await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-${confName}/${encodeURIComponent(stanzaName)}`, bodyParams, false, headers);
+        if (!updateResp.ok) {
+            const text = await updateResp.text().catch(() => '');
+            throw new Error(`${confName} Update fuer "${stanzaName}" fehlgeschlagen (HTTP ${updateResp.status}): ${text.substring(0, 200)}`);
+        }
+        return 'updated';
     }
 
-    logApiCall(method, url, { dashboard: dashboardName, panels: panels.length }, resp.status, 'Dashboard erstellt/erweitert');
+    const text = await createResp.text().catch(() => '');
+    throw new Error(`${confName} Create fuer "${stanzaName}" fehlgeschlagen (HTTP ${createResp.status}): ${text.substring(0, 200)}`);
 }
 
 function escXml(str) {
@@ -4733,13 +5003,139 @@ function escXml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-async function pushSplunkDashboardFromConfig() {
+// ============================================================
+// FULL DEPLOY: Splunk (7 Steps)
+// ============================================================
+function parseConfStanzas(text) {
+    if (!text || typeof text !== 'string') return [];
+    const stanzas = [];
+    let current = null;
+    text.split('\n').forEach(line => {
+        line = line.trim();
+        if (!line || line.startsWith('#')) return;
+        const m = line.match(/^\[(.+)\]$/);
+        if (m) {
+            current = { name: m[1], params: {} };
+            stanzas.push(current);
+        } else if (current) {
+            const eq = line.indexOf('=');
+            if (eq > 0) {
+                current.params[line.substring(0, eq).trim()] = line.substring(eq + 1).trim();
+            }
+        }
+    });
+    return stanzas;
+}
+
+function setSplkStep(n, state, detail) {
+    const el = document.getElementById('splk-step-' + n);
+    if (!el) return;
+    el.className = 'deploy-step ' + state;
+    el.querySelector('.step-icon').innerHTML = state === 'running' ? '<span class="analyzer-spinner"></span>' : state === 'done' ? '&#10003;' : state === 'error' ? '&#10007;' : '&#9679;';
+    const d = document.getElementById('splk-step-' + n + '-detail');
+    if (d && detail) d.textContent = detail;
+}
+
+function closeSplunkDeployModal() {
+    document.getElementById('splunkDeployModal').classList.remove('active');
+}
+
+async function fullDeployToSplunk() {
     if (!window._lastSplunkConfig) {
-        alert('Bitte zuerst eine Splunk-Konfiguration generieren.');
+        alert('Bitte zuerst eine Splunk-Konfiguration generieren (Splunk-Tab).');
         return;
     }
+    const cfg = window._lastSplunkConfig;
+    const modal = document.getElementById('splunkDeployModal');
+    const summary = document.getElementById('splunkDeploySummary');
+    summary.style.display = 'none';
+
+    // Reset all steps
+    for (let i = 1; i <= 7; i++) setSplkStep(i, '', '');
+    modal.classList.add('active');
+
+    const splunkRestUrl = getConfig('SPLUNK_REST_URL');
+    let authB64;
+    try { authB64 = await ensureSplunkAuth(); } catch (e) { closeSplunkDeployModal(); return; }
+    const headers = { 'Authorization': `Basic ${authB64}`, 'Content-Type': 'application/x-www-form-urlencoded' };
+
+    let totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
+
     try {
-        const cfg = window._lastSplunkConfig;
+        // Step 1: Indexes
+        setSplkStep(1, 'running');
+        const indexes = cfg.indexes || [];
+        for (const idx of indexes) {
+            const name = (typeof idx === 'string') ? idx : (idx.name || idx);
+            const params = (typeof idx === 'object' && idx.params) ? Object.entries(idx.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
+            const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'indexes', name, params, headers);
+            if (r === 'created') totalCreated++; else totalUpdated++;
+        }
+        setSplkStep(1, 'done', indexes.length === 0 ? '0 Eintraege (uebersprungen)' : `${indexes.length} Index(es) deployed`);
+
+        // Step 2: Inputs (HEC)
+        setSplkStep(2, 'running');
+        const inputs = cfg.inputs_conf?.stanzas || [];
+        for (const s of inputs) {
+            const name = (s.stanza || s.name || '').replace(/^\[|\]$/g, '');
+            const params = Object.entries(s.params || s.settings || {}).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+            const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'inputs', name, params, headers);
+            if (r === 'created') totalCreated++; else totalUpdated++;
+        }
+        setSplkStep(2, 'done', inputs.length === 0 ? '0 Eintraege (uebersprungen)' : `${inputs.length} Input(s) deployed`);
+
+        // Step 3: Props
+        setSplkStep(3, 'running');
+        const props = cfg.props_conf?.stanzas || [];
+        for (const s of props) {
+            const name = (s.stanza || s.name || '').replace(/^\[|\]$/g, '');
+            const params = Object.entries(s.params || s.settings || {}).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+            const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'props', name, params, headers);
+            if (r === 'created') totalCreated++; else totalUpdated++;
+        }
+        setSplkStep(3, 'done', props.length === 0 ? '0 Eintraege (uebersprungen)' : `${props.length} Props-Stanza(s) deployed`);
+
+        // Step 4: Transforms
+        setSplkStep(4, 'running');
+        const transforms = cfg.transforms_conf?.stanzas || [];
+        for (const s of transforms) {
+            const name = (s.stanza || s.name || '').replace(/^\[|\]$/g, '');
+            const params = Object.entries(s.params || s.settings || {}).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+            const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'transforms', name, params, headers);
+            if (r === 'created') totalCreated++; else totalUpdated++;
+        }
+        setSplkStep(4, 'done', transforms.length === 0 ? '0 Eintraege (uebersprungen)' : `${transforms.length} Transform(s) deployed`);
+
+        // Step 5: Eventtypes (from datamodels)
+        setSplkStep(5, 'running');
+        let etCount = 0;
+        for (const dm of (cfg.datamodels || [])) {
+            const etStanzas = dm.eventtypes_conf ? parseConfStanzas(dm.eventtypes_conf) : [];
+            for (const s of etStanzas) {
+                const params = Object.entries(s.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+                const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'eventtypes', s.name, params, headers);
+                if (r === 'created') totalCreated++; else totalUpdated++;
+                etCount++;
+            }
+        }
+        setSplkStep(5, 'done', etCount === 0 ? '0 Eintraege (uebersprungen)' : `${etCount} Eventtype(s) deployed`);
+
+        // Step 6: Tags (from datamodels)
+        setSplkStep(6, 'running');
+        let tagCount = 0;
+        for (const dm of (cfg.datamodels || [])) {
+            const tagStanzas = dm.tags_conf ? parseConfStanzas(dm.tags_conf) : [];
+            for (const s of tagStanzas) {
+                const params = Object.entries(s.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+                const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'tags', s.name, params, headers);
+                if (r === 'created') totalCreated++; else totalUpdated++;
+                tagCount++;
+            }
+        }
+        setSplkStep(6, 'done', tagCount === 0 ? '0 Eintraege (uebersprungen)' : `${tagCount} Tag-Stanza(s) deployed`);
+
+        // Step 7: Dashboard
+        setSplkStep(7, 'running');
         const candidate = {
             source: 'splunk-configurator',
             splunk_sourcetype: (cfg.inputs_conf?.stanzas?.[0]?.stanza || '').replace(/[\[\]]/g, ''),
@@ -4750,9 +5146,25 @@ async function pushSplunkDashboardFromConfig() {
             }))
         };
         await createOrUpdateSplunkDashboard(candidate);
-        alert('SOC-Dashboard erfolgreich in Splunk erstellt/erweitert!');
+        setSplkStep(7, 'done', 'Dashboard soc_overview_ide erstellt/aktualisiert');
+
+        summary.style.display = 'block';
+        summary.style.background = '#f0fff4';
+        summary.style.borderLeftColor = '#38a169';
+        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} erstellt, ${totalUpdated} aktualisiert. Alle 7 Schritte erfolgreich.`;
     } catch (e) {
-        alert('Fehler: ' + e.message);
+        // Mark current running step as error
+        for (let i = 1; i <= 7; i++) {
+            const el = document.getElementById('splk-step-' + i);
+            if (el && el.classList.contains('running')) {
+                setSplkStep(i, 'error', e.message);
+                break;
+            }
+        }
+        summary.style.display = 'block';
+        summary.style.background = '#fff5f5';
+        summary.style.borderLeftColor = '#e53e3e';
+        summary.innerHTML = `<strong>Deploy fehlgeschlagen:</strong> ${escHtml(e.message)}`;
     }
 }
 
@@ -4905,13 +5317,81 @@ async function createOrUpdateKibanaDashboard(candidate) {
     logApiCall('POST', `${kibanaUrl}/api/saved_objects/_bulk_create`, { objects: bulkObjects.length }, bulkResp.status, 'Dashboard erstellt/erweitert');
 }
 
-async function pushKibanaDashboardFromConfig() {
+// ============================================================
+// FULL DEPLOY: Kibana (3 Steps)
+// ============================================================
+function setKbnStep(n, state, detail) {
+    const el = document.getElementById('kbn-step-' + n);
+    if (!el) return;
+    el.className = 'deploy-step ' + state;
+    el.querySelector('.step-icon').innerHTML = state === 'running' ? '<span class="analyzer-spinner"></span>' : state === 'done' ? '&#10003;' : state === 'error' ? '&#10007;' : '&#9679;';
+    const d = document.getElementById('kbn-step-' + n + '-detail');
+    if (d && detail) d.textContent = detail;
+}
+
+function closeKibanaDeployModal() {
+    document.getElementById('kibanaDeployModal').classList.remove('active');
+}
+
+async function fullDeployToKibana() {
     if (!window._lastKibanaConfig) {
-        alert('Bitte zuerst eine Kibana-Konfiguration generieren.');
+        alert('Bitte zuerst eine Kibana-Konfiguration generieren (Kibana-Tab).');
         return;
     }
+    const cfg = window._lastKibanaConfig;
+    const modal = document.getElementById('kibanaDeployModal');
+    const summary = document.getElementById('kibanaDeploySummary');
+    summary.style.display = 'none';
+
+    for (let i = 1; i <= 3; i++) setKbnStep(i, '', '');
+    modal.classList.add('active');
+
+    const kibanaUrl = getConfig('KIBANA_URL');
+    const kbnHeaders = { 'Content-Type': 'application/json', 'kbn-xsrf': 'true' };
+
+    let totalCreated = 0, totalErrors = 0;
+
     try {
-        const cfg = window._lastKibanaConfig;
+        // Step 1: Index Patterns
+        setKbnStep(1, 'running');
+        const patterns = cfg.index_patterns || [];
+        for (const pat of patterns) {
+            const patId = pat.id || pat.title.replace(/[^a-z0-9_-]/gi, '_');
+            try {
+                await apiFetch('POST', `${kibanaUrl}/api/saved_objects/index-pattern/${patId}`, {
+                    attributes: { title: pat.title, timeFieldName: pat.timeFieldName || '@timestamp' }
+                }, true, kbnHeaders);
+                totalCreated++;
+            } catch { /* may already exist */ }
+        }
+        setKbnStep(1, 'done', patterns.length === 0 ? '0 Eintraege (uebersprungen)' : `${patterns.length} Index Pattern(s) deployed`);
+
+        // Step 2: Saved Searches
+        setKbnStep(2, 'running');
+        const searches = cfg.saved_searches || [];
+        if (searches.length > 0) {
+            const bulkObjects = searches.map(s => ({
+                type: 'search',
+                id: s.id || s.title.replace(/[^a-z0-9_-]/gi, '_'),
+                attributes: {
+                    title: s.title,
+                    description: s.description || '',
+                    kibanaSavedObjectMeta: {
+                        searchSourceJSON: JSON.stringify({
+                            index: s.index_pattern || patterns[0]?.id || 'cribl-ops*',
+                            query: { query: s.query || '*', language: 'kuery' },
+                            filter: []
+                        })
+                    }
+                }
+            }));
+            await apiFetch('POST', `${kibanaUrl}/api/saved_objects/_bulk_create?overwrite=true`, bulkObjects, true, kbnHeaders);
+            totalCreated += searches.length;
+        }
+        setKbnStep(2, 'done', searches.length === 0 ? '0 Eintraege (uebersprungen)' : `${searches.length} Saved Search(es) deployed`);
+
+        // Step 3: Dashboard
+        setKbnStep(3, 'running');
         const candidate = {
             source: 'kibana-configurator',
             splunk_sourcetype: 'ops-overview',
@@ -4923,10 +5403,632 @@ async function pushKibanaDashboardFromConfig() {
             }))
         };
         await createOrUpdateKibanaDashboard(candidate);
-        alert('SOC-Dashboard erfolgreich in Kibana erstellt/erweitert!');
+        setKbnStep(3, 'done', 'Dashboard ide-soc-overview erstellt/aktualisiert');
+
+        summary.style.display = 'block';
+        summary.style.background = '#f0fff4';
+        summary.style.borderLeftColor = '#38a169';
+        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} Objekte deployed. Alle 3 Schritte erfolgreich.`;
     } catch (e) {
-        alert('Fehler: ' + e.message);
+        for (let i = 1; i <= 3; i++) {
+            const el = document.getElementById('kbn-step-' + i);
+            if (el && el.classList.contains('running')) {
+                setKbnStep(i, 'error', e.message);
+                break;
+            }
+        }
+        summary.style.display = 'block';
+        summary.style.background = '#fff5f5';
+        summary.style.borderLeftColor = '#e53e3e';
+        summary.innerHTML = `<strong>Deploy fehlgeschlagen:</strong> ${escHtml(e.message)}`;
     }
+}
+
+// ============================================================
+// CLIENT CONFIGURATION GENERATOR
+// ============================================================
+let _selectedClientType = null;
+
+function getClientTargetHost() {
+    const h = document.getElementById('clientTargetHost');
+    return (h && h.value.trim()) || getConfig('CRIBL_URL').replace(/^https?:\/\//, '').replace(/\/.*$/, '') || '10.10.0.100';
+}
+
+function getClientTargetPort() {
+    const p = document.getElementById('clientTargetPort');
+    return (p && p.value.trim()) || '9514';
+}
+
+function buildClientConfigs(host, port) {
+    return {
+        windows: {
+            label: 'Windows',
+            variants: {
+                'cribl-edge-ps': {
+                    label: 'Cribl Edge PowerShell',
+                    filename: 'install-cribl-edge.ps1',
+                    config: `# Cribl Edge Installation (PowerShell, als Admin ausfuehren)
+$CriblLeader = "${host}"
+$CriblPort = "4200"
+
+# Edge herunterladen und installieren
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Invoke-WebRequest -Uri "https://$CriblLeader:$CriblPort/init/install-edge.ps1" -OutFile "$env:TEMP\\install-edge.ps1"
+& "$env:TEMP\\install-edge.ps1" -host $CriblLeader -port $CriblPort -group windows_default
+
+# Windows Event Forwarding konfigurieren
+wecutil qc /quiet
+wevtutil sl Security /e:true /ms:1073741824
+wevtutil sl System /e:true /ms:536870912
+wevtutil sl Application /e:true /ms:536870912
+
+Write-Host "Cribl Edge installiert. Quellen werden automatisch konfiguriert."`
+                },
+                'sysmon-xml': {
+                    label: 'Sysmon XML Config',
+                    filename: 'sysmonconfig.xml',
+                    config: `<!-- Sysmon Configuration - IceDataEmphasise -->
+<!-- Installieren: sysmon64 -accepteula -i sysmonconfig.xml -->
+<Sysmon schemaversion="4.90">
+  <HashAlgorithms>SHA256,IMPHASH</HashAlgorithms>
+  <CheckRevocation/>
+  <EventFiltering>
+    <!-- Process Creation (ID 1) -->
+    <RuleGroup groupRelation="or">
+      <ProcessCreate onmatch="include">
+        <ParentImage condition="end with">\\cmd.exe</ParentImage>
+        <ParentImage condition="end with">\\powershell.exe</ParentImage>
+        <ParentImage condition="end with">\\wscript.exe</ParentImage>
+        <Image condition="end with">\\rundll32.exe</Image>
+        <Image condition="end with">\\regsvr32.exe</Image>
+        <Image condition="end with">\\mshta.exe</Image>
+      </ProcessCreate>
+    </RuleGroup>
+    <!-- Network Connection (ID 3) -->
+    <RuleGroup groupRelation="or">
+      <NetworkConnect onmatch="exclude">
+        <DestinationPort condition="is">80</DestinationPort>
+        <DestinationPort condition="is">443</DestinationPort>
+        <Image condition="end with">\\svchost.exe</Image>
+      </NetworkConnect>
+    </RuleGroup>
+    <!-- File Creation (ID 11) -->
+    <RuleGroup groupRelation="or">
+      <FileCreate onmatch="include">
+        <TargetFilename condition="contains">\\Temp\\</TargetFilename>
+        <TargetFilename condition="contains">\\AppData\\</TargetFilename>
+        <TargetFilename condition="end with">.exe</TargetFilename>
+        <TargetFilename condition="end with">.dll</TargetFilename>
+        <TargetFilename condition="end with">.ps1</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+    <!-- Registry (ID 12,13,14) -->
+    <RuleGroup groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">\\Run\\</TargetObject>
+        <TargetObject condition="contains">\\RunOnce\\</TargetObject>
+        <TargetObject condition="contains">\\Services\\</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+  </EventFiltering>
+</Sysmon>`
+                },
+                'winlogbeat-yaml': {
+                    label: 'Winlogbeat YAML',
+                    filename: 'winlogbeat.yml',
+                    config: `# Winlogbeat -> Cribl Stream
+winlogbeat.event_logs:
+  - name: Security
+    ignore_older: 72h
+  - name: System
+    ignore_older: 72h
+  - name: Application
+    ignore_older: 72h
+  - name: Microsoft-Windows-Sysmon/Operational
+    ignore_older: 72h
+  - name: Microsoft-Windows-PowerShell/Operational
+    ignore_older: 72h
+
+output.tcp:
+  hosts: ["${host}:${port}"]
+  ssl.enabled: false
+
+processors:
+  - add_host_metadata: ~
+  - add_fields:
+      target: ''
+      fields:
+        cribl_source: winlogbeat
+        environment: production
+
+logging.level: warning
+logging.to_files: true
+logging.files:
+  path: C:\\ProgramData\\winlogbeat\\Logs
+  name: winlogbeat.log
+  keepfiles: 3`
+                }
+            }
+        },
+        linux: {
+            label: 'Linux/Ubuntu',
+            variants: {
+                'cribl-edge-bash': {
+                    label: 'Cribl Edge Bash',
+                    filename: 'install-cribl-edge.sh',
+                    config: `#!/bin/bash
+# Cribl Edge Installation (als root ausfuehren)
+CRIBL_LEADER="${host}"
+CRIBL_PORT="4200"
+GROUP="linux_default"
+
+curl -sL "https://\${CRIBL_LEADER}:\${CRIBL_PORT}/init/install-edge.sh" | bash -s -- \\
+  --host "\${CRIBL_LEADER}" \\
+  --port "\${CRIBL_PORT}" \\
+  --group "\${GROUP}"
+
+# Systemd Service aktivieren
+systemctl enable cribl-edge
+systemctl start cribl-edge
+
+echo "Cribl Edge installiert und gestartet."`
+                },
+                'rsyslog-conf': {
+                    label: 'rsyslog',
+                    filename: '60-cribl.conf',
+                    config: `# /etc/rsyslog.d/60-cribl.conf
+# Alle Logs an Cribl Stream weiterleiten
+
+# TCP-Weiterleitung (empfohlen)
+*.* @@${host}:${port};RSYSLOG_SyslogProtocol23Format
+
+# Template fuer strukturierte Daten
+template(name="CriblFormat" type="string"
+  string="<%PRI%>1 %TIMESTAMP:::date-rfc3339% %HOSTNAME% %APP-NAME% %PROCID% %MSGID% [cribl_source@49999 source=\\"rsyslog\\" host=\\"%HOSTNAME%\\"] %msg%\\n")
+
+# Action mit Queue (bei Ausfall puffern)
+action(type="omfwd"
+  target="${host}"
+  port="${port}"
+  protocol="tcp"
+  template="CriblFormat"
+  queue.type="LinkedList"
+  queue.filename="cribl_fwd"
+  queue.maxDiskSpace="256m"
+  queue.saveOnShutdown="on"
+  action.resumeRetryCount="-1"
+)`
+                },
+                'syslog-ng-conf': {
+                    label: 'syslog-ng',
+                    filename: 'cribl-destination.conf',
+                    config: `# /etc/syslog-ng/conf.d/cribl-destination.conf
+# Weiterleitung an Cribl Stream
+
+destination d_cribl {
+    tcp("${host}"
+        port(${port})
+        template("<\${PRI}>1 \${ISODATE} \${HOST} \${PROGRAM} \${PID} - [cribl_source@49999 source=\\"syslog-ng\\"] \${MSG}\\n")
+        disk-buffer(
+            mem-buf-size(10M)
+            disk-buf-size(256M)
+            reliable(yes)
+            dir("/var/lib/syslog-ng/buffer")
+        )
+    );
+};
+
+log {
+    source(s_src);
+    destination(d_cribl);
+};`
+                },
+                'auditd-rules': {
+                    label: 'auditd Regeln',
+                    filename: 'cribl-audit.rules',
+                    config: `# /etc/audit/rules.d/cribl-audit.rules
+# Audit-Regeln fuer Security Monitoring
+
+# Loeschen bestehender Regeln
+-D
+
+# Buffer-Groesse
+-b 8192
+
+# Fehlgeschlagene Logins
+-w /var/log/faillog -p wa -k logins
+-w /var/log/lastlog -p wa -k logins
+
+# User/Group Aenderungen
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+
+# Sudo und su
+-w /etc/sudoers -p wa -k actions
+-w /etc/sudoers.d/ -p wa -k actions
+
+# Cron
+-w /etc/crontab -p wa -k cron
+-w /var/spool/cron/ -p wa -k cron
+
+# Netzwerk
+-a always,exit -F arch=b64 -S connect -F a2=16 -F success=1 -k network
+-a always,exit -F arch=b64 -S accept -F success=1 -k network
+
+# Ausfuehrbare Dateien
+-a always,exit -F arch=b64 -S execve -k exec
+
+# Konfiguration sperren (am Ende!)
+-e 2`
+                }
+            }
+        },
+        esp32: {
+            label: 'ESP32/IoT',
+            variants: {
+                'tasmota-syslog': {
+                    label: 'Tasmota Syslog',
+                    filename: 'tasmota-syslog-commands.txt',
+                    config: `; Tasmota Syslog-Konfiguration (in Konsole eingeben)
+; Sendet alle Tasmota-Logs per Syslog an Cribl
+
+SyslogHost ${host}
+SyslogPort ${port}
+SyslogLevel 2
+LogHost ${host}
+LogPort ${port}
+
+; Telemetrie-Intervall (Sekunden)
+TelePeriod 60
+
+; Hostname setzen (anpassen!)
+Hostname tasmota-%06X
+
+; Pruefen:
+; Status 0  -> zeigt aktuelle Einstellungen
+; SyslogHost -> zeigt konfigurierten Host`
+                },
+                'tasmota-mqtt': {
+                    label: 'Tasmota MQTT',
+                    filename: 'tasmota-mqtt-commands.txt',
+                    config: `; Tasmota MQTT-Konfiguration (in Konsole eingeben)
+; MQTT Broker = Cribl MQTT Source
+
+MqttHost ${host}
+MqttPort 1883
+MqttUser mqtt
+MqttPassword mqtt_password
+MqttClient tasmota_%06X
+Topic tasmota/%topic%/
+
+; Full Topic Pattern
+FullTopic %prefix%/%topic%/
+
+; Telemetrie-Intervall
+TelePeriod 60
+
+; JSON-Format fuer strukturierte Daten
+SetOption4 0
+
+; Pruefen:
+; MqttHost  -> zeigt Broker
+; Status 6  -> zeigt MQTT-Status`
+                },
+                'esphome-yaml': {
+                    label: 'ESPHome',
+                    filename: 'esphome-syslog.yaml',
+                    config: `# ESPHome Syslog-Konfiguration
+# In esphome YAML einfuegen
+
+external_components:
+  - source: github://TheStaticTurtle/esphome_syslog
+
+syslog:
+  ip_address: "${host}"
+  port: ${port}
+  strip_colors: true
+  # Log-Level: ERROR, WARN, INFO, DEBUG, VERBOSE
+  min_log_level: INFO
+
+logger:
+  level: INFO
+  logs:
+    sensor: WARN
+    wifi: WARN
+
+# Optionaler MQTT-Output (alternativ zu Syslog)
+# mqtt:
+#   broker: ${host}
+#   port: 1883
+#   username: mqtt
+#   password: mqtt_password`
+                }
+            }
+        },
+        syslog: {
+            label: 'Syslog',
+            variants: {
+                'rsyslog-tcp': {
+                    label: 'rsyslog TCP',
+                    filename: '60-cribl-tcp.conf',
+                    config: `# /etc/rsyslog.d/60-cribl-tcp.conf
+# TCP Syslog Weiterleitung an Cribl Stream (zuverlaessig)
+
+*.* @@${host}:${port};RSYSLOG_SyslogProtocol23Format
+
+# Mit Disk-Queue fuer Ausfallsicherheit
+action(type="omfwd"
+  target="${host}"
+  port="${port}"
+  protocol="tcp"
+  queue.type="LinkedList"
+  queue.filename="cribl_tcp"
+  queue.maxDiskSpace="256m"
+  queue.saveOnShutdown="on"
+  action.resumeRetryCount="-1"
+)
+
+# Neustart: systemctl restart rsyslog`
+                },
+                'rsyslog-udp': {
+                    label: 'rsyslog UDP',
+                    filename: '60-cribl-udp.conf',
+                    config: `# /etc/rsyslog.d/60-cribl-udp.conf
+# UDP Syslog Weiterleitung an Cribl Stream (schnell, kein Handshake)
+
+*.* @${host}:${port};RSYSLOG_SyslogProtocol23Format
+
+# Neustart: systemctl restart rsyslog`
+                },
+                'syslog-ng': {
+                    label: 'syslog-ng',
+                    filename: 'cribl-fwd.conf',
+                    config: `# /etc/syslog-ng/conf.d/cribl-fwd.conf
+
+destination d_cribl {
+    tcp("${host}" port(${port})
+        disk-buffer(
+            mem-buf-size(10M)
+            disk-buf-size(256M)
+            reliable(yes)
+            dir("/var/lib/syslog-ng/buffer")
+        )
+    );
+};
+
+log { source(s_src); destination(d_cribl); };`
+                }
+            }
+        },
+        netflow: {
+            label: 'NetFlow',
+            variants: {
+                'cisco-ios-v9': {
+                    label: 'Cisco IOS v9',
+                    filename: 'cisco-netflow-v9.txt',
+                    config: `! Cisco IOS NetFlow v9 Konfiguration
+! An Cribl Stream NetFlow Source senden
+
+ip flow-export version 9
+ip flow-export destination ${host} ${port}
+ip flow-export source Loopback0
+ip flow-cache timeout active 1
+ip flow-cache timeout inactive 15
+
+! Auf dem gewuenschten Interface aktivieren:
+interface GigabitEthernet0/1
+ ip flow ingress
+ ip flow egress
+
+! Flexible NetFlow (empfohlen fuer neuere IOS):
+flow record CRIBL-RECORD
+ match ipv4 source address
+ match ipv4 destination address
+ match transport source-port
+ match transport destination-port
+ match interface input
+ match ipv4 protocol
+ collect counter bytes long
+ collect counter packets long
+ collect timestamp sys-uptime first
+ collect timestamp sys-uptime last
+
+flow exporter CRIBL-EXPORT
+ destination ${host}
+ transport udp ${port}
+ export-protocol netflow-v9
+ template data timeout 60
+
+flow monitor CRIBL-MONITOR
+ record CRIBL-RECORD
+ exporter CRIBL-EXPORT
+ cache timeout active 60
+ cache timeout inactive 15`
+                },
+                'sflow': {
+                    label: 'sFlow',
+                    filename: 'sflow-config.txt',
+                    config: `! sFlow Konfiguration (Switch/Router)
+! Collector: Cribl Stream sFlow Source
+
+! Generisch (Herstellerabhaengig):
+sflow collector ${host} port ${port}
+sflow sampling-rate 1024
+sflow polling-interval 20
+
+! Auf Interface aktivieren:
+! interface ethernet 1/1
+!   sflow enable`
+                },
+                'mikrotik': {
+                    label: 'MikroTik',
+                    filename: 'mikrotik-netflow.rsc',
+                    config: `/ip traffic-flow
+set enabled=yes interfaces=all cache-entries=16k active-flow-timeout=1m inactive-flow-timeout=15s
+
+/ip traffic-flow target
+add dst-address=${host} port=${port} version=9`
+                },
+                'generic': {
+                    label: 'Generisch',
+                    filename: 'netflow-config.txt',
+                    config: `# NetFlow / IPFIX Konfiguration
+# Collector: Cribl Stream
+
+Ziel-IP:   ${host}
+Ziel-Port: ${port}
+Protokoll: UDP
+Version:   NetFlow v9 oder IPFIX (v10)
+
+# Cribl Stream Source konfigurieren:
+# Type: NetFlow
+# Listen Port: ${port}
+# Protocol: UDP
+
+# Empfohlene Flow-Felder:
+# - Source/Destination IP
+# - Source/Destination Port
+# - Protocol
+# - Bytes/Packets
+# - Interface In/Out
+# - Timestamps`
+                }
+            }
+        },
+        docker: {
+            label: 'Docker',
+            variants: {
+                'syslog-driver': {
+                    label: 'Syslog Driver',
+                    filename: 'docker-run-syslog.sh',
+                    config: `#!/bin/bash
+# Docker Container mit Syslog-Driver starten
+# Logs gehen direkt an Cribl Stream Syslog Source
+
+docker run -d \\
+  --name my-container \\
+  --log-driver=syslog \\
+  --log-opt syslog-address=tcp://${host}:${port} \\
+  --log-opt syslog-format=rfc5424 \\
+  --log-opt tag="{{.Name}}/{{.ID}}" \\
+  my-image:latest`
+                },
+                'docker-compose': {
+                    label: 'docker-compose',
+                    filename: 'docker-compose-logging.yml',
+                    config: `# docker-compose.yml - Logging an Cribl Stream
+version: '3.8'
+
+x-logging: &cribl-logging
+  driver: syslog
+  options:
+    syslog-address: "tcp://${host}:${port}"
+    syslog-format: rfc5424
+    tag: "{{.Name}}"
+
+services:
+  my-app:
+    image: my-image:latest
+    logging: *cribl-logging
+
+  my-db:
+    image: postgres:16
+    logging: *cribl-logging`
+                },
+                'daemon-json': {
+                    label: 'daemon.json',
+                    filename: 'daemon.json',
+                    config: `{
+  "log-driver": "syslog",
+  "log-opts": {
+    "syslog-address": "tcp://${host}:${port}",
+    "syslog-format": "rfc5424",
+    "tag": "{{.Name}}/{{.ID}}"
+  }
+}
+
+// Datei speichern unter: /etc/docker/daemon.json
+// Danach: systemctl restart docker
+// ACHTUNG: Gilt dann fuer ALLE neuen Container!`
+                }
+            }
+        }
+    };
+}
+
+function selectClientType(type) {
+    _selectedClientType = type;
+    // Update card selection
+    document.querySelectorAll('#clientTypeGrid .client-card').forEach(c => {
+        c.classList.toggle('selected', c.dataset.type === type);
+    });
+    // Show variant area
+    document.getElementById('clientVariantArea').classList.remove('hidden');
+    // Populate variants
+    const host = getClientTargetHost();
+    const port = getClientTargetPort();
+    const configs = buildClientConfigs(host, port);
+    const typeConfig = configs[type];
+    if (!typeConfig) return;
+
+    const sel = document.getElementById('clientVariantSelect');
+    sel.innerHTML = '';
+    Object.entries(typeConfig.variants).forEach(([key, v]) => {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = v.label;
+        sel.appendChild(opt);
+    });
+    generateClientConfig();
+}
+
+function generateClientConfig() {
+    if (!_selectedClientType) return;
+    const host = getClientTargetHost();
+    const port = getClientTargetPort();
+    const configs = buildClientConfigs(host, port);
+    const variant = document.getElementById('clientVariantSelect').value;
+    const typeConfig = configs[_selectedClientType];
+    if (!typeConfig || !typeConfig.variants[variant]) return;
+
+    const cfg = typeConfig.variants[variant];
+    document.getElementById('clientConfigCode').textContent = cfg.config;
+    document.getElementById('clientConfigOutput').style.display = 'block';
+    document.getElementById('clientConfigStatus').textContent = '';
+}
+
+function copyClientConfig() {
+    const code = document.getElementById('clientConfigCode').textContent;
+    copyToClipboard(code);
+    const status = document.getElementById('clientConfigStatus');
+    status.textContent = 'In Zwischenablage kopiert!';
+    setTimeout(() => status.textContent = '', 2000);
+}
+
+function downloadClientConfig() {
+    if (!_selectedClientType) return;
+    const host = getClientTargetHost();
+    const port = getClientTargetPort();
+    const configs = buildClientConfigs(host, port);
+    const variant = document.getElementById('clientVariantSelect').value;
+    const cfg = configs[_selectedClientType]?.variants[variant];
+    if (!cfg) return;
+
+    const blob = new Blob([cfg.config], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = cfg.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const status = document.getElementById('clientConfigStatus');
+    status.textContent = `${cfg.filename} heruntergeladen`;
+    setTimeout(() => status.textContent = '', 2000);
 }
 
 // ============================================================
@@ -4977,10 +6079,27 @@ document.getElementById('siemActivationModal').addEventListener('click', functio
     if (e.target === this) closeSiemModal();
 });
 
+document.getElementById('splunkDeployModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSplunkDeployModal();
+});
+document.getElementById('kibanaDeployModal').addEventListener('click', function(e) {
+    if (e.target === this) closeKibanaDeployModal();
+});
+
 // Keyboard: Escape closes modal
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeModal(); closeSiemModal(); }
+    if (e.key === 'Escape') { closeModal(); closeSiemModal(); closeSplunkDeployModal(); closeKibanaDeployModal(); }
 });
+
+// Initialize client config target host from settings
+(function initClientHost() {
+    const h = document.getElementById('clientTargetHost');
+    if (h && !h.value) {
+        const criblUrl = getConfig('CRIBL_URL') || '';
+        const match = criblUrl.match(/\/\/([^:/]+)/);
+        if (match) h.value = match[1];
+    }
+})();
 </script>
 
 </body>
