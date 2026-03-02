@@ -5029,6 +5029,14 @@ async function createOrUpdateSplunkDashboard(candidate) {
             throw new Error(`Splunk Dashboard Create fehlgeschlagen (HTTP ${createResp.status}): ${text.substring(0, 200)}`);
         }
     }
+
+    // Set sharing to app-level so dashboard is accessible via /app/search/<name>
+    try {
+        await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}/acl`, {
+            method: 'POST', headers,
+            body: 'sharing=app&owner=admin&perms.read=*&perms.write=admin'
+        });
+    } catch (e) { console.warn('Dashboard ACL konnte nicht gesetzt werden:', e.message); }
 }
 
 // Helper: Create or update a Splunk conf stanza (handles 409 "already exists")
