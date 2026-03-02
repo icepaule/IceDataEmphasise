@@ -5560,16 +5560,28 @@ function buildClientConfigs(host, port) {
                 'cribl-edge-ps': {
                     label: 'Cribl Edge PowerShell',
                     filename: 'install-cribl-edge.ps1',
-                    config: `# Cribl Edge Installation (PowerShell, als Admin ausfuehren)
+                    config: `# Cribl Edge Installation (PowerShell 5.1+, als Admin ausfuehren)
 $CriblLeader = "${host}"
 $CriblPort = "4200"
 $InstallerPath = Join-Path $env:TEMP "install-edge.ps1"
 
-# Edge herunterladen und installieren
+# Self-Signed Zertifikate erlauben (PS 5.1 kompatibel)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+try { Add-Type @"
+using System.Net; using System.Security.Cryptography.X509Certificates;
+public class TrustAll : ICertificatePolicy {
+    public bool CheckValidationResult(ServicePoint sp, X509Certificate cert, WebRequest req, int problem) { return true; }
+}
+"@; [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAll } catch {}
+
+# Edge herunterladen und installieren
 $EdgeUrl = "https://\${CriblLeader}:\${CriblPort}/init/install-edge.ps1"
-Invoke-WebRequest -Uri $EdgeUrl -OutFile $InstallerPath -SkipCertificateCheck
-& $InstallerPath -host $CriblLeader -port $CriblPort -group windows_default
+Invoke-WebRequest -Uri $EdgeUrl -OutFile $InstallerPath
+if (Test-Path $InstallerPath) {
+    & $InstallerPath -host $CriblLeader -port $CriblPort -group windows_default
+} else {
+    Write-Warning "Download fehlgeschlagen. Pruefen: ist Cribl unter \${EdgeUrl} erreichbar?"
+}
 
 # Event-Log Groessen anpassen (optional)
 wevtutil sl Security /ms:1073741824
