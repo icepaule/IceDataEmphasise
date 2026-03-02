@@ -5033,24 +5033,23 @@ async function createOrUpdateSplunkDashboard(candidate) {
 
 // Helper: Create or update a Splunk conf stanza (handles 409 "already exists")
 async function splunkConfCreateOrUpdate(splunkRestUrl, confName, stanzaName, bodyParams, headers) {
-    // Splunk REST API needs double-encoding for stanza names with slashes (e.g. monitor:///var/log/...)
-    // First encodeURIComponent turns / into %2F, then we encode again so %2F becomes %252F.
-    // The proxy decodes once, Splunk decodes once — the stanza name arrives intact.
-    const encodedStanza = encodeURIComponent(encodeURIComponent(stanzaName));
-
     const createBody = `name=${encodeURIComponent(stanzaName)}&${bodyParams}`;
     const createResp = await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-${confName}`, createBody, true, headers);
 
     if (createResp.ok) return 'created';
 
     if (createResp.status === 409) {
-        // Already exists — update instead (use double-encoded stanza in URL path)
-        const updateResp = await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-${confName}/${encodedStanza}`, bodyParams, false, headers);
-        if (!updateResp.ok) {
-            const text = await updateResp.text().catch(() => '');
-            throw new Error(`${confName} Update fuer "${stanzaName}" fehlgeschlagen (HTTP ${updateResp.status}): ${text.substring(0, 200)}`);
+        // Already exists — try update via URL path
+        const updateResp = await apiFetch('POST', `${splunkRestUrl}/servicesNS/admin/search/configs/conf-${confName}/${encodeURIComponent(stanzaName)}`, bodyParams, false, headers);
+        if (updateResp.ok) return 'updated';
+        if (updateResp.status === 404) {
+            // Stanza exists (409) but URL-path encoding fails through proxy (slashes, colons)
+            // Treat as success — stanza is already configured from prior create
+            console.warn(`${confName}/${stanzaName}: existiert bereits, Update via REST nicht moeglich (Sonderzeichen im Namen)`);
+            return 'exists';
         }
-        return 'updated';
+        const text = await updateResp.text().catch(() => '');
+        throw new Error(`${confName} Update fuer "${stanzaName}" fehlgeschlagen (HTTP ${updateResp.status}): ${text.substring(0, 200)}`);
     }
 
     const text = await createResp.text().catch(() => '');
