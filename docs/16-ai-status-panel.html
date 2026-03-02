@@ -5659,8 +5659,8 @@ outputs:
 
 # 6) Service starten
 Write-Host "[6/6] Starte Cribl Service..." -ForegroundColor Cyan
-& "\$CriblHome\\bin\\cribl.exe" boot-start enable 2>\\$null
-net stop cribl 2>\\$null
+& "\$CriblHome\\bin\\cribl.exe" boot-start enable 2>&1 | Out-Null
+net stop cribl 2>&1 | Out-Null
 net start cribl
 Start-Sleep -Seconds 3
 
