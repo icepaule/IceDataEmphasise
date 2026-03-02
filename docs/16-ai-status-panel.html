@@ -5560,12 +5560,16 @@ function buildClientConfigs(host, port) {
                 'cribl-edge-ps': {
                     label: 'Cribl Edge PowerShell',
                     filename: 'install-cribl-edge.ps1',
-                    config: `# Cribl Edge Installation (PowerShell 5.1+, als Admin ausfuehren)
-$CriblLeader = "${host}"
-$CriblPort = "4200"
-$InstallerPath = Join-Path $env:TEMP "install-edge.ps1"
+                    config: `# Cribl Edge Standalone Installation (PowerShell 5.1+, als Admin ausfuehren)
+# Laedt MSI direkt von cdn.cribl.io, kein Leader/Port 4200 noetig
+$CriblStreamHost = "${host}"
+$CriblSyslogPort = "${port}"
+$CriblVersion = "4.16.1"
+$MsiUrl = "https://cdn.cribl.io/dl/\${CriblVersion}/cribl-\${CriblVersion}-windows-x64.msi"
+$MsiPath = Join-Path $env:TEMP "cribl-edge.msi"
+$CriblHome = "C:\\Program Files\\Cribl\\Edge"
 
-# Self-Signed Zertifikate erlauben (PS 5.1 kompatibel)
+#region TLS + Self-Signed Certs (PS 5.1 kompatibel)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 try { Add-Type @"
 using System.Net; using System.Security.Cryptography.X509Certificates;
@@ -5573,22 +5577,102 @@ public class TrustAll : ICertificatePolicy {
     public bool CheckValidationResult(ServicePoint sp, X509Certificate cert, WebRequest req, int problem) { return true; }
 }
 "@; [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAll } catch {}
+#endregion
 
-# Edge herunterladen und installieren
-$EdgeUrl = "https://\${CriblLeader}:\${CriblPort}/init/install-edge.ps1"
-Invoke-WebRequest -Uri $EdgeUrl -OutFile $InstallerPath
-if (Test-Path $InstallerPath) {
-    & $InstallerPath -host $CriblLeader -port $CriblPort -group windows_default
-} else {
-    Write-Warning "Download fehlgeschlagen. Pruefen: ist Cribl unter \${EdgeUrl} erreichbar?"
+# 1) MSI von CDN herunterladen
+Write-Host "[1/6] Lade Cribl Edge \${CriblVersion} von cdn.cribl.io..." -ForegroundColor Cyan
+\$wc = New-Object Net.WebClient
+try {
+    \$wc.DownloadFile(\$MsiUrl, \$MsiPath)
+} catch {
+    Write-Error "Download fehlgeschlagen: \$_"
+    Write-Error "URL: \$MsiUrl"
+    exit 1
 }
+if (-not (Test-Path \$MsiPath)) { Write-Error "MSI nicht gefunden: \$MsiPath"; exit 1 }
+Write-Host "   MSI heruntergeladen: \$MsiPath (\$([math]::Round((Get-Item \$MsiPath).Length/1MB,1)) MB)"
+
+# 2) Stumm installieren
+Write-Host "[2/6] Installiere Cribl Edge (msiexec, bitte warten)..." -ForegroundColor Cyan
+\$msiArgs = "/i `"\$MsiPath`" /quiet /norestart INSTALLDIR=`"\$CriblHome`""
+Start-Process msiexec.exe -ArgumentList \$msiArgs -Wait -NoNewWindow
+if (-not (Test-Path "\$CriblHome\\bin\\cribl.exe")) {
+    Write-Error "Installation fehlgeschlagen - cribl.exe nicht gefunden"
+    exit 1
+}
+Write-Host "   Installiert nach: \$CriblHome"
+
+# 3) Standalone-Modus konfigurieren (kein Leader noetig)
+Write-Host "[3/6] Konfiguriere Standalone-Modus..." -ForegroundColor Cyan
+\$localDir = "\$CriblHome\\local\\cribl"
+New-Item -ItemType Directory -Path \$localDir -Force | Out-Null
+@"
+distributed:
+  mode: standalone
+api:
+  host: 0.0.0.0
+  port: 9420
+  disabled: false
+"@ | Set-Content -Path "\$localDir\\cribl.yml" -Encoding UTF8
+
+# 4) Windows Event Log Input konfigurieren
+Write-Host "[4/6] Konfiguriere Windows Event Log Quellen..." -ForegroundColor Cyan
+@"
+inputs:
+  win_event_logs:
+    type: windows_event_logs
+    disabled: false
+    channels:
+      - name: Security
+      - name: System
+      - name: Application
+      - name: Microsoft-Windows-Sysmon/Operational
+      - name: Microsoft-Windows-PowerShell/Operational
+    renderMessages: true
+    pipeline: devnull
+    sendToRoutes: true
+"@ | Set-Content -Path "\$localDir\\inputs.yml" -Encoding UTF8
+
+# 5) Syslog Output zu Cribl Stream konfigurieren
+Write-Host "[5/6] Konfiguriere Syslog Output -> \${CriblStreamHost}:\${CriblSyslogPort}..." -ForegroundColor Cyan
+@"
+outputs:
+  syslog_to_stream:
+    type: syslog
+    host: \$CriblStreamHost
+    port: \$CriblSyslogPort
+    protocol: tcp
+    facility: 1
+    severity: 6
+    appName: cribl-edge
+    messageFormat: rfc5424
+    throttleRatePerSec: 0
+"@ | Set-Content -Path "\$localDir\\outputs.yml" -Encoding UTF8
+
+# 6) Service starten
+Write-Host "[6/6] Starte Cribl Edge Service..." -ForegroundColor Cyan
+& "\$CriblHome\\bin\\cribl.exe" boot-start enable
+Start-Service CriblEdge -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 3
 
 # Event-Log Groessen anpassen (optional)
 wevtutil sl Security /ms:1073741824
 wevtutil sl System /ms:536870912
 wevtutil sl Application /ms:536870912
 
-Write-Host "Cribl Edge installiert. Quellen werden automatisch konfiguriert."`
+# Ergebnis pruefen
+\$svc = Get-Service CriblEdge -ErrorAction SilentlyContinue
+if (\$svc -and \$svc.Status -eq 'Running') {
+    Write-Host ""
+    Write-Host "Cribl Edge Standalone erfolgreich installiert!" -ForegroundColor Green
+    Write-Host "  - Modus:  Standalone (kein Leader noetig)"
+    Write-Host "  - WebUI:  http://localhost:9420"
+    Write-Host "  - Output: Syslog TCP -> \${CriblStreamHost}:\${CriblSyslogPort}"
+    Write-Host "  - Logs:   Security, System, Application, Sysmon, PowerShell"
+} else {
+    Write-Warning "Service CriblEdge nicht gestartet. Pruefen mit: Get-Service CriblEdge"
+    Write-Warning "Manuell starten: & '\$CriblHome\\bin\\cribl.exe' start"
+}`
                 },
                 'sysmon-xml': {
                     label: 'Sysmon XML Config',
@@ -5683,21 +5767,96 @@ logging.files:
                     label: 'Cribl Edge Bash',
                     filename: 'install-cribl-edge.sh',
                     config: `#!/bin/bash
-# Cribl Edge Installation (als root ausfuehren)
-CRIBL_LEADER="${host}"
-CRIBL_PORT="4200"
-GROUP="linux_default"
+# Cribl Edge Standalone Installation (als root ausfuehren)
+# Laedt Tarball direkt von cdn.cribl.io, kein Leader/Port 4200 noetig
+set -euo pipefail
 
-curl -sL "https://\${CRIBL_LEADER}:\${CRIBL_PORT}/init/install-edge.sh" | bash -s -- \\
-  --host "\${CRIBL_LEADER}" \\
-  --port "\${CRIBL_PORT}" \\
-  --group "\${GROUP}"
+CRIBL_STREAM_HOST="${host}"
+CRIBL_SYSLOG_PORT="${port}"
+CRIBL_VERSION="4.16.1"
+CRIBL_HOME="/opt/cribl-edge"
+TARBALL_URL="https://cdn.cribl.io/dl/\${CRIBL_VERSION}/cribl-\${CRIBL_VERSION}-linux-x64.tgz"
+TARBALL_PATH="/tmp/cribl-edge.tgz"
 
-# Systemd Service aktivieren
-systemctl enable cribl-edge
-systemctl start cribl-edge
+echo "[1/6] Lade Cribl Edge \${CRIBL_VERSION} von cdn.cribl.io..."
+curl -sL -o "\$TARBALL_PATH" "\$TARBALL_URL"
+if [ ! -f "\$TARBALL_PATH" ] || [ ! -s "\$TARBALL_PATH" ]; then
+    echo "FEHLER: Download fehlgeschlagen: \$TARBALL_URL" >&2
+    exit 1
+fi
+echo "   Heruntergeladen: \$(du -h "\$TARBALL_PATH" | cut -f1)"
 
-echo "Cribl Edge installiert und gestartet."`
+echo "[2/6] Entpacke nach \$CRIBL_HOME..."
+mkdir -p "\$CRIBL_HOME"
+tar -xzf "\$TARBALL_PATH" -C "\$CRIBL_HOME" --strip-components=1
+rm -f "\$TARBALL_PATH"
+if [ ! -x "\$CRIBL_HOME/bin/cribl" ]; then
+    echo "FEHLER: cribl Binary nicht gefunden nach Entpacken" >&2
+    exit 1
+fi
+
+echo "[3/6] Konfiguriere Standalone-Modus..."
+LOCAL_DIR="\$CRIBL_HOME/local/cribl"
+mkdir -p "\$LOCAL_DIR"
+cat > "\$LOCAL_DIR/cribl.yml" << 'YAMLEOF'
+distributed:
+  mode: standalone
+api:
+  host: 0.0.0.0
+  port: 9420
+  disabled: false
+YAMLEOF
+
+echo "[4/6] Konfiguriere Syslog Input (UDP+TCP 514, 1514)..."
+cat > "\$LOCAL_DIR/inputs.yml" << 'YAMLEOF'
+inputs:
+  syslog_udp:
+    type: syslog
+    disabled: false
+    host: 0.0.0.0
+    port: 1514
+    protocol: udp
+    sendToRoutes: true
+  syslog_tcp:
+    type: syslog
+    disabled: false
+    host: 0.0.0.0
+    port: 1514
+    protocol: tcp
+    sendToRoutes: true
+YAMLEOF
+
+echo "[5/6] Konfiguriere Syslog Output -> \${CRIBL_STREAM_HOST}:\${CRIBL_SYSLOG_PORT}..."
+cat > "\$LOCAL_DIR/outputs.yml" << YAMLEOF
+outputs:
+  syslog_to_stream:
+    type: syslog
+    host: \$CRIBL_STREAM_HOST
+    port: \$CRIBL_SYSLOG_PORT
+    protocol: tcp
+    facility: 1
+    severity: 6
+    appName: cribl-edge
+    messageFormat: rfc5424
+    throttleRatePerSec: 0
+YAMLEOF
+
+echo "[6/6] Installiere und starte Cribl Edge Service..."
+"\$CRIBL_HOME/bin/cribl" boot-start enable
+"\$CRIBL_HOME/bin/cribl" start
+
+sleep 3
+if "\$CRIBL_HOME/bin/cribl" status | grep -q "running"; then
+    echo ""
+    echo "Cribl Edge Standalone erfolgreich installiert!"
+    echo "  - Modus:  Standalone (kein Leader noetig)"
+    echo "  - WebUI:  http://localhost:9420"
+    echo "  - Input:  Syslog TCP+UDP auf Port 1514"
+    echo "  - Output: Syslog TCP -> \${CRIBL_STREAM_HOST}:\${CRIBL_SYSLOG_PORT}"
+else
+    echo "WARNUNG: Cribl Edge nicht gestartet." >&2
+    echo "Manuell starten: \$CRIBL_HOME/bin/cribl start" >&2
+fi`
                 },
                 'rsyslog-conf': {
                     label: 'rsyslog',
