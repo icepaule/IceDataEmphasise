@@ -5081,6 +5081,34 @@ function parseConfStanzas(text) {
     return stanzas;
 }
 
+// Resolve common placeholders in AI-generated stanza names/values
+function resolveStanzaPlaceholders(text) {
+    const splunkHost = getConfig('SPLUNK_URL').replace(/^https?:\/\//, '').replace(/:\d+.*$/, '') || '10.10.0.66';
+    const splunkHecPort = '8088';
+    const criblHost = getConfig('CRIBL_URL').replace(/^https?:\/\//, '').replace(/[:/].*$/, '') || '10.10.0.100';
+    return text
+        .replace(/<SPLUNK_HOST>/gi, splunkHost)
+        .replace(/<SPLUNK_HEC_PORT>/gi, splunkHecPort)
+        .replace(/<CRIBL_HOST>/gi, criblHost)
+        .replace(/<HOST>/gi, splunkHost)
+        .replace(/<PORT>/gi, splunkHecPort);
+}
+
+// Check if a stanza name still has unresolved placeholders
+function hasUnresolvedPlaceholders(name) {
+    return /<[A-Z_]+>/i.test(name);
+}
+
+// Clean HEC input stanza name: "http://<HOST>:8088/services/collector" → "http:ide_hec_input"
+function cleanInputStanzaName(name) {
+    // HEC stanzas: Splunk expects "http:<token_name>", not a full URL
+    if (name.match(/^https?:\/\//)) {
+        // Extract a reasonable token name from the URL or generate one
+        return 'http:ide_hec_input';
+    }
+    return name;
+}
+
 function setSplkStep(n, state, detail) {
     const el = document.getElementById('splk-step-' + n);
     if (!el) return;
@@ -5116,49 +5144,55 @@ async function fullDeployToSplunk() {
     let totalCreated = 0, totalUpdated = 0, totalSkipped = 0;
 
     try {
+        // Helper: deploy an array of stanzas to a Splunk conf endpoint
+        async function deployStanzas(confName, stanzas, stepNum, stepLabel, nameTransform) {
+            setSplkStep(stepNum, 'running');
+            let deployed = 0, skipped = 0;
+            for (const s of stanzas) {
+                let name = (s.stanza || s.name || '').replace(/^\[|\]$/g, '');
+                name = resolveStanzaPlaceholders(name);
+                if (nameTransform) name = nameTransform(name);
+                if (hasUnresolvedPlaceholders(name) || !name) {
+                    console.warn(`${confName}: Stanza "${name}" uebersprungen (unresolved placeholder)`);
+                    skipped++;
+                    totalSkipped++;
+                    continue;
+                }
+                const settings = s.params || s.settings || {};
+                const resolvedParams = Object.entries(settings)
+                    .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(resolveStanzaPlaceholders(String(v)))}`)
+                    .join('&');
+                const r = await splunkConfCreateOrUpdate(splunkRestUrl, confName, name, resolvedParams, headers);
+                if (r === 'created') totalCreated++; else totalUpdated++;
+                deployed++;
+            }
+            const parts = [];
+            if (deployed > 0) parts.push(`${deployed} deployed`);
+            if (skipped > 0) parts.push(`${skipped} uebersprungen`);
+            setSplkStep(stepNum, 'done', stanzas.length === 0 ? '0 Eintraege (uebersprungen)' : `${stepLabel}: ${parts.join(', ')}`);
+        }
+
         // Step 1: Indexes
         setSplkStep(1, 'running');
         const indexes = cfg.indexes || [];
         for (const idx of indexes) {
-            const name = (typeof idx === 'string') ? idx : (idx.name || idx);
-            const params = (typeof idx === 'object' && idx.params) ? Object.entries(idx.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
+            let name = (typeof idx === 'string') ? idx : (idx.name || idx);
+            name = resolveStanzaPlaceholders(String(name));
+            if (hasUnresolvedPlaceholders(name) || !name) { totalSkipped++; continue; }
+            const params = (typeof idx === 'object' && idx.params) ? Object.entries(idx.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(resolveStanzaPlaceholders(String(v)))}`).join('&') : '';
             const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'indexes', name, params, headers);
             if (r === 'created') totalCreated++; else totalUpdated++;
         }
         setSplkStep(1, 'done', indexes.length === 0 ? '0 Eintraege (uebersprungen)' : `${indexes.length} Index(es) deployed`);
 
-        // Step 2: Inputs (HEC)
-        setSplkStep(2, 'running');
-        const inputs = cfg.inputs_conf?.stanzas || [];
-        for (const s of inputs) {
-            const name = (s.stanza || s.name || '').replace(/^\[|\]$/g, '');
-            const params = Object.entries(s.params || s.settings || {}).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-            const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'inputs', name, params, headers);
-            if (r === 'created') totalCreated++; else totalUpdated++;
-        }
-        setSplkStep(2, 'done', inputs.length === 0 ? '0 Eintraege (uebersprungen)' : `${inputs.length} Input(s) deployed`);
+        // Step 2: Inputs (HEC) — clean URL-style stanza names to "http:<token>"
+        await deployStanzas('inputs', cfg.inputs_conf?.stanzas || [], 2, 'Input(s)', cleanInputStanzaName);
 
         // Step 3: Props
-        setSplkStep(3, 'running');
-        const props = cfg.props_conf?.stanzas || [];
-        for (const s of props) {
-            const name = (s.stanza || s.name || '').replace(/^\[|\]$/g, '');
-            const params = Object.entries(s.params || s.settings || {}).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-            const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'props', name, params, headers);
-            if (r === 'created') totalCreated++; else totalUpdated++;
-        }
-        setSplkStep(3, 'done', props.length === 0 ? '0 Eintraege (uebersprungen)' : `${props.length} Props-Stanza(s) deployed`);
+        await deployStanzas('props', cfg.props_conf?.stanzas || [], 3, 'Props-Stanza(s)', null);
 
         // Step 4: Transforms
-        setSplkStep(4, 'running');
-        const transforms = cfg.transforms_conf?.stanzas || [];
-        for (const s of transforms) {
-            const name = (s.stanza || s.name || '').replace(/^\[|\]$/g, '');
-            const params = Object.entries(s.params || s.settings || {}).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-            const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'transforms', name, params, headers);
-            if (r === 'created') totalCreated++; else totalUpdated++;
-        }
-        setSplkStep(4, 'done', transforms.length === 0 ? '0 Eintraege (uebersprungen)' : `${transforms.length} Transform(s) deployed`);
+        await deployStanzas('transforms', cfg.transforms_conf?.stanzas || [], 4, 'Transform(s)', null);
 
         // Step 5: Eventtypes (from datamodels)
         setSplkStep(5, 'running');
@@ -5166,8 +5200,10 @@ async function fullDeployToSplunk() {
         for (const dm of (cfg.datamodels || [])) {
             const etStanzas = dm.eventtypes_conf ? parseConfStanzas(dm.eventtypes_conf) : [];
             for (const s of etStanzas) {
-                const params = Object.entries(s.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-                const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'eventtypes', s.name, params, headers);
+                const name = resolveStanzaPlaceholders(s.name);
+                if (hasUnresolvedPlaceholders(name)) { totalSkipped++; continue; }
+                const params = Object.entries(s.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(resolveStanzaPlaceholders(String(v)))}`).join('&');
+                const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'eventtypes', name, params, headers);
                 if (r === 'created') totalCreated++; else totalUpdated++;
                 etCount++;
             }
@@ -5180,8 +5216,10 @@ async function fullDeployToSplunk() {
         for (const dm of (cfg.datamodels || [])) {
             const tagStanzas = dm.tags_conf ? parseConfStanzas(dm.tags_conf) : [];
             for (const s of tagStanzas) {
-                const params = Object.entries(s.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-                const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'tags', s.name, params, headers);
+                const name = resolveStanzaPlaceholders(s.name);
+                if (hasUnresolvedPlaceholders(name)) { totalSkipped++; continue; }
+                const params = Object.entries(s.params).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(resolveStanzaPlaceholders(String(v)))}`).join('&');
+                const r = await splunkConfCreateOrUpdate(splunkRestUrl, 'tags', name, params, headers);
                 if (r === 'created') totalCreated++; else totalUpdated++;
                 tagCount++;
             }
@@ -5205,7 +5243,8 @@ async function fullDeployToSplunk() {
         summary.style.display = 'block';
         summary.style.background = '#f0fff4';
         summary.style.borderLeftColor = '#38a169';
-        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} erstellt, ${totalUpdated} aktualisiert. Alle 7 Schritte erfolgreich.`;
+        const skipInfo = totalSkipped > 0 ? `, ${totalSkipped} uebersprungen (Placeholder)` : '';
+        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} erstellt, ${totalUpdated} aktualisiert${skipInfo}. Alle 7 Schritte erfolgreich.`;
     } catch (e) {
         // Mark current running step as error
         for (let i = 1; i <= 7; i++) {
