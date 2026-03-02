@@ -5563,17 +5563,18 @@ function buildClientConfigs(host, port) {
                     config: `# Cribl Edge Installation (PowerShell, als Admin ausfuehren)
 $CriblLeader = "${host}"
 $CriblPort = "4200"
+$InstallerPath = Join-Path $env:TEMP "install-edge.ps1"
 
 # Edge herunterladen und installieren
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-Invoke-WebRequest -Uri "https://$CriblLeader:$CriblPort/init/install-edge.ps1" -OutFile "$env:TEMP\\install-edge.ps1"
-& "$env:TEMP\\install-edge.ps1" -host $CriblLeader -port $CriblPort -group windows_default
+$EdgeUrl = "https://\${CriblLeader}:\${CriblPort}/init/install-edge.ps1"
+Invoke-WebRequest -Uri $EdgeUrl -OutFile $InstallerPath -SkipCertificateCheck
+& $InstallerPath -host $CriblLeader -port $CriblPort -group windows_default
 
-# Windows Event Forwarding konfigurieren
-wecutil qc /quiet
-wevtutil sl Security /e:true /ms:1073741824
-wevtutil sl System /e:true /ms:536870912
-wevtutil sl Application /e:true /ms:536870912
+# Event-Log Groessen anpassen (optional)
+wevtutil sl Security /ms:1073741824
+wevtutil sl System /ms:536870912
+wevtutil sl Application /ms:536870912
 
 Write-Host "Cribl Edge installiert. Quellen werden automatisch konfiguriert."`
                 },
