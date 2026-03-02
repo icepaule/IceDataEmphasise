@@ -5250,13 +5250,17 @@ async function fullDeployToSplunk() {
             }))
         };
         await createOrUpdateSplunkDashboard(candidate);
+        const splunkWebUrl = getConfig('SPLUNK_URL');
         setSplkStep(7, 'done', 'Dashboard soc_overview_ide erstellt/aktualisiert');
 
         summary.style.display = 'block';
         summary.style.background = '#f0fff4';
         summary.style.borderLeftColor = '#38a169';
         const skipInfo = totalSkipped > 0 ? `, ${totalSkipped} uebersprungen (Placeholder)` : '';
-        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} erstellt, ${totalUpdated} aktualisiert${skipInfo}. Alle 7 Schritte erfolgreich.`;
+        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} erstellt, ${totalUpdated} aktualisiert${skipInfo}. Alle 7 Schritte erfolgreich.
+            <div style="margin-top:10px;">
+                <a href="${escHtml(splunkWebUrl)}/app/search/soc_overview_ide" target="_blank" class="btn btn-sm" style="background:#c53030;color:white;text-decoration:none;">Splunk SOC-Dashboard oeffnen</a>
+            </div>`;
     } catch (e) {
         // Mark current running step as error
         for (let i = 1; i <= 7; i++) {
@@ -5508,12 +5512,16 @@ async function fullDeployToKibana() {
             }))
         };
         await createOrUpdateKibanaDashboard(candidate);
+        const kibanaWebUrl = getConfig('KIBANA_URL');
         setKbnStep(3, 'done', 'Dashboard ide-soc-overview erstellt/aktualisiert');
 
         summary.style.display = 'block';
         summary.style.background = '#f0fff4';
         summary.style.borderLeftColor = '#38a169';
-        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} Objekte deployed. Alle 3 Schritte erfolgreich.`;
+        summary.innerHTML = `<strong>Deploy abgeschlossen!</strong> ${totalCreated} Objekte deployed. Alle 3 Schritte erfolgreich.
+            <div style="margin-top:10px;">
+                <a href="${escHtml(kibanaWebUrl)}/app/dashboards#/view/ide-soc-overview" target="_blank" class="btn btn-sm btn-success" style="text-decoration:none;">Kibana SOC-Dashboard oeffnen</a>
+            </div>`;
     } catch (e) {
         for (let i = 1; i <= 3; i++) {
             const el = document.getElementById('kbn-step-' + i);
