@@ -1015,7 +1015,7 @@ let envLoaded = false;
 
 // Load .env file and pre-fill credentials
 (async function loadEnvFile() {
-    const paths = ['../.env', '.env', '../../.env'];
+    const paths = ['.env', '../.env'];
     for (const p of paths) {
         try {
             const resp = await fetch(p);
