@@ -5594,7 +5594,7 @@ Write-Host "   MSI heruntergeladen: \$MsiPath (\$([math]::Round((Get-Item \$MsiP
 
 # 2) Stumm installieren
 Write-Host "[2/6] Installiere Cribl Edge (msiexec, bitte warten)..." -ForegroundColor Cyan
-\$msiArgs = "/i `"\$MsiPath`" /quiet /norestart INSTALLDIR=`"\$CriblHome`""
+\$msiArgs = @("/i", \$MsiPath, "/quiet", "/norestart", "INSTALLDIR=\$CriblHome")
 Start-Process msiexec.exe -ArgumentList \$msiArgs -Wait -NoNewWindow
 if (-not (Test-Path "\$CriblHome\\bin\\cribl.exe")) {
     Write-Error "Installation fehlgeschlagen - cribl.exe nicht gefunden"
