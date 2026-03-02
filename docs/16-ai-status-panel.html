@@ -5568,7 +5568,8 @@ $CriblVersion = "4.16.0"
 $CriblBuild = "0360835e"
 $MsiUrl = "https://cdn.cribl.io/dl/\${CriblVersion}/cribl-\${CriblVersion}-\${CriblBuild}-win32-x64.msi"
 $MsiPath = Join-Path $env:TEMP "cribl-edge.msi"
-$CriblHome = "C:\\Program Files\\Cribl\\Edge"
+$CriblHome = "C:\\Program Files\\Cribl"
+$CriblData = "C:\\ProgramData\\Cribl"
 
 #region TLS + Self-Signed Certs (PS 5.1 kompatibel)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -5593,12 +5594,16 @@ try {
 if (-not (Test-Path \$MsiPath)) { Write-Error "MSI nicht gefunden: \$MsiPath"; exit 1 }
 Write-Host "   MSI heruntergeladen: \$MsiPath (\$([math]::Round((Get-Item \$MsiPath).Length/1MB,1)) MB)"
 
-# 2) Stumm installieren
+# 2) Stumm installieren (Single-Instance/Standalone)
 Write-Host "[2/6] Installiere Cribl Edge (msiexec, bitte warten)..." -ForegroundColor Cyan
-\$msiArgs = @("/i", \$MsiPath, "/quiet", "/norestart", "INSTALLDIR=\$CriblHome")
+\$msiArgs = @("/qn", "/i", \$MsiPath, "/norestart", "/l*v", "\$env:TEMP\\cribl-install.log")
 Start-Process msiexec.exe -ArgumentList \$msiArgs -Wait -NoNewWindow
 if (-not (Test-Path "\$CriblHome\\bin\\cribl.exe")) {
-    Write-Error "Installation fehlgeschlagen - cribl.exe nicht gefunden"
+    Write-Error "Installation fehlgeschlagen - cribl.exe nicht unter \$CriblHome\\bin\\"
+    Write-Error "Installer-Log: \$env:TEMP\\cribl-install.log"
+    Write-Error "Suche cribl.exe..."
+    Get-ChildItem "C:\\Program Files\\Cribl*" -Recurse -Filter "cribl.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Gefunden: \$(\$_.FullName)" }
+    Get-ChildItem "C:\\ProgramData\\Cribl*" -Recurse -Filter "cribl.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  Gefunden: \$(\$_.FullName)" }
     exit 1
 }
 Write-Host "   Installiert nach: \$CriblHome"
@@ -5606,6 +5611,7 @@ Write-Host "   Installiert nach: \$CriblHome"
 # 3) Standalone-Modus konfigurieren (kein Leader noetig)
 Write-Host "[3/6] Konfiguriere Standalone-Modus..." -ForegroundColor Cyan
 \$localDir = "\$CriblHome\\local\\cribl"
+if (-not (Test-Path \$localDir)) { \$localDir = "\$CriblData\\local\\cribl" }
 New-Item -ItemType Directory -Path \$localDir -Force | Out-Null
 @"
 distributed:
@@ -5615,6 +5621,7 @@ api:
   port: 9420
   disabled: false
 "@ | Set-Content -Path "\$localDir\\cribl.yml" -Encoding UTF8
+Write-Host "   Config: \$localDir\\cribl.yml"
 
 # 4) Windows Event Log Input konfigurieren
 Write-Host "[4/6] Konfiguriere Windows Event Log Quellen..." -ForegroundColor Cyan
@@ -5651,9 +5658,10 @@ outputs:
 "@ | Set-Content -Path "\$localDir\\outputs.yml" -Encoding UTF8
 
 # 6) Service starten
-Write-Host "[6/6] Starte Cribl Edge Service..." -ForegroundColor Cyan
-& "\$CriblHome\\bin\\cribl.exe" boot-start enable
-Start-Service CriblEdge -ErrorAction SilentlyContinue
+Write-Host "[6/6] Starte Cribl Service..." -ForegroundColor Cyan
+& "\$CriblHome\\bin\\cribl.exe" boot-start enable 2>\\$null
+net stop cribl 2>\\$null
+net start cribl
 Start-Sleep -Seconds 3
 
 # Event-Log Groessen anpassen (optional)
@@ -5662,17 +5670,18 @@ wevtutil sl System /ms:536870912
 wevtutil sl Application /ms:536870912
 
 # Ergebnis pruefen
-\$svc = Get-Service CriblEdge -ErrorAction SilentlyContinue
+\$svc = Get-Service cribl -ErrorAction SilentlyContinue
 if (\$svc -and \$svc.Status -eq 'Running') {
     Write-Host ""
     Write-Host "Cribl Edge Standalone erfolgreich installiert!" -ForegroundColor Green
+    Write-Host "  - Pfad:   \$CriblHome"
     Write-Host "  - Modus:  Standalone (kein Leader noetig)"
-    Write-Host "  - WebUI:  http://localhost:9420"
+    Write-Host "  - WebUI:  http://localhost:9420 (admin/admin)"
     Write-Host "  - Output: Syslog TCP -> \${CriblStreamHost}:\${CriblSyslogPort}"
     Write-Host "  - Logs:   Security, System, Application, Sysmon, PowerShell"
 } else {
-    Write-Warning "Service CriblEdge nicht gestartet. Pruefen mit: Get-Service CriblEdge"
-    Write-Warning "Manuell starten: & '\$CriblHome\\bin\\cribl.exe' start"
+    Write-Warning "Service 'cribl' nicht gestartet. Pruefen mit: Get-Service cribl"
+    Write-Warning "Installer-Log: \$env:TEMP\\cribl-install.log"
 }`
                 },
                 'sysmon-xml': {
