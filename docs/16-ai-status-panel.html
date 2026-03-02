@@ -5564,8 +5564,9 @@ function buildClientConfigs(host, port) {
 # Laedt MSI direkt von cdn.cribl.io, kein Leader/Port 4200 noetig
 $CriblStreamHost = "${host}"
 $CriblSyslogPort = "${port}"
-$CriblVersion = "4.16.1"
-$MsiUrl = "https://cdn.cribl.io/dl/\${CriblVersion}/cribl-\${CriblVersion}-windows-x64.msi"
+$CriblVersion = "4.16.0"
+$CriblBuild = "0360835e"
+$MsiUrl = "https://cdn.cribl.io/dl/\${CriblVersion}/cribl-\${CriblVersion}-\${CriblBuild}-win32-x64.msi"
 $MsiPath = Join-Path $env:TEMP "cribl-edge.msi"
 $CriblHome = "C:\\Program Files\\Cribl\\Edge"
 
@@ -5773,9 +5774,10 @@ set -euo pipefail
 
 CRIBL_STREAM_HOST="${host}"
 CRIBL_SYSLOG_PORT="${port}"
-CRIBL_VERSION="4.16.1"
+CRIBL_VERSION="4.16.0"
+CRIBL_BUILD="0360835e"
 CRIBL_HOME="/opt/cribl-edge"
-TARBALL_URL="https://cdn.cribl.io/dl/\${CRIBL_VERSION}/cribl-\${CRIBL_VERSION}-linux-x64.tgz"
+TARBALL_URL="https://cdn.cribl.io/dl/\${CRIBL_VERSION}/cribl-\${CRIBL_VERSION}-\${CRIBL_BUILD}-linux-x64.tgz"
 TARBALL_PATH="/tmp/cribl-edge.tgz"
 
 echo "[1/6] Lade Cribl Edge \${CRIBL_VERSION} von cdn.cribl.io..."
