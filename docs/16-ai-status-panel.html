@@ -344,8 +344,8 @@
                     <input type="text" id="setCriblUser" placeholder="admin">
                 </div>
                 <div>
-                    <label>Cribl Passwort (nur Session)</label>
-                    <input type="password" id="setCriblPass" placeholder="Wird nicht gespeichert">
+                    <label>Cribl Passwort (aus .env oder manuell)</label>
+                    <input type="password" id="setCriblPass" placeholder="Aus .env geladen oder eingeben">
                 </div>
                 <div>
                     <label>Splunk REST URL</label>
@@ -356,8 +356,8 @@
                     <input type="text" id="setSplunkUser" placeholder="admin">
                 </div>
                 <div>
-                    <label>Splunk Passwort (nur Session)</label>
-                    <input type="password" id="setSplunkPass" placeholder="Wird nicht gespeichert">
+                    <label>Splunk Passwort (aus .env oder manuell)</label>
+                    <input type="password" id="setSplunkPass" placeholder="Aus .env geladen oder eingeben">
                 </div>
             </div>
             <div class="mt-2" style="display:flex; gap:8px;">
@@ -1008,9 +1008,51 @@ function setConfig(key, val) {
     localStorage.setItem('ide_' + key, val);
 }
 
-// Password: session-only
+// Password: loaded from .env or session prompt
 let criblPassword = '';
 let splunkPassword = '';
+let envLoaded = false;
+
+// Load .env file and pre-fill credentials
+(async function loadEnvFile() {
+    const paths = ['../.env', '.env', '../../.env'];
+    for (const p of paths) {
+        try {
+            const resp = await fetch(p);
+            if (!resp.ok) continue;
+            const text = await resp.text();
+            const env = {};
+            text.split('\n').forEach(line => {
+                line = line.trim();
+                if (!line || line.startsWith('#')) return;
+                const eq = line.indexOf('=');
+                if (eq > 0) {
+                    const key = line.substring(0, eq).trim();
+                    let val = line.substring(eq + 1).trim();
+                    // Strip surrounding quotes
+                    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                        val = val.slice(1, -1);
+                    }
+                    env[key] = val;
+                }
+            });
+            // Pre-fill credentials
+            if (env.CRIBL_ADMIN_PASSWORD && !criblPassword) criblPassword = env.CRIBL_ADMIN_PASSWORD;
+            if (env.SPLUNK_ADMIN_PASSWORD && !splunkPassword) splunkPassword = env.SPLUNK_ADMIN_PASSWORD;
+            // Pre-fill users if not set in localStorage
+            if (env.CRIBL_ADMIN_USER && !localStorage.getItem('ide_CRIBL_USER')) setConfig('CRIBL_USER', env.CRIBL_ADMIN_USER);
+            if (env.SPLUNK_ADMIN_USER && !localStorage.getItem('ide_SPLUNK_USER')) setConfig('SPLUNK_USER', env.SPLUNK_ADMIN_USER);
+            envLoaded = true;
+            console.log('.env geladen (' + p + '): Credentials vorbelegt');
+            // Fill password fields in settings panel if visible
+            const cp = document.getElementById('setCriblPass');
+            const sp = document.getElementById('setSplunkPass');
+            if (cp && criblPassword && !cp.value) cp.value = criblPassword;
+            if (sp && splunkPassword && !sp.value) sp.value = splunkPassword;
+            break;
+        } catch (e) { /* fetch failed, try next path */ }
+    }
+})();
 
 // SIEM Discovery state
 let discoveryResults = [];
@@ -1639,7 +1681,10 @@ function isDuplicateOfExistingRule(suggestion, pipelineFunctions) {
 async function ensureCriblAuth() {
     if (criblAuthToken) return criblAuthToken;
     if (!criblPassword) {
-        criblPassword = prompt('Cribl-Passwort eingeben (wird nur fuer diese Sitzung gespeichert):');
+        criblPassword = document.getElementById('setCriblPass')?.value || '';
+    }
+    if (!criblPassword) {
+        criblPassword = prompt('Cribl-Passwort eingeben (oder in .env / Einstellungen hinterlegen):');
         if (!criblPassword) throw new Error('Kein Passwort eingegeben');
     }
     const criblUrl = getConfig('CRIBL_URL');
@@ -2362,7 +2407,10 @@ async function activateRule(idx) {
     if (!s) return;
 
     if (!criblPassword) {
-        criblPassword = prompt('Cribl-Passwort eingeben (wird nur fuer diese Sitzung gespeichert):');
+        criblPassword = document.getElementById('setCriblPass')?.value || '';
+    }
+    if (!criblPassword) {
+        criblPassword = prompt('Cribl-Passwort eingeben (oder in .env / Einstellungen hinterlegen):');
         if (!criblPassword) return;
     }
 
@@ -2468,7 +2516,10 @@ async function executeLegacyRuleSteps(action) {
     // Step 1: Auth
     markStep('step1', 'running');
     if (!criblPassword) {
-        criblPassword = prompt('Cribl-Passwort eingeben:');
+        criblPassword = document.getElementById('setCriblPass')?.value || '';
+    }
+    if (!criblPassword) {
+        criblPassword = prompt('Cribl-Passwort eingeben (oder in .env / Einstellungen hinterlegen):');
         if (!criblPassword) throw new Error('Kein Passwort');
     }
     const authResp = await apiFetch('POST', `${criblUrl}/api/v1/auth/login`, {
@@ -4876,7 +4927,10 @@ function renderCimExplorer() {
 // ============================================================
 async function ensureSplunkAuth() {
     if (!splunkPassword) {
-        splunkPassword = prompt('Splunk-Passwort eingeben (wird nur fuer diese Sitzung gespeichert):');
+        splunkPassword = document.getElementById('setSplunkPass')?.value || '';
+    }
+    if (!splunkPassword) {
+        splunkPassword = prompt('Splunk-Passwort eingeben (oder in .env / Einstellungen hinterlegen):');
         if (!splunkPassword) throw new Error('Kein Splunk-Passwort eingegeben');
     }
     return btoa(getConfig('SPLUNK_USER') + ':' + splunkPassword);
