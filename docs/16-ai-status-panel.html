@@ -4992,12 +4992,13 @@ async function createOrUpdateSplunkDashboard(candidate) {
     }
 
     // Try create or update
-    const dashboardBody = `name=${encodeURIComponent(dashboardName)}&eai:data=${encodeURIComponent(dashboardXml)}`;
+    const createBody = `name=${encodeURIComponent(dashboardName)}&eai:data=${encodeURIComponent(dashboardXml)}`;
+    const updateBody = `eai:data=${encodeURIComponent(dashboardXml)}`;
 
     if (existingXml) {
-        // Dashboard exists: update directly
+        // Dashboard exists: update directly (no name= in body!)
         const resp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, {
-            method: 'POST', headers, body: dashboardBody
+            method: 'POST', headers, body: updateBody
         });
         if (!resp.ok) {
             const text = await resp.text();
@@ -5007,7 +5008,7 @@ async function createOrUpdateSplunkDashboard(candidate) {
     } else {
         // Try create first, fall back to update if dashboard already exists
         const createResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views`, {
-            method: 'POST', headers, body: dashboardBody
+            method: 'POST', headers, body: createBody
         });
 
         if (createResp.ok) {
@@ -5015,7 +5016,6 @@ async function createOrUpdateSplunkDashboard(candidate) {
         } else if (createResp.status === 409) {
             // Dashboard already exists (GET check failed, e.g. CORS) — update instead
             console.log('Dashboard existiert bereits (409), aktualisiere...');
-            const updateBody = `eai:data=${encodeURIComponent(dashboardXml)}`;
             const updateResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, {
                 method: 'POST', headers, body: updateBody
             });
