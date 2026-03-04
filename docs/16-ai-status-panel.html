@@ -2734,7 +2734,7 @@ async function generateSplunkConfig() {
                     terms: { field: 'CONTAINER_NAME.keyword', size: 20 },
                     aggs: {
                         by_reason: { terms: { field: 'classification_reason.keyword', size: 10 } },
-                        sample_events: { top_hits: { size: 5, _source: ['message', 'log_message', 'CONTAINER_NAME', 'classification', 'classification_reason', 'severity', 'severityName', 'appname', '@timestamp'], sort: [{ '@timestamp': 'desc' }] } }
+                        sample_events: { top_hits: { size: 5, _source: ['message', 'log_message', 'CONTAINER_NAME', 'classification', 'classification_reason', 'sourcetype', 'severity', 'severityName', 'appname', '@timestamp'], sort: [{ '@timestamp': 'desc' }] } }
                     }
                 },
                 by_reason: { terms: { field: 'classification_reason.keyword', size: 20 } },
@@ -4685,7 +4685,7 @@ async function startCimAnalysis() {
                     terms: { field: 'classification_reason.keyword', size: 10 },
                     aggs: {
                         samples: {
-                            top_hits: { size: 5, _source: ['message', 'log_message', 'classification_reason', 'source_type', 'CONTAINER_NAME', 'appname'] }
+                            top_hits: { size: 5, _source: ['message', 'log_message', 'classification_reason', 'source_type', 'sourcetype', 'CONTAINER_NAME', 'appname'] }
                         }
                     }
                 }
@@ -4713,12 +4713,23 @@ async function startCimAnalysis() {
             const bucket = buckets[i];
             const reasonKey = bucket.key;
             const samples = bucket.samples.hits.hits.map(h => (h._source?.message || h._source?.log_message || '')).filter(m => m);
+            // Map Cribl source_type (from pipeline) to Splunk sourcetype
+            // ES doesn't carry the Splunk-specific sourcetype, but source_type is set by Cribl pipelines
+            const criblSrcType = bucket.samples.hits.hits[0]?._source?.source_type || '';
+            const sourcetypeMap = {
+                'sophos_firewall': 'sophos:xg:firewall',
+                'docker': 'cribl:siem',
+                'syslog': 'cribl:siem',
+                'edge': 'cribl:siem',
+                'journal': 'cribl:siem'
+            };
+            const criblSourcetype = sourcetypeMap[criblSrcType] || 'cribl:siem';
 
             if (samples.length === 0) continue;
 
             status.innerHTML = `<span class="analyzer-spinner"></span>Analysiere Gruppe ${i + 1}/${buckets.length}: ${reasonKey}...`;
 
-            const prompt = `Analysiere diese Log-Messages aus der Gruppe "${reasonKey}". Bestimme welches Splunk CIM-Datenmodell am besten passt und extrahiere die relevanten Felder mit Regex-Patterns.
+            const prompt = `Analysiere diese Log-Messages aus der Gruppe "${reasonKey}" (Cribl Sourcetype: ${criblSourcetype}). Bestimme welches Splunk CIM-Datenmodell am besten passt und extrahiere die relevanten Felder mit Regex-Patterns.
 
 SCHRITT 1 - LOG-FORMAT UND QUELLE ERKENNEN:
 Erkenne automatisch das Format und die Quelle anhand des Inhalts:
@@ -4790,7 +4801,8 @@ Antworte NUR mit validem JSON in diesem Format:
                         confidence: parsed.confidence || 0,
                         fields: parsed.fields || [],
                         detected_source: parsed.detected_source || '',
-                        detected_format: parsed.detected_format || 'unstructured'
+                        detected_format: parsed.detected_format || 'unstructured',
+                        criblSourcetype
                     });
                 }
             } catch (e) {
@@ -4801,6 +4813,7 @@ Antworte NUR mit validem JSON in diesem Format:
                     cimModel: 'Fehler',
                     confidence: 0,
                     fields: [],
+                    criblSourcetype,
                     error: e.message
                 });
             }
@@ -4845,11 +4858,12 @@ function renderCimResults(results) {
         const sourceInfo = r.detected_source ? `<span class="badge badge-unknown" style="margin-left:6px;">${escHtml(r.detected_source)}</span>` : '';
         const formatInfo = r.detected_format ? `<span class="badge badge-unknown" style="margin-left:4px;font-size:0.75em;">${escHtml(r.detected_format)}</span>` : '';
         const kvInfo = r.detected_format === 'key_value' ? '<span style="font-size:0.8em;color:#38a169;margin-left:6px;">KV_MODE=auto</span>' : '';
+        const stInfo = r.criblSourcetype && r.criblSourcetype !== 'cribl:siem' ? `<span style="font-size:0.8em;color:#805ad5;margin-left:6px;">ST: ${escHtml(r.criblSourcetype)}</span>` : '';
 
         return `<div class="cim-result-card" style="${hasError ? 'border-color:#fed7d7;' : ''}">
             <h4>
                 <span class="cim-tag">${escHtml(modelLabel)}</span>
-                ${escHtml(r.reasonKey)}${sourceInfo}${formatInfo}${kvInfo}
+                ${escHtml(r.reasonKey)}${sourceInfo}${formatInfo}${kvInfo}${stInfo}
                 <span class="text-muted" style="margin-left:auto;font-weight:400;">${r.count} Events</span>
             </h4>
             ${hasError ? `<p style="color:#c53030;font-size:0.9em;">Fehler: ${escHtml(r.error)}</p>` : ''}
@@ -4887,6 +4901,9 @@ async function deployCimToSplunk(reasonKey) {
     };
     const reasonSafe = reasonKey.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
     const cimModel = data.cimModel;
+    // Use Cribl-assigned sourcetype for props deployment (e.g. sophos:xg:firewall instead of cribl:siem)
+    const targetSourcetype = data.criblSourcetype || 'cribl:siem';
+    const hasCustomSourcetype = targetSourcetype !== 'cribl:siem';
 
     function markCimStep(id, state) {
         const el = document.getElementById(id);
@@ -4946,22 +4963,28 @@ async function deployCimToSplunk(reasonKey) {
             }
         }
         if (propsParams.length > 0) {
-            await splunkConfCreateOrUpdate(splunkRestUrl, 'props', 'cribl:siem', propsParams.join('&'), headers);
+            await splunkConfCreateOrUpdate(splunkRestUrl, 'props', targetSourcetype, propsParams.join('&'), headers);
         }
         const mode = isKvMode ? `KV_MODE + ${data.fields.filter(f => !f.eval).length} FIELDALIAS + ${data.fields.filter(f => f.eval).length} EVAL` : `${data.fields.length} REPORT`;
-        document.getElementById('cim-step-2-detail').textContent = `props.conf: ${mode}`;
+        document.getElementById('cim-step-2-detail').textContent = `props.conf [${targetSourcetype}]: ${mode}`;
         markCimStep('cim-step-2', 'done');
 
-        // Step 3: eventtypes.conf
+        // Step 3: eventtypes.conf — use sourcetype when Cribl provides a specific one
         markCimStep('cim-step-3', 'running');
-        const etParams = `search=${encodeURIComponent(`index=cribl_siem classification_reason="${reasonKey}"`)}`;
-        const etResult = await splunkConfCreateOrUpdate(splunkRestUrl, 'eventtypes', `cribl_siem_${reasonSafe}`, etParams, headers);
-        document.getElementById('cim-step-3-detail').textContent = `Eventtype cribl_siem_${reasonSafe} ${etResult === 'updated' ? 'aktualisiert' : 'erstellt'}`;
+        const etSearch = hasCustomSourcetype
+            ? `sourcetype="${targetSourcetype}"`
+            : `index=cribl_siem classification_reason="${reasonKey}"`;
+        const etName = hasCustomSourcetype
+            ? targetSourcetype.replace(/[^a-zA-Z0-9_]/g, '_')
+            : `cribl_siem_${reasonSafe}`;
+        const etParams = `search=${encodeURIComponent(etSearch)}`;
+        const etResult = await splunkConfCreateOrUpdate(splunkRestUrl, 'eventtypes', etName, etParams, headers);
+        document.getElementById('cim-step-3-detail').textContent = `Eventtype ${etName} ${etResult === 'updated' ? 'aktualisiert' : 'erstellt'}`;
         markCimStep('cim-step-3', 'done');
 
         // Step 4: tags.conf — use proper CIM tag pairs per model
         markCimStep('cim-step-4', 'running');
-        const tagStanza = `eventtype=cribl_siem_${reasonSafe}`;
+        const tagStanza = `eventtype=${etName}`;
         const cimTagMap = {
             'Network_Traffic': ['network', 'communicate'],
             'Authentication': ['authentication'],
@@ -4978,13 +5001,17 @@ async function deployCimToSplunk(reasonKey) {
 
         // Summary
         const fieldNames = data.fields.map(f => f.cim_field).join(', ');
+        const verifySearch = hasCustomSourcetype
+            ? `index=cribl_siem sourcetype="${targetSourcetype}"`
+            : `index=cribl_siem classification_reason="${reasonKey}"`;
         summary.innerHTML = `<strong>Deployment erfolgreich!</strong><br>
-            CIM-Modell: <span class="cim-tag">${escHtml(cimModel)}</span><br>
+            CIM-Modell: <span class="cim-tag">${escHtml(cimModel)}</span>
+            ${hasCustomSourcetype ? `<br>Sourcetype: <code>${escHtml(targetSourcetype)}</code> (von Cribl)` : ''}<br>
             Extrahierte Felder: <code>${escHtml(fieldNames)}</code><br>
-            Eventtype: <code>cribl_siem_${escHtml(reasonSafe)}</code><br>
+            Eventtype: <code>${escHtml(etName)}</code><br>
             <div style="margin-top:8px;">
                 <strong>Verifizierung in Splunk:</strong><br>
-                <code style="font-size:0.85em;">index=cribl_siem classification_reason="${escHtml(reasonKey)}" | head 5 | table ${escHtml(fieldNames)}</code>
+                <code style="font-size:0.85em;">${escHtml(verifySearch)} | head 5 | table ${escHtml(fieldNames)}</code>
             </div>`;
         summary.style.display = 'block';
 
