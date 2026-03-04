@@ -2763,7 +2763,7 @@ async function generateSplunkConfig() {
         for (const cb of containerBuckets) {
             const samples = (cb.sample_events?.hits?.hits || []).map(h => {
                 const s = h._source || {};
-                return (s.message || s.log_message || '').substring(0, 300);
+                return (s.message || s.log_message || '').substring(0, 1200);
             });
             sourceSamples.push({
                 container: cb.key,
@@ -2816,15 +2816,51 @@ ${routingContext}
 SIEM-EVENT-SAMPLES PRO QUELLE:
 ${sampleText}
 
-GEPLANTE ZUSAETZLICHE QUELLEN (noch nicht aktiv):
-- Windows Security Event Log (Event IDs 4624-4634, 4672, 4720, 4732, 4688, 7045)
-- Windows Sysmon (Event IDs 1, 3, 7, 8, 10, 11, 12, 13, 22, 23, 25)
-- Windows PowerShell Script Block Logging (Event ID 4104)
-- Windows Defender (Event IDs 1116, 1117)
-- Linux auditd (execve, file access, network, user auth)
-- Linux auth.log (SSH, sudo, PAM)
-- Linux fail2ban (Ban/Unban)
-- Linux UFW Firewall Logs
+DEINE AUFGABE - AUTOMATISCHE LOG-ERKENNUNG UND CIM-MAPPING:
+Analysiere JEDEN Log-Sample oben und:
+1. ERKENNE das Log-Format (key=value, JSON, Syslog, CEF, LEEF, CSV, unstrukturiert)
+2. IDENTIFIZIERE die Quelle (Firewall, Docker-Container, Webserver, Datenbank, App-Service, Auth-System, IDS/IPS, etc.)
+3. BESTIMME das passende CIM-Datenmodell (Authentication, Network_Traffic, Intrusion_Detection, Change, Endpoint_Processes, Web, Email, Alerts)
+4. ERSTELLE vollstaendige FIELDALIAS und EVAL Mappings in props.conf
+
+FIELD EXTRACTION REGELN:
+- key=value / key="value" Format: Nutze KV_MODE=auto, KEIN manuelles Regex noetig
+- JSON Format: Nutze KV_MODE=json
+- Syslog/unstrukturiert: Nutze EXTRACT/REPORT mit transforms.conf Regex
+- FIELDALIAS mappt Quellfelder auf CIM-Standardfelder (z.B. src_ip AS src)
+- EVAL transformiert Werte (z.B. Allowed→allowed, Denied→blocked) und erzeugt berechnete Felder
+
+CIM DATENMODELL-REFERENZ:
+Network_Traffic (Tags: network,communicate): action, src, dest, src_port, dest_port, transport, bytes_in, bytes_out, packets_in, packets_out, duration, app, dvc, rule, direction, vendor_product
+Authentication (Tags: authentication): action, user, src, dest, app, authentication_method
+Intrusion_Detection (Tags: ids,attack): action, severity, signature, src, dest, category, vendor_product
+Change (Tags: change): action, object, object_category, user, result, command
+Endpoint_Processes (Tags: process,report): process_name, process_id, parent_process, user, action, dest
+Web (Tags: web): action, url, http_method, status, src, dest, user_agent, bytes_in, bytes_out
+
+BEISPIEL - Sophos XG Firewall (key=value) → CIM Network_Traffic:
+  KV_MODE = auto
+  FIELDALIAS-src = src_ip AS src
+  FIELDALIAS-dest = dst_ip AS dest
+  FIELDALIAS-transport = protocol AS transport
+  FIELDALIAS-bytes_in = bytes_received AS bytes_in
+  FIELDALIAS-bytes_out = bytes_sent AS bytes_out
+  FIELDALIAS-app = app_name AS app
+  FIELDALIAS-dvc = device_name AS dvc
+  FIELDALIAS-rule = fw_rule_name AS rule
+  EVAL-action = case(log_subtype=="Allowed","allowed",log_subtype=="Denied","blocked",log_subtype=="Dropped","blocked",1==1,lower(log_subtype))
+  EVAL-vendor_product = "Sophos XG"
+  EVAL-direction = case(src_zone_type=="LAN" AND dst_zone_type=="WAN","outbound",src_zone_type=="WAN" AND dst_zone_type=="LAN","inbound",1==1,"internal")
+
+BEISPIEL - Docker Container App (JSON) → CIM Web:
+  KV_MODE = json
+  FIELDALIAS-url = request_uri AS url
+  FIELDALIAS-src = remote_addr AS src
+  FIELDALIAS-status = status_code AS status
+  EVAL-action = if(status_code<400,"allowed","blocked")
+  EVAL-vendor_product = "nginx"
+
+WICHTIG: Erstelle fuer JEDE erkannte Quelle einen eigenen props.conf Stanza mit dem passenden CIM-Mapping. Gruppiere nicht alles unter einem Sourcetype — verschiedene Log-Quellen brauchen verschiedene Sourcetypes und Mappings.
 
 Erstelle eine VOLLSTAENDIGE Splunk-Konfiguration. Antworte EXAKT im folgenden JSON-Format (kein Markdown, nur JSON):
 {
@@ -4649,7 +4685,7 @@ async function startCimAnalysis() {
                     terms: { field: 'classification_reason.keyword', size: 10 },
                     aggs: {
                         samples: {
-                            top_hits: { size: 3, _source: ['message', 'classification_reason', 'source_type', 'CONTAINER_NAME'] }
+                            top_hits: { size: 5, _source: ['message', 'log_message', 'classification_reason', 'source_type', 'CONTAINER_NAME', 'appname'] }
                         }
                     }
                 }
@@ -4676,7 +4712,7 @@ async function startCimAnalysis() {
         for (let i = 0; i < buckets.length; i++) {
             const bucket = buckets[i];
             const reasonKey = bucket.key;
-            const samples = bucket.samples.hits.hits.map(h => h._source?.message || '').filter(m => m);
+            const samples = bucket.samples.hits.hits.map(h => (h._source?.message || h._source?.log_message || '')).filter(m => m);
 
             if (samples.length === 0) continue;
 
@@ -4684,16 +4720,49 @@ async function startCimAnalysis() {
 
             const prompt = `Analysiere diese Log-Messages aus der Gruppe "${reasonKey}". Bestimme welches Splunk CIM-Datenmodell am besten passt und extrahiere die relevanten Felder mit Regex-Patterns.
 
+SCHRITT 1 - LOG-FORMAT UND QUELLE ERKENNEN:
+Erkenne automatisch das Format und die Quelle anhand des Inhalts:
+- key=value / key="value": Firewall (Sophos XG, pfSense, Fortinet), Proxy, WAF
+- JSON: Docker-Container, Microservices, Webserver (nginx, traefik), Applikationen
+- Syslog (RFC3164/5424): Linux Services (sshd, sudo, cron), Netzwerkgeraete
+- CEF/LEEF: Security-Appliances, SIEM-Forwarder
+- Unstrukturiert: Legacy-Apps, Custom-Services
+
+SCHRITT 2 - CIM-DATENMODELL ZUORDNEN:
+- Firewall/Router/VPN-Logs → Network_Traffic (Tags: network, communicate)
+- Login/Logout/Auth-Logs → Authentication (Tags: authentication)
+- IDS/IPS/Threat-Logs → Intrusion_Detection (Tags: ids, attack)
+- Config-/File-/User-Aenderungen → Change (Tags: change)
+- Prozess-/Service-Starts → Endpoint_Processes (Tags: process, report)
+- HTTP-Requests/Webserver → Web (Tags: web)
+- Docker/Container-Logs → Je nach Inhalt: Web, Authentication, Change oder Endpoint_Processes
+
+SCHRITT 3 - FELDER EXTRAHIEREN:
+Fuer key=value Format: Regex-Muster feldname="?([^"\\s]+)"?
+Fuer JSON Format: Regex-Muster "feldname":\\s*"?([^",}]+)"?
+Fuer Syslog: Kontextspezifische Regex basierend auf dem erkannten Service
+
+CIM FELD-REFERENZ (verwende das passende Modell):
+Network_Traffic: action, src, dest, src_port, dest_port, transport, bytes_in, bytes_out, packets_in, packets_out, duration, app, dvc, rule, direction, vendor_product
+Authentication: action, user, src, dest, app, authentication_method, signature
+Web: action, url, http_method, status, src, dest, user_agent, bytes_in, bytes_out, app
+Change: action, object, object_category, user, result, command, dest
+Endpoint_Processes: process_name, process_id, parent_process, user, action, dest, command_line
+
+WICHTIG: Mappe die tatsaechlichen Feldnamen aus den Samples auf CIM-Felder. Wenn ein Feld z.B. "src_ip" heisst, muss der CIM-Feldname "src" sein mit Regex fuer "src_ip".
+
 Log-Samples:
-${samples.map((s, j) => `[${j + 1}] ${s}`).join('\n')}
+${samples.map((s, j) => `[${j + 1}] ${s.substring(0, 1200)}`).join('\n')}
 
 Antworte NUR mit validem JSON in diesem Format:
 {
-  "model": "Authentication|Network_Traffic|Intrusion_Detection|Change|Endpoint_Processes",
+  "model": "Authentication|Network_Traffic|Intrusion_Detection|Change|Endpoint_Processes|Web",
   "confidence": 85,
+  "detected_source": "Name der erkannten Quelle (z.B. Sophos XG, nginx, sshd, Docker App)",
+  "detected_format": "key_value|json|syslog|cef|unstructured",
   "fields": [
-    { "cim_field": "user", "regex": "user[=:]\\\\s*(\\\\S+)", "sample_value": "admin" },
-    { "cim_field": "src", "regex": "src[=:]\\\\s*(\\\\S+)", "sample_value": "10.0.0.1" }
+    { "cim_field": "src", "regex": "src_ip=\\"?([^\\"\\\\s]+)\\"?", "sample_value": "10.0.0.1" },
+    { "cim_field": "action", "regex": "log_subtype=\\"?([^\\"\\\\s]+)\\"?", "sample_value": "Allowed", "eval": "case(value==\\"Allowed\\",\\"allowed\\",value==\\"Denied\\",\\"blocked\\",1==1,lower(value))" }
   ]
 }`;
 
@@ -4703,7 +4772,7 @@ Antworte NUR mit validem JSON in diesem Format:
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model: model, prompt: prompt, stream: false,
-                        options: { num_predict: 2048, temperature: 0.1 }
+                        options: { num_predict: 3072, temperature: 0.1 }
                     })
                 });
 
@@ -4719,7 +4788,9 @@ Antworte NUR mit validem JSON in diesem Format:
                         samples,
                         cimModel: parsed.model || 'Unknown',
                         confidence: parsed.confidence || 0,
-                        fields: parsed.fields || []
+                        fields: parsed.fields || [],
+                        detected_source: parsed.detected_source || '',
+                        detected_format: parsed.detected_format || 'unstructured'
                     });
                 }
             } catch (e) {
@@ -4765,16 +4836,20 @@ function renderCimResults(results) {
 
         const fieldsHtml = r.fields.length > 0 ? `
             <table>
-                <thead><tr><th>CIM-Feld</th><th>Regex</th><th>Beispielwert</th></tr></thead>
+                <thead><tr><th>CIM-Feld</th><th>Regex/Mapping</th><th>Beispielwert</th><th>EVAL</th></tr></thead>
                 <tbody>${r.fields.map(f => `
-                    <tr><td><code>${escHtml(f.cim_field)}</code></td><td><code style="font-size:0.85em;">${escHtml(f.regex)}</code></td><td>${escHtml(f.sample_value || '-')}</td></tr>
+                    <tr><td><code>${escHtml(f.cim_field)}</code></td><td><code style="font-size:0.85em;">${escHtml(f.regex)}</code></td><td>${escHtml(f.sample_value || '-')}</td><td>${f.eval ? `<code style="font-size:0.8em;">${escHtml(f.eval)}</code>` : '-'}</td></tr>
                 `).join('')}</tbody>
             </table>` : '<p class="text-muted">Keine Felder erkannt.</p>';
+
+        const sourceInfo = r.detected_source ? `<span class="badge badge-unknown" style="margin-left:6px;">${escHtml(r.detected_source)}</span>` : '';
+        const formatInfo = r.detected_format ? `<span class="badge badge-unknown" style="margin-left:4px;font-size:0.75em;">${escHtml(r.detected_format)}</span>` : '';
+        const kvInfo = r.detected_format === 'key_value' ? '<span style="font-size:0.8em;color:#38a169;margin-left:6px;">KV_MODE=auto</span>' : '';
 
         return `<div class="cim-result-card" style="${hasError ? 'border-color:#fed7d7;' : ''}">
             <h4>
                 <span class="cim-tag">${escHtml(modelLabel)}</span>
-                ${escHtml(r.reasonKey)}
+                ${escHtml(r.reasonKey)}${sourceInfo}${formatInfo}${kvInfo}
                 <span class="text-muted" style="margin-left:auto;font-weight:400;">${r.count} Events</span>
             </h4>
             ${hasError ? `<p style="color:#c53030;font-size:0.9em;">Fehler: ${escHtml(r.error)}</p>` : ''}
@@ -4824,27 +4899,57 @@ async function deployCimToSplunk(reasonKey) {
     }
 
     try {
-        // Step 1: transforms.conf
+        const isKvMode = data.detected_format === 'key_value' || data.detected_format === 'json';
+
+        // Step 1: transforms.conf (nur fuer nicht-KV Formate) oder FIELDALIAS-Info
         markCimStep('cim-step-1', 'running');
         let transforms_created = 0, transforms_updated = 0;
-        for (const field of data.fields) {
-            const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
-            const stanzaName = `cribl_siem_${reasonSafe}_extract_${fieldSafe}`;
-            const params = `REGEX=${encodeURIComponent(field.regex)}&FORMAT=${encodeURIComponent(field.cim_field + '::$1')}`;
-            const result = await splunkConfCreateOrUpdate(splunkRestUrl, 'transforms', stanzaName, params, headers);
-            if (result === 'updated') transforms_updated++; else transforms_created++;
+        if (!isKvMode) {
+            for (const field of data.fields) {
+                if (!field.regex) continue;
+                const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
+                const stanzaName = `cribl_siem_${reasonSafe}_extract_${fieldSafe}`;
+                const params = `REGEX=${encodeURIComponent(field.regex)}&FORMAT=${encodeURIComponent(field.cim_field + '::$1')}`;
+                const result = await splunkConfCreateOrUpdate(splunkRestUrl, 'transforms', stanzaName, params, headers);
+                if (result === 'updated') transforms_updated++; else transforms_created++;
+            }
+            document.getElementById('cim-step-1-detail').textContent = `${transforms_created} erstellt, ${transforms_updated} aktualisiert`;
+        } else {
+            document.getElementById('cim-step-1-detail').textContent = `KV_MODE=${data.detected_format === 'json' ? 'json' : 'auto'} (transforms nicht noetig)`;
         }
-        document.getElementById('cim-step-1-detail').textContent = `${transforms_created} erstellt, ${transforms_updated} aktualisiert`;
         markCimStep('cim-step-1', 'done');
 
-        // Step 2: props.conf
+        // Step 2: props.conf — KV_MODE + FIELDALIAS + EVAL, oder REPORT
         markCimStep('cim-step-2', 'running');
-        for (const field of data.fields) {
-            const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
-            const params = `REPORT-${reasonSafe}_${fieldSafe}=${encodeURIComponent(`cribl_siem_${reasonSafe}_extract_${fieldSafe}`)}`;
-            await splunkConfCreateOrUpdate(splunkRestUrl, 'props', 'cribl:siem', params, headers);
+        const propsParams = [];
+        if (isKvMode) {
+            // Set KV_MODE for automatic field extraction
+            propsParams.push(`KV_MODE=${encodeURIComponent(data.detected_format === 'json' ? 'json' : 'auto')}`);
+            // FIELDALIAS for CIM mapping (extract source field from regex pattern)
+            for (const field of data.fields) {
+                // Try to extract the source field name from the regex (e.g. src_ip from "src_ip=...")
+                const srcFieldMatch = field.regex ? field.regex.match(/^([a-zA-Z_][a-zA-Z0-9_]*)/) : null;
+                const srcField = srcFieldMatch ? srcFieldMatch[1] : null;
+                if (srcField && srcField !== field.cim_field) {
+                    propsParams.push(`FIELDALIAS-${reasonSafe}_${encodeURIComponent(field.cim_field)}=${encodeURIComponent(`${srcField} AS ${field.cim_field}`)}`);
+                }
+                // EVAL for value transformations
+                if (field.eval) {
+                    const evalExpr = field.eval.replace(/value/g, srcField || field.cim_field);
+                    propsParams.push(`EVAL-${encodeURIComponent(field.cim_field)}=${encodeURIComponent(evalExpr)}`);
+                }
+            }
+        } else {
+            for (const field of data.fields) {
+                const fieldSafe = field.cim_field.replace(/[^a-zA-Z0-9_]/g, '_');
+                propsParams.push(`REPORT-${reasonSafe}_${fieldSafe}=${encodeURIComponent(`cribl_siem_${reasonSafe}_extract_${fieldSafe}`)}`);
+            }
         }
-        document.getElementById('cim-step-2-detail').textContent = `props.conf fuer cribl:siem aktualisiert`;
+        if (propsParams.length > 0) {
+            await splunkConfCreateOrUpdate(splunkRestUrl, 'props', 'cribl:siem', propsParams.join('&'), headers);
+        }
+        const mode = isKvMode ? `KV_MODE + ${data.fields.filter(f => !f.eval).length} FIELDALIAS + ${data.fields.filter(f => f.eval).length} EVAL` : `${data.fields.length} REPORT`;
+        document.getElementById('cim-step-2-detail').textContent = `props.conf: ${mode}`;
         markCimStep('cim-step-2', 'done');
 
         // Step 3: eventtypes.conf
@@ -4854,12 +4959,21 @@ async function deployCimToSplunk(reasonKey) {
         document.getElementById('cim-step-3-detail').textContent = `Eventtype cribl_siem_${reasonSafe} ${etResult === 'updated' ? 'aktualisiert' : 'erstellt'}`;
         markCimStep('cim-step-3', 'done');
 
-        // Step 4: tags.conf
+        // Step 4: tags.conf — use proper CIM tag pairs per model
         markCimStep('cim-step-4', 'running');
         const tagStanza = `eventtype=cribl_siem_${reasonSafe}`;
-        const tagParams = `${encodeURIComponent(cimModel)}=enabled`;
+        const cimTagMap = {
+            'Network_Traffic': ['network', 'communicate'],
+            'Authentication': ['authentication'],
+            'Intrusion_Detection': ['ids', 'attack'],
+            'Change': ['change'],
+            'Endpoint_Processes': ['process', 'report'],
+            'Web': ['web']
+        };
+        const cimTags = cimTagMap[cimModel] || [cimModel.toLowerCase()];
+        const tagParams = cimTags.map(t => `${encodeURIComponent(t)}=enabled`).join('&');
         const tagResult = await splunkConfCreateOrUpdate(splunkRestUrl, 'tags', tagStanza, tagParams, headers);
-        document.getElementById('cim-step-4-detail').textContent = `Tag ${cimModel} ${tagResult === 'updated' ? 'aktualisiert' : 'aktiviert'}`;
+        document.getElementById('cim-step-4-detail').textContent = `Tags: ${cimTags.join(', ')} ${tagResult === 'updated' ? 'aktualisiert' : 'aktiviert'}`;
         markCimStep('cim-step-4', 'done');
 
         // Summary
