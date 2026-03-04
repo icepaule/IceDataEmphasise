@@ -4943,8 +4943,11 @@ async function createOrUpdateSplunkDashboard(candidate) {
         'Authorization': `Basic ${authB64}`,
         'Content-Type': 'application/x-www-form-urlencoded'
     };
+    const authOnly = { 'Authorization': `Basic ${authB64}` };
 
     const dashboardName = 'soc_overview_ide';
+    // Use nobody/search namespace: app-level shared dashboards live here after ACL change
+    const viewsBase = `${splunkRestUrl}/servicesNS/nobody/search/data/ui/views`;
     const sourcetype = candidate.splunk_sourcetype || candidate.source.toLowerCase().replace(/[^a-z0-9_]/g, '_');
     const panels = candidate.dashboard_panels || [];
 
@@ -4956,31 +4959,31 @@ async function createOrUpdateSplunkDashboard(candidate) {
             return `<row><panel><title>${escXml(p.title)}</title><${p.type === 'table' ? 'table' : 'chart'}><search><query>${escXml(spl)}</query><earliest>-24h@h</earliest><latest>now</latest></search></${p.type === 'table' ? 'table' : 'chart'}></panel></row>`;
         }).join('\n');
     } else {
-        // Fallback template panels
         panelXml = `<row><panel><title>${escXml(candidate.source)} - SIEM Events (24h)</title><chart><search><query>index=cribl_siem sourcetype="${escXml(sourcetype)}" | timechart count</query><earliest>-24h@h</earliest><latest>now</latest></search></chart></panel></row>
 <row><panel><title>${escXml(candidate.source)} - Top Events</title><table><search><query>index=cribl_siem sourcetype="${escXml(sourcetype)}" | stats count by classification_reason | sort -count</query><earliest>-24h@h</earliest><latest>now</latest></search></table></panel></row>`;
     }
 
-    // Check if dashboard exists
+    // Check if dashboard exists (try nobody/search first, then admin/search fallback)
     let existingXml = null;
-    try {
-        const checkResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}?output_mode=json`, {
-            method: 'GET', headers: { 'Authorization': `Basic ${authB64}` }
-        });
-        if (checkResp.ok) {
-            const checkData = await checkResp.json();
-            existingXml = checkData?.entry?.[0]?.content?.['eai:data'] || null;
+    for (const ns of ['nobody/search', 'admin/search']) {
+        try {
+            const checkResp = await fetch(`${splunkRestUrl}/servicesNS/${ns}/data/ui/views/${dashboardName}?output_mode=json`, {
+                method: 'GET', headers: authOnly
+            });
+            if (checkResp.ok) {
+                const checkData = await checkResp.json();
+                existingXml = checkData?.entry?.[0]?.content?.['eai:data'] || null;
+                if (existingXml) break;
+            }
+        } catch (e) {
+            console.warn(`Dashboard-Check (${ns}) fehlgeschlagen:`, e.message);
         }
-    } catch (e) {
-        console.warn('Dashboard-Check fehlgeschlagen (CORS?), versuche Create mit Update-Fallback:', e.message);
     }
 
     let dashboardXml;
     if (existingXml) {
-        // Append new panels before </dashboard>
         dashboardXml = existingXml.replace('</dashboard>', `\n<!-- SIEM-Discovery: ${escXml(candidate.source)} -->\n${panelXml}\n</dashboard>`);
     } else {
-        // Create new dashboard (or fallback XML if GET check failed)
         dashboardXml = `<dashboard version="1.1">
   <label>SOC Overview - IceDataEmphasise</label>
   <description>Auto-generiertes SOC-Dashboard (SIEM-Discovery)</description>
@@ -4991,48 +4994,55 @@ async function createOrUpdateSplunkDashboard(candidate) {
 </dashboard>`;
     }
 
-    // Try create or update
-    const createBody = `name=${encodeURIComponent(dashboardName)}&eai:data=${encodeURIComponent(dashboardXml)}`;
     const updateBody = `eai:data=${encodeURIComponent(dashboardXml)}`;
 
     if (existingXml) {
-        // Dashboard exists: update directly (no name= in body!)
-        const resp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, {
+        // Dashboard exists under nobody/search: update directly
+        const resp = await fetch(`${viewsBase}/${dashboardName}`, {
             method: 'POST', headers, body: updateBody
         });
         if (!resp.ok) {
             const text = await resp.text();
             throw new Error(`Splunk Dashboard Update fehlgeschlagen (HTTP ${resp.status}): ${text.substring(0, 200)}`);
         }
-        logApiCall('POST', `${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, { dashboard: dashboardName, panels: panels.length }, resp.status, 'Dashboard aktualisiert');
+        logApiCall('POST', `${viewsBase}/${dashboardName}`, { dashboard: dashboardName, panels: panels.length }, resp.status, 'Dashboard aktualisiert');
     } else {
-        // Try create first, fall back to update if dashboard already exists
-        const createResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views`, {
+        // Create new dashboard under nobody/search namespace
+        const createBody = `name=${encodeURIComponent(dashboardName)}&eai:data=${encodeURIComponent(dashboardXml)}`;
+        const createResp = await fetch(viewsBase, {
             method: 'POST', headers, body: createBody
         });
 
         if (createResp.ok) {
-            logApiCall('POST', `${splunkRestUrl}/servicesNS/admin/search/data/ui/views`, { dashboard: dashboardName, panels: panels.length }, createResp.status, 'Dashboard erstellt');
+            logApiCall('POST', viewsBase, { dashboard: dashboardName, panels: panels.length }, createResp.status, 'Dashboard erstellt');
         } else if (createResp.status === 409) {
-            // Dashboard already exists (GET check failed, e.g. CORS) — update instead
-            console.log('Dashboard existiert bereits (409), aktualisiere...');
-            const updateResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, {
+            // Already exists but GET missed it — update via nobody/search
+            console.log('Dashboard existiert bereits (409), aktualisiere via nobody/search...');
+            const updateResp = await fetch(`${viewsBase}/${dashboardName}`, {
                 method: 'POST', headers, body: updateBody
             });
             if (!updateResp.ok) {
-                const text = await updateResp.text();
-                throw new Error(`Splunk Dashboard Update fehlgeschlagen (HTTP ${updateResp.status}): ${text.substring(0, 200)}`);
+                // Last resort: try admin/search namespace for update
+                const fallbackResp = await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, {
+                    method: 'POST', headers, body: updateBody
+                });
+                if (!fallbackResp.ok) {
+                    const text = await fallbackResp.text();
+                    throw new Error(`Splunk Dashboard Update fehlgeschlagen (HTTP ${fallbackResp.status}): ${text.substring(0, 200)}`);
+                }
+                logApiCall('POST', `servicesNS/admin/search/.../${dashboardName}`, { dashboard: dashboardName }, fallbackResp.status, 'Dashboard aktualisiert (admin fallback)');
+            } else {
+                logApiCall('POST', `${viewsBase}/${dashboardName}`, { dashboard: dashboardName, panels: panels.length }, updateResp.status, 'Dashboard aktualisiert (409 fallback)');
             }
-            logApiCall('POST', `${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}`, { dashboard: dashboardName, panels: panels.length }, updateResp.status, 'Dashboard aktualisiert (existierte bereits)');
         } else {
             const text = await createResp.text();
             throw new Error(`Splunk Dashboard Create fehlgeschlagen (HTTP ${createResp.status}): ${text.substring(0, 200)}`);
         }
     }
 
-    // Set sharing to app-level so dashboard is accessible via /app/search/<name>
+    // Set sharing to app-level (nobody/search is the correct namespace for this)
     try {
-        await fetch(`${splunkRestUrl}/servicesNS/admin/search/data/ui/views/${dashboardName}/acl`, {
+        await fetch(`${viewsBase}/${dashboardName}/acl`, {
             method: 'POST', headers,
             body: 'sharing=app&owner=admin&perms.read=*&perms.write=admin'
         });
